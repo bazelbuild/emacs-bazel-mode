@@ -1,4 +1,5 @@
-;;; bazel-mode.el       -*- lexical-binding:t -*-
+
+;;; bazel-mode.el               -*- lexical-binding:t -*-
 
 ;; Copyright (C) 2018 Robert E. Brown.
 
@@ -14,6 +15,8 @@
 
 ;; You should have received a copy of the GNU General Public License
 ;; along with Bazel Mode.  If not, see <http://www.gnu.org/licenses/>.
+
+;; Author: Robert E. Brown <robert.brown@gmail.com>
 
 (require 'cl)
 (require 'python)
@@ -62,13 +65,13 @@
            ;; from SkylarkAttr.java
            "configuration_field"
            ;; from SkylarkRuleClassFunctions.java
-           "struct" "DefaultInfo" "OutputGroupInfo" "Actions" "provider" "rule" "aspect" "Label"
-           "to_proto" "to_json"
+           "Actions" "aspect" "DefaultInfo" "Label" "OutputGroupInfo" "provider" "rule" "struct"
+           "to_json" "to_proto"
            ;; from PackageFactory.java
            "distribs" "environment_group" "exports_files" "glob" "licenses" "native" "package"
            "package_group" "package_name" "repository_name"
            ;; from WorkspaceFactory.java
-           "workspace" "register_execution_platforms" "register_toolchains"
+           "register_execution_platforms" "register_toolchains" "workspace"
            ;; from SkylarkNativeModule.java but not also in PackageFactory.java
            "existing_rule" "existing_rules"
            ;; from searching Bazel's Java code for "BLAZE_RULES".
@@ -95,7 +98,7 @@
 
 (defvar bazel-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map "\C-c\C-f" 'bazel-format)
+    (define-key map (kbd "C-c C-f") 'bazel-format)
     map))
 
 (define-derived-mode bazel-mode python-mode "Bazel"
@@ -104,7 +107,10 @@
 \\{bazel-mode-map}"
   :group 'bazel
 
-  ;; Replace Python keyword fontification with Bazel keyword fontification.
+  (setq python-indent-guess-indent-offset nil
+        python-indent-offset 4)
+
+  ;; Replace Python keyword fontification with Skylark keyword fontification.
   (setq font-lock-defaults
         '(bazel-font-lock-keywords
           nil nil nil nil
@@ -116,7 +122,7 @@
                           (group (| ?a ?d ?c))
                           (group (+ digit)) (? ?, (group (+ digit)))
                           line-end))
-    (error "bad diff output"))
+    (error "Bad bazel format diff output"))
   (let* ((orig-start (string-to-number (match-string 1)))
          (orig-count (if (null (match-string 2))
                          1
@@ -131,53 +137,54 @@
 (defun bazel-patch-buffer (buffer diff-buffer)
   "Applies the diff editing actions contained in DIFF-BUFFER to BUFFER."
   (with-current-buffer buffer
-    (goto-char (point-min))
-    (let ((orig-offset 0)
-          (current-line 1))
-      (cl-flet ((goto-orig-line (orig-line)
-                  (let ((desired-line (+ orig-line orig-offset)))
-                    (forward-line (- desired-line current-line))
-                    (setq current-line desired-line)))
-                (insert-lines (lines)
-                  (dolist (line lines) (insert line))
-                  (cl-incf current-line (length lines))
-                  (cl-incf orig-offset (length lines)))
-                (delete-lines (count)
-                  (let ((start (point)))
-                    (forward-line count)
-                    (delete-region start (point)))
-                  (cl-decf orig-offset count)))
-        (save-excursion
-          (with-current-buffer diff-buffer
-            (goto-char (point-min))
-            (while (not (eobp))
-              (cl-multiple-value-bind (command orig-start orig-count formatted-count)
-                  (bazel-parse-diff-action)
-                (forward-line)
-                (cl-flet ((fetch-lines ()
+    (save-restriction
+      (widen)
+      (goto-char (point-min))
+      (let ((orig-offset 0)
+            (current-line 1))
+        (cl-flet ((goto-orig-line (orig-line)
+                    (let ((desired-line (+ orig-line orig-offset)))
+                      (forward-line (- desired-line current-line))
+                      (setq current-line desired-line)))
+                  (insert-lines (lines)
+                    (dolist (line lines) (insert line))
+                    (cl-incf current-line (length lines))
+                    (cl-incf orig-offset (length lines)))
+                  (delete-lines (count)
+                    (let ((start (point)))
+                      (forward-line count)
+                      (delete-region start (point)))
+                    (cl-decf orig-offset count)))
+          (save-excursion
+            (with-current-buffer diff-buffer
+              (goto-char (point-min))
+              (while (not (eobp))
+                (cl-multiple-value-bind (command orig-start orig-count formatted-count)
+                    (bazel-parse-diff-action)
+                  (forward-line)
+                  (cl-flet ((fetch-lines ()
                             (cl-loop repeat formatted-count
                                      collect (let ((start (point)))
                                                (forward-line 1)
                                                ;; Return only the text after "< " or "> ".
                                                (substring (buffer-substring start (point)) 2)))))
-
-                  (cond ((equal command "a")
-                         (let ((lines (fetch-lines)))
-                           (with-current-buffer buffer
-                             (goto-orig-line (1+ orig-start))
-                             (insert-lines lines))))
-                        ((equal command "d")
-                         (forward-line orig-count)
-                         (with-current-buffer buffer
-                           (goto-orig-line orig-start)
-                           (delete-lines orig-count)))
-                        ((equal command "c")
-                         (forward-line (+ orig-count 1))
-                         (let ((lines (fetch-lines)))
+                    (cond ((equal command "a")
+                           (let ((lines (fetch-lines)))
+                             (with-current-buffer buffer
+                               (goto-orig-line (1+ orig-start))
+                               (insert-lines lines))))
+                          ((equal command "d")
+                           (forward-line orig-count)
                            (with-current-buffer buffer
                              (goto-orig-line orig-start)
-                             (delete-lines orig-count)
-                             (insert-lines lines))))))))))))))
+                             (delete-lines orig-count)))
+                          ((equal command "c")
+                           (forward-line (+ orig-count 1))
+                           (let ((lines (fetch-lines)))
+                             (with-current-buffer buffer
+                               (goto-orig-line orig-start)
+                               (delete-lines orig-count)
+                               (insert-lines lines)))))))))))))))
 
 (defun bazel-format ()
   "Format the current buffer using buildifier."
@@ -190,7 +197,7 @@
           (setf input (make-temp-file "bazel-format-input-")
                 output (get-buffer-create "*bazel-format-output*")
                 errors (make-temp-file "bazel-format-errors-"))
-          (write-region nil nil input nil 'no-write-message)
+          (write-region nil nil input nil 'silent-write)
           (with-current-buffer output (erase-buffer))
           (let ((status
                  (call-process bazel-format-command nil `(,output ,errors) nil "-mode=diff" input)))
@@ -201,7 +208,7 @@
                 (message "Bazel format errors")
                 (let ((file-name (file-name-nondirectory (buffer-file-name))))
                   (with-current-buffer errors-buffer
-                    ;; A previously created compilation buffer will be read only.
+                    ;; A previously created compilation buffer is read only.
                     (setq buffer-read-only nil)
                     (erase-buffer)
                     (insert-file-contents-literally errors)
