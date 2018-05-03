@@ -10,7 +10,7 @@ To use Bazel Mode, add the following to your .emacs file after replacing
 
     (add-to-list 'load-path "/path/to/bazel-mode/directory")
     (autoload 'bazel-mode "bazel-mode" "Major mode for Bazel BUILD files." t)
-    (add-to-list 'auto-mode-alist '("/BUILD\\(\\.bazel\\)?\\'" . bazel-mode))
+    (add-to-list 'auto-mode-alist '("/BUILD\\(\\..*\\)?\\'" . bazel-mode))
     (add-to-list 'auto-mode-alist '("/WORKSPACE\\'" . bazel-mode))
     (add-to-list 'auto-mode-alist '("\\.bzl\\'" . bazel-mode))
 
@@ -33,7 +33,5 @@ them by adding the following to your .emacs file:
 
     (add-hook 'bazel-mode-hook
               (lambda ()
-                (let ((file-name (file-name-nondirectory (buffer-file-name))))
-                  (when (or (string= file-name "BUILD")
-                            (string= file-name "BUILD.bazel"))
-                    (add-hook 'before-save-hook #'bazel-format nil t)))))
+                (when (search "BUILD" (file-name-nondirectory (buffer-file-name)))
+                  (add-hook 'before-save-hook #'bazel-format nil t))))
