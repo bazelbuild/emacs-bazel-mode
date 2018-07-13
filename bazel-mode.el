@@ -39,8 +39,8 @@
 (defvar bazel-font-lock-keywords
   `(;; keywords
     ,(rx symbol-start
-         (or "and" "break" "continue" "ctx" "def" "elif" "else" "fail" "for" "if" "in" "not" "or"
-             "pass" "return" "self")
+         (or "and" "break" "continue" "ctx" "def" "elif" "else" "fail" "for" "if" "in" "load"
+             "not" "or" "pass" "return" "self")
          symbol-end)
     ;; function definitions
     (,(rx symbol-start "def" (1+ space) (group (1+ (or word ?_))))
@@ -88,7 +88,9 @@
            "objc_bundle" "objc_bundle_library" "objc_framework" "objc_import" "objc_library"
            "objc_proto_library" "platform" "proto_lang_toolchain" "proto_library" "py_binary"
            "py_library" "py_runtime" "py_test" "sh_binary" "sh_library" "sh_test" "test_suite"
-           "toolchain" "xcode_config" "xcode_version")
+           "toolchain" "xcode_config" "xcode_version"
+           ;; Go language rules.
+           "go_binary" "go_library" "go_rule" "go_source" "go_test" "go_vet_test")
           symbol-end)
      . font-lock-builtin-face)
     ;; TODO:  Handle assignments better.  The code below fontifies a[b] = 1 and a = b = 2.
