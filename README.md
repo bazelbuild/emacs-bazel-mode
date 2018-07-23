@@ -1,3 +1,3 @@
 # bazel-mode
 
-This repository will provides support for Bazel in Emacs.
+This repository will provide support for Bazel in Emacs.
