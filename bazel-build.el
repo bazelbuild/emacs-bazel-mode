@@ -56,8 +56,8 @@
 
 (defun bazel-build--suggest-initial-input (file-name workspace-root)
   "Suggest initial input to the interactive completion.
-FILE-NAME is the file-name of the current buffer.
-WORKSPACE-ROOT is the root of the Bazel workspace."
+FILE-NAME is the file-name of the current buffer.  WORKSPACE-ROOT is
+the root of the Bazel workspace."
   (concat "//" (directory-file-name (bazel-build--extract-package-name file-name workspace-root))))
 
 (defun bazel-build--extract-package-name (file-name workspace-root)
@@ -67,8 +67,8 @@ WORKSPACE-ROOT is the root of the Bazel workspace."
 
 (defun bazel-build--find-nearest-build-package (file-name)
   "Return nearest Bazel build package to FILE-NAME.
-This is the directory containing the first BUILD file up
-the directory from FILE-NAME."
+This is the directory containing the first BUILD file up the directory
+from FILE-NAME."
   (let ((nearest-build-package
          (cl-some (lambda (build-name) (locate-dominating-file file-name build-name)) bazel-build--recognized-build-file-names)))
     (if nearest-build-package (expand-file-name nearest-build-package))))
@@ -79,9 +79,9 @@ the directory from FILE-NAME."
 
 (defun bazel-build--completions (string pred mode)
   "Programmed completion for arguments to 'bazel-build', 'bazel-run', etc.
-STRING is the string to be completed by this rule.
-PRED is a predicate which may be used to filter possible completions.
-MODE specifies the completion mode."
+STRING is the string to be completed by this rule.  PRED is a
+predicate which may be used to filter possible completions.  MODE
+specifies the completion mode."
   (let* ((string-split (bazel-build--extract-special-prefix string))
          (string-prefix (car string-split))
          (string-base (cadr string-split))
@@ -179,18 +179,6 @@ WORKSPACE-ROOT is the root of the Bazel workspace."
       (while (search-forward-regexp rule-name-regex nil t 1)
         (push (match-string 1) matches)))
     matches))
-
-;;(defun bazel-build--rules-in-file (file-name)
-;;  "Return the names of all Bazel rules in FILE-NAME."
-;;  (let ((matches)
-;;        ;; matches, e.g., 'foo' from 'name = "foo",'
-;;        (rule-name-regex "name[[:space:]]*=[[:space:]]*[\"\']\\([^\'\"]+\\)[\'\"]"))
-;;    (save-match-data
-;;      (with-temp-buffer
-;;        (insert-file-contents file-name)
-;;        (while (search-forward-regexp rule-name-regex nil t 1)
-;;          (push (match-string 1) matches)))
-;;      matches)))
 
 (defun bazel-build--bazel-generated-directory-p (dirname)
   "Return whether DIRNAME is a Bazel generated directory."
