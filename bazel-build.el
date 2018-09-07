@@ -1,5 +1,4 @@
 ;;; bazel-build.el --- Emacs utilities for using Bazel
-
 ;; Copyright (C) 2018 Google LLC
 ;; Licensed under the Apache License, Version 2.0 (the "License");
 ;; you may not use this file except in compliance with the License.
@@ -15,111 +14,68 @@
 ;;
 ;;; Commentary:
 ;;
+;; This package provides commands to build and run code using Bazel.
+;; It defines interactive commands bazel-build and bazel-run which
+;; perform completion of available Bazel targets.
+
+;;; -*- lexical-binding: t; -*-
 ;;; Code:
 
 (require 'cl-lib)
 
-(defun bazel-build--find-workspace-root (filename)
-  "Find the root of the Bazel workspace, i.e. the path to the WORKSPACE file.
-FILENAME is the file whose parent directories are crawled recursively until one finding a file named WORKSPACE file is found."
-  (let ((workspace-root (locate-dominating-file filename "WORKSPACE")))
-	(if workspace-root (expand-file-name workspace-root)
-	  (error "Not in a Bazel workspace"))))
+(defun bazel-build ()
+  "Find and build a Bazel target."
+  (interactive)
+  (funcall-interactively #'bazel-build--run-bazel-command "build"))
 
-(defconst bazel-build--recognized-build-filenames
+(defun bazel-run ()
+  "Find and run a Bazel target."
+  (interactive)
+  (funcall-interactively #'bazel-build--run-bazel-command "run"))
+
+(defun bazel-build--run-bazel-command (command)
+  "Run Bazel tool with given COMMAND, e.g. build or run."
+  (let* ((file-name (buffer-file-name))
+         (workspace-root (bazel-build--find-workspace-root file-name))
+         (initial-input (bazel-build--suggest-initial-input file-name workspace-root))
+         (target (completing-read
+                  (format "bazel %s " command) ; prompt
+                  #'bazel-build--completions   ; collection
+                  nil                          ; predicate
+                  nil                          ; require-match
+                  initial-input)))             ; initial-input
+    (with-temp-buffer
+      (compile
+       (format "bazel %s %s" command target)))))
+
+(defun bazel-build--find-workspace-root (file-name)
+  "Find the root of the Bazel workspace containing FILE-NAME."
+  (let ((workspace-root (locate-dominating-file file-name "WORKSPACE")))
+    (if workspace-root (expand-file-name workspace-root)
+      (error "Not in a Bazel workspace"))))
+
+(defun bazel-build--suggest-initial-input (file-name workspace-root)
+  "Suggest initial input to the interactive completion.
+FILE-NAME is the file-name of the current buffer.
+WORKSPACE-ROOT is the root of the Bazel workspace."
+  (concat "//" (directory-file-name (bazel-build--extract-package-name file-name workspace-root))))
+
+(defun bazel-build--extract-package-name (file-name workspace-root)
+  "Extract the nearest Bazel package for FILE-NAME under WORKSPACE-ROOT."
+  (let ((nearest-build-file (or (bazel-build--find-nearest-build-package file-name) workspace-root)))
+    (file-relative-name nearest-build-file workspace-root)))
+
+(defun bazel-build--find-nearest-build-package (file-name)
+  "Return nearest Bazel build package to FILE-NAME.
+This is the directory containing the first BUILD file up
+the directory from FILE-NAME."
+  (let ((nearest-build-package
+         (cl-some (lambda (build-name) (locate-dominating-file file-name build-name)) bazel-build--recognized-build-file-names)))
+    (if nearest-build-package (expand-file-name nearest-build-package))))
+
+(defconst bazel-build--recognized-build-file-names
   '("BUILD.bazel" "BUILD")
   "Names files Bazel will look in to find build rules.")
-
-(defun bazel-build--find-nearest-build-file (filename)
-  "Return first BUILD file up the directory hierarchy from input filename.
-FILENAME is the file whose parent directories are crawled recursively until one finding a file with a named recognized as a Bazel BUILD file is found."
-  (let ((nearest-build-file
-		 (some (lambda (build-name) (locate-dominating-file filename build-name)) bazel-build--recognized-build-filenames)))
-	(if nearest-build-file (expand-file-name nearest-build-file))))
-
-(defun bazel-build--extract-build-path (filename workspace-root)
-  "Extract the path from the Bazel workspace root to the argument.
-FILENAME names the file whose path relative to the workspace root is extracted.
-WORKSPACE-ROOT is the root of the Bazel workspace."
-  (let* ((nearest-build-file (or (bazel-build--find-nearest-build-file filename) workspace-root)))
-	(file-relative-name nearest-build-file workspace-root)))
-
-(defun bazel-build--concat-path-components-list (components)
-  "Concatenate a list of path components to form a path.
-COMPONENTS is the list of path components to concatenate."
-  (let ((nonempty-components (seq-filter (lambda (c) (and c (> (length c) 0))) components)))
-    (if (cdr nonempty-components)
-      (concat (file-name-as-directory (car nonempty-components)) (bazel-build--concat-path-components-list (cdr nonempty-components)))
-    (car nonempty-components))))
-
-(defun bazel-build--concat-path-components (&rest components)
-  "Concatenate a path components to form a path.
-COMPONENTS are the path components to concatenate."
-  (bazel-build--concat-path-components-list components))
-
-(defun bazel-build--build-file-in-directory (dirname)
-  "Return the name of the Bazel build file, if present, in a directory.
-DIRNAME is the name of the directory possibly containing a Bazel build file."
-  (let ((files-in-directory (directory-files dirname nil)))
-    (some (lambda (build-filename) (if (member build-filename files-in-directory) build-filename))
-          bazel-build--recognized-build-filenames)))
-
-(defun bazel-build--rules-in-file (filename)
-  "Return the list of names of all Bazel rules in a BUILD or WORKSPACE file.
-FILENAME is the name of a Bazel BUILD or WORKSPACE file."
-  (let ((matches)
-        ;; matches, e.g., 'foo' from 'name = "foo",'
-        (rule-name-regex "name[[:space:]]*=[[:space:]]*[\"\']\\([^\'\"]+\\)[\'\"]"))
-    (save-match-data
-      (with-temp-buffer
-        (insert-file-contents filename)
-        (while (search-forward-regexp rule-name-regex nil t 1)
-          (push (match-string 1) matches)))
-      matches)))
-
-(defun bazel-build--rule-completions (dirname workspace-root)
-  "Return Bazel rules which complete an input path.
-DIRNAME is the path to compute.
-WORKSPACE-ROOT is the root of the Bazel workspace."
-  (let* ((subdirectories (bazel-build--subdirectory-completions dirname workspace-root))
-         (directories (if (string= dirname "") (append '("") subdirectories) subdirectories)))
-    (mapcan
-     (lambda (subdir)
-       (let* ((fulldir (bazel-build--concat-path-components workspace-root subdir))
-              (build-file-name (bazel-build--build-file-in-directory fulldir))
-              (prefix (concat (bazel-build--concat-path-components dirname (file-name-nondirectory (directory-file-name subdir))) ":")))
-         (if build-file-name
-           (mapcar (lambda (rule-name) (concat prefix rule-name))
-                   (bazel-build--rules-in-file (expand-file-name build-file-name fulldir))))))
-     directories)))
-
-(defun bazel-build--bazel-generated-directory-p (dirname)
-  "Return whether the input directory is a Bazel generated directory.
-DIRNAME is the directory that is tested whether it is a Bazel generated directory."
-  (let ((bazel-generated-directories '("bazel-bin" "bazel-genfiles" "bazel-out" "bazel-testlogs" "bazel-tmp")))
-    (some (lambda (dir) (string-match-p (regexp-quote dir) dirname)) bazel-generated-directories)))
-
-(defun bazel-build--visible-subdirectories (dirname)
-  "Return visible subdirectories of a given directory.
-DIRNAME is the directory whose visible subdirectories are returned."
-  (let ((no-leading-dot-regex "^[^\\.]")) ;; TODO: is there a more generic way to recognize hidden files?
-    (seq-filter (lambda (x) (and (file-directory-p x) (not (bazel-build--bazel-generated-directory-p x))))
-                (directory-files dirname t no-leading-dot-regex))))
-
-(defun bazel-build--subdirectory-completions (dirname workspace-root)
-  "Return subdirectories that complete the input path relative.
-Argument DIRNAME is the directory whose Bazel build rule completions are
-returned.  It is a path relative to the workspace root.
-WORKSPACE-ROOT is the root of the Bazel workspace."
-  (let* ((fulldir (bazel-build--concat-path-components workspace-root dirname)))
-    (mapcar (lambda (d) (file-name-as-directory (file-relative-name d workspace-root))) (bazel-build--visible-subdirectories fulldir))))
-
-(defun bazel-build--extract-special-prefix (str)
-  "Extract from the input a prefix with special meaning to Bazel, if present.
-Argument STR is the string from which special prefixed might be extracted."
-  (let ((prefixes '("//" "@" ""))) ;; empty string must come last to provide default behavior
-    (some (lambda (pref) (if (string-prefix-p pref str) (list pref (substring str (length pref)))))
-          prefixes)))
 
 (defun bazel-build--completions (string pred mode)
   "Programmed completion for arguments to 'bazel-build', 'bazel-run', etc.
@@ -129,10 +85,10 @@ MODE specifies the completion mode."
   (let* ((string-split (bazel-build--extract-special-prefix string))
          (string-prefix (car string-split))
          (string-base (cadr string-split))
-         (filename (file-name-nondirectory string-base))
+         (file-name (file-name-nondirectory string-base))
          (dirname (or (file-name-directory string-base) ""))
          (slashpos (or (string-match "/.*$" string-base) 0))
-		 (workspace-root (bazel-build--find-workspace-root dirname))
+         (workspace-root (bazel-build--find-workspace-root dirname))
          (subdirectories (bazel-build--subdirectory-completions dirname workspace-root))
          (rules (bazel-build--rule-completions dirname workspace-root))
          (candidate-completions (mapcar (lambda (d) (concat string-prefix d)) (append subdirectories rules)))
@@ -154,7 +110,7 @@ MODE specifies the completion mode."
 
          ((and (eq 1 (length completions)) (string= string (car completions))) 't)
 
-         ('t (reduce #'fill-common-string-prefix completions))))
+         ('t (cl-reduce #'fill-common-string-prefix completions))))
 
        ;; `all-completions' operation. returns a list of all possible completions.
        ((eq mode 't) completions)
@@ -163,33 +119,90 @@ MODE specifies the completion mode."
        ;;  - if the specified string is an exact match for some completion
        ;;    alternative, returns t.
        ;;  - otherwise, returns nil.
-       ((eq mode 'lambda) (member (file-name-as-directory filename) completions))
+       ((eq mode 'lambda) (member (file-name-as-directory file-name) completions))
 
        ;; `completion-boundaries' operation.
        ;; let completion know our completions only apply after the last /
-       ('t (cons (list 'boundaries slashpos) (length filename))))))
+       ('t (cons (list 'boundaries slashpos) (length file-name))))))
 
-(defun bazel-build--suggest-initial-input (filename workspace-root)
-  "Suggest initial input to the interactive completion.
-FILENAME is the filename of the current buffer.
+(defun bazel-build--extract-special-prefix (str)
+  "Extract any prefix from STR with special meaning to Bazel."
+  (let ((prefixes '("//" ""))) ;; empty string must come last to provide default behavior
+    (cl-some (lambda (pref) (if (string-prefix-p pref str) (list pref (substring str (length pref)))))
+          prefixes)))
+
+(defun bazel-build--rule-completions (dirname workspace-root)
+  "Return Bazel rules which complete DIRNAME.
 WORKSPACE-ROOT is the root of the Bazel workspace."
-  (concat "//" (directory-file-name (bazel-build--extract-build-path filename workspace-root))))
+  (let* ((subdirectories (bazel-build--subdirectory-completions dirname workspace-root))
+         (directories (if (string= dirname "") (append '("") subdirectories) subdirectories)))
+    (cl-mapcan
+     (lambda (subdir)
+       (let* ((fulldir (bazel-build--concat-file-name-components workspace-root subdir))
+              (build-file-name (bazel-build--build-file-in-directory fulldir))
+              (prefix (concat (bazel-build--concat-file-name-components dirname (file-name-nondirectory (directory-file-name subdir))) ":")))
+         (if build-file-name
+           (mapcar (lambda (rule-name) (concat prefix rule-name))
+                   (bazel-build--rules-in-file (expand-file-name build-file-name fulldir))))))
+     directories)))
 
-(defun bazel-build ()
-  "Find an run a Bazel build rule."
-  (interactive)
-  (let* ((filename (buffer-file-name))
-         (workspace-root (bazel-build--find-workspace-root filename))
-         (initial-input (bazel-build--suggest-initial-input filename workspace-root))
-		 (target (completing-read
-				"bazel build "             ; prompt
-				#'bazel-build--completions ; collection
-				nil                        ; predicate
-				't                         ; require-match
-				initial-input)))           ; initial-input
-	(with-temp-buffer
-	  (compile
-	   (format "bazel build %s" target)))))
+(defun bazel-build--subdirectory-completions (dirname workspace-root)
+  "Return subdirectories of DIRNAME which are not generated by Bazel.
+WORKSPACE-ROOT is the root of the Bazel workspace."
+  (let ((fulldir (bazel-build--concat-file-name-components workspace-root dirname)))
+    (mapcar (lambda (d) (file-name-as-directory (file-relative-name d workspace-root))) (bazel-build--visible-subdirectories fulldir))))
+
+(defun bazel-build--concat-file-name-components-list (components)
+  "Concatenate COMPONENTS to form a file name."
+  (let ((nonempty-components (seq-filter (lambda (c) (and c (> (length c) 0))) components)))
+    (if (cdr nonempty-components)
+      (concat (file-name-as-directory (car nonempty-components)) (bazel-build--concat-file-name-components-list (cdr nonempty-components)))
+    (car nonempty-components))))
+
+(defun bazel-build--concat-file-name-components (&rest components)
+  "Concatenate COMPONENTS to form a file-name."
+  (bazel-build--concat-file-name-components-list components))
+
+(defun bazel-build--build-file-in-directory (dirname)
+  "Return the name of the Bazel build file in DIRNAME, if present."
+  (let ((files-in-directory (directory-files dirname nil)))
+    (cl-some (lambda (build-file-name) (if (member build-file-name files-in-directory) build-file-name))
+          bazel-build--recognized-build-file-names)))
+
+(defun bazel-build--rules-in-file (file-name)
+  "Return the names of all Bazel rules in FILE-NAME."
+  (let ((matches)
+        ;; matches, e.g., 'foo' from 'name = "foo",'
+        (rule-name-regex "name[[:space:]]*=[[:space:]]*[\"\']\\([^\'\"]+\\)[\'\"]"))
+    (with-temp-buffer
+      (insert-file-contents file-name)
+      (while (search-forward-regexp rule-name-regex nil t 1)
+        (push (match-string 1) matches)))
+    matches))
+
+;;(defun bazel-build--rules-in-file (file-name)
+;;  "Return the names of all Bazel rules in FILE-NAME."
+;;  (let ((matches)
+;;        ;; matches, e.g., 'foo' from 'name = "foo",'
+;;        (rule-name-regex "name[[:space:]]*=[[:space:]]*[\"\']\\([^\'\"]+\\)[\'\"]"))
+;;    (save-match-data
+;;      (with-temp-buffer
+;;        (insert-file-contents file-name)
+;;        (while (search-forward-regexp rule-name-regex nil t 1)
+;;          (push (match-string 1) matches)))
+;;      matches)))
+
+(defun bazel-build--bazel-generated-directory-p (dirname)
+  "Return whether DIRNAME is a Bazel generated directory."
+  (let ((bazel-generated-directories '("bazel-bin" "bazel-genfiles" "bazel-out" "bazel-testlogs" "bazel-tmp")))
+    (cl-some (lambda (dir) (string-match-p (regexp-quote dir) dirname)) bazel-generated-directories)))
+
+(defun bazel-build--visible-subdirectories (dirname)
+  "Return visible subdirectories of a given directory.
+DIRNAME is the directory whose visible subdirectories are returned."
+  (let ((no-leading-dot-regex "^[^\\.]")) ;; TODO: is there a more generic way to recognize hidden files?
+    (seq-filter (lambda (x) (and (file-directory-p x) (not (bazel-build--bazel-generated-directory-p x))))
+                (directory-files dirname t no-leading-dot-regex))))
 
 (provide 'bazel-build)
 
