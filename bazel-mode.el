@@ -15,12 +15,53 @@
 ;;
 ;;; Commentary:
 ;;
+;; This package provides Emacs bazel-mode which performs syntax
+;; highlighting for Bazel WORKSPACE and BUILD files.
+;;
+;; -*- lexical-binding: t; -*-
 ;;; Code:
 
-(defun bazel-mode--sort-strings-longest-first (l)
-  "Sort strings by length and put the longest strings first.
-L is the list of strings to sort."
-  (sort l #'(lambda (s1 s2) (> (length s1) (length s2)))))
+;;;###autoload
+(define-derived-mode bazel-mode prog-mode "Bazel"
+  "Major mode for editing Bazel BUILD and WORKSPACE files."
+  (setq font-lock-defaults '((bazel-font-lock-keywords))))
+
+(defvar bazel-font-lock-keywords
+      `(
+        (,bazel-keywords-regexp . font-lock-keyword-face)
+        (,bazel-functions-regexp . font-lock-function-name-face)
+        (,bazel-type-regexp . font-lock-type-face)
+        (,bazel-constant-regexp . font-lock-constant-face)
+        (,bazel-event-regexp . font-lock-builtin-face)
+        ;; note: order above matters. in general, longer words first.
+        ))
+
+(defvar bazel-mode-syntax-table
+  (let ((table (make-syntax-table)))
+	;; comments start with '#' and end with line break
+	(modify-syntax-entry ?# "<" table)
+	(modify-syntax-entry ?\n ">" table)
+	table))
+
+(defconst bazel-types
+  (bazel-mode--sort-strings-longest-first
+    (append bind-args cc-buildrule-args common-buildrule-args common-testrule-args
+	  config-setting-args genrule-args genquery-args git-repository-args glob-args
+	  http-args java-buildrule-args local-repository-args maven-args
+	  new-repository-args package-args py-buildrule-args)))
+
+(defconst bazel-constants
+  '("true"))
+
+(defconst bazel-events
+  '())
+
+;; generate regex string for each category of keywords
+(setq bazel-keywords-regexp (regexp-opt bazel-keywords 'words))
+(setq bazel-functions-regexp (regexp-opt bazel-functions 'words))
+(setq bazel-type-regexp (regexp-opt bazel-types 'words))
+(setq bazel-constant-regexp (regexp-opt bazel-constants 'words))
+(setq bazel-event-regexp (regexp-opt bazel-events 'words))
 
 ;; define several category of keywords
 (defconst bazel-keywords
@@ -120,47 +161,10 @@ L is the list of strings to sort."
   '("default_python_version" "default_runtime" "files" "imports" "interpreter"
     "interpreter_path" "main" "protoc" "srcs_version"))
 
-(defconst bazel-types
-  (bazel-mode--sort-strings-longest-first
-    (append bind-args cc-buildrule-args common-buildrule-args common-testrule-args
-	  config-setting-args genrule-args genquery-args git-repository-args glob-args
-	  http-args java-buildrule-args local-repository-args maven-args
-	  new-repository-args package-args py-buildrule-args)))
-
-(defconst bazel-constants
-  '("true"))
-
-(defconst bazel-events
-  '())
-
-;; generate regex string for each category of keywords
-(setq bazel-keywords-regexp (regexp-opt bazel-keywords 'words))
-(setq bazel-functions-regexp (regexp-opt bazel-functions 'words))
-(setq bazel-type-regexp (regexp-opt bazel-types 'words))
-(setq bazel-constant-regexp (regexp-opt bazel-constants 'words))
-(setq bazel-event-regexp (regexp-opt bazel-events 'words))
-
-(defvar bazel-font-lock-keywords
-      `(
-        (,bazel-keywords-regexp . font-lock-keyword-face)
-        (,bazel-functions-regexp . font-lock-function-name-face)
-        (,bazel-type-regexp . font-lock-type-face)
-        (,bazel-constant-regexp . font-lock-constant-face)
-        (,bazel-event-regexp . font-lock-builtin-face)
-        ;; note: order above matters. in general, longer words first.
-        ))
-
-(defvar bazel-mode-syntax-table
-  (let ((table (make-syntax-table)))
-	;; comments start with '#' and end with line break
-	(modify-syntax-entry ?# "<" table)
-	(modify-syntax-entry ?\n ">" table)
-	table))
-
-;;;###autoload
-(define-derived-mode bazel-mode prog-mode "Bazel"
-  "Major mode for editing Bazel BUILD and WORKSPACE files"
-  (setq font-lock-defaults '((bazel-font-lock-keywords))))
+(defun bazel-mode--sort-strings-longest-first (l)
+  "Sort strings by length and put the longest strings first.
+L is the list of strings to sort."
+  (sort l #'(lambda (s1 s2) (> (length s1) (length s2)))))
 
 (provide 'bazel-mode)
 
