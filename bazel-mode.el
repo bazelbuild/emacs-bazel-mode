@@ -76,6 +76,11 @@
 	"local_repository" "maven_jar" "maven_server" "new_git_repository"
 	"new_http_archive" "new_local_repository" "xcode_config" "xcode_version"))
 
+(defun bazel-mode--sort-strings-longest-first (l)
+  "Sort strings by length and put the longest strings first.
+L is the list of strings to sort."
+  (sort l #'(lambda (s1 s2) (> (length s1) (length s2)))))
+
 (defconst bazel-functions
   (bazel-mode--sort-strings-longest-first
    (append cc-rules extra-actions-rules function-rules general-rules java-rules
@@ -150,11 +155,6 @@
 (defvar bazel-type-regexp (regexp-opt bazel-types 'words))
 (defvar bazel-constant-regexp (regexp-opt bazel-constants 'words))
 (defvar bazel-event-regexp (regexp-opt bazel-events 'words))
-
-(defun bazel-mode--sort-strings-longest-first (l)
-  "Sort strings by length and put the longest strings first.
-L is the list of strings to sort."
-  (sort l #'(lambda (s1 s2) (> (length s1) (length s2)))))
 
 (defvar bazel-font-lock-keywords
       `(
