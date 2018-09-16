@@ -1,3 +1,4 @@
+;;; -*- lexical-binding: t; -*-
 ;;; bazel-mode.el --- Emacs major mode for editing Bazel BUILD and WORKSPACE files
 
 ;; Copyright (C) 2018 Google LLC
@@ -18,7 +19,6 @@
 ;; This package provides Emacs bazel-mode which performs syntax
 ;; highlighting for Bazel WORKSPACE and BUILD files.
 ;;
-;; -*- lexical-binding: t; -*-
 ;;; Code:
 
 ;;;###autoload
