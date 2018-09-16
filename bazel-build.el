@@ -1,4 +1,7 @@
+;;; -*- lexical-binding: t; -*-
+;;
 ;;; bazel-build.el --- Emacs utilities for using Bazel
+;;
 ;; Copyright (C) 2018 Google LLC
 ;; Licensed under the Apache License, Version 2.0 (the "License");
 ;; you may not use this file except in compliance with the License.
@@ -15,10 +18,9 @@
 ;;; Commentary:
 ;;
 ;; This package provides commands to build and run code using Bazel.
-;; It defines interactive commands bazel-build and bazel-run which
+;; It defines interactive commands `bazel-build' and `bazel-run' which
 ;; perform completion of available Bazel targets.
-
-;;; -*- lexical-binding: t; -*-
+;;
 ;;; Code:
 
 (require 'cl-lib)
@@ -26,12 +28,17 @@
 (defun bazel-build ()
   "Find and build a Bazel target."
   (interactive)
-  (funcall-interactively #'bazel-build--run-bazel-command "build"))
+  (bazel-build--run-bazel-command "build"))
 
 (defun bazel-run ()
   "Find and run a Bazel target."
   (interactive)
-  (funcall-interactively #'bazel-build--run-bazel-command "run"))
+  (bazel-build--run-bazel-command "run"))
+
+(defun bazel-test ()
+  "Find and run a Bazel test target."
+  (interactive)
+  (bazel-build--run-bazel-command "test"))
 
 (defun bazel-build--run-bazel-command (command)
   "Run Bazel tool with given COMMAND, e.g. build or run."
@@ -39,14 +46,13 @@
          (workspace-root (bazel-build--find-workspace-root file-name))
          (initial-input (bazel-build--suggest-initial-input file-name workspace-root))
          (target (completing-read
-                  (format "bazel %s " command) ; prompt
+				  (format "bazel %s " command) ; prompt
                   #'bazel-build--completions   ; collection
                   nil                          ; predicate
                   nil                          ; require-match
                   initial-input)))             ; initial-input
-    (with-temp-buffer
-      (compile
-       (format "bazel %s %s" command target)))))
+	(compile
+	 (mapconcat #'shell-quote-argument (list "bazel" command target) " "))))
 
 (defun bazel-build--find-workspace-root (file-name)
   "Find the root of the Bazel workspace containing FILE-NAME."
@@ -60,22 +66,19 @@ FILE-NAME is the file-name of the current buffer.  WORKSPACE-ROOT is
 the root of the Bazel workspace."
   (concat "//" (directory-file-name (bazel-build--extract-package-name file-name workspace-root))))
 
-(defun bazel-build--extract-package-name (file-name workspace-root)
-  "Extract the nearest Bazel package for FILE-NAME under WORKSPACE-ROOT."
-  (let ((nearest-build-file (or (bazel-build--find-nearest-build-package file-name) workspace-root)))
-    (file-relative-name nearest-build-file workspace-root)))
-
-(defun bazel-build--find-nearest-build-package (file-name)
-  "Return nearest Bazel build package to FILE-NAME.
-This is the directory containing the first BUILD file up the directory
-from FILE-NAME."
-  (let ((nearest-build-package
-         (cl-some (lambda (build-name) (locate-dominating-file file-name build-name)) bazel-build--recognized-build-file-names)))
-    (if nearest-build-package (expand-file-name nearest-build-package))))
-
 (defconst bazel-build--recognized-build-file-names
   '("BUILD.bazel" "BUILD")
   "Names files Bazel will look in to find build rules.")
+
+(defun bazel-build--extract-package-name (file-name workspace-root)
+  "Extract the nearest Bazel package for FILE-NAME under WORKSPACE-ROOT."
+  (file-relative-name
+   (expand-file-name
+	(or
+	 (cl-some
+	  (lambda (build-name) (locate-dominating-file file-name build-name)) bazel-build--recognized-build-file-names)
+	 workspace-root))
+   workspace-root))
 
 (defun bazel-build--completions (string pred mode)
   "Programmed completion for arguments to 'bazel-build', 'bazel-run', etc.
