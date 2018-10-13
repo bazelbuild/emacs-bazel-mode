@@ -1,5 +1,5 @@
-;;; -*- lexical-binding: t; -*-
-;;; bazel-mode.el --- Emacs major mode for editing Bazel BUILD and WORKSPACE files
+;;; bazel-mode.el --- Emacs major mode for editing Bazel BUILD and WORKSPACE files -*- lexical-binding: t; -*-
+
 
 ;; Copyright (C) 2018 Google LLC
 ;; Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,48 +43,10 @@
 (defconst bazel-keywords
   '("for"))
 
-(defconst cc-rules
-  '("cc_binary" "cc_inc_library" "cc_library" "cc_proto_library" "cc_test"))
-
-(defconst extra-actions-rules
-  '("action_listener" "extra_action"))
-
-;; See https://docs.bazel.build/versions/master/be/functions.html.
-(defconst function-rules
-  '("exports_files" "glob" "licenses" "load" "package" "package_group" "select"
-	"workspace"))
-
-(defconst general-rules
-  '("alias" "config_setting" "filegroup" "genrule" "genquery" "test_suite"))
-
-(defconst java-rules
-  '("java_binary" "java_import" "java_library" "java_lite_proto_library"
-	"java_plugin" "java_proto_library" "java_test" "java_runtime"
-	"java_runtime_suite" "java_toolchain"))
-
-(defconst platform-rules
-  '("constraint_setting" "constraint_value" "platform"))
-
-(defconst protobuf-rules
-  '("proto_lang_toolchain" "proto_library"))
-
-(defconst python-rules
-  '("py_binary" "py_library" "py_proto_library" "py_test"))
-
-(defconst workspace-rules
-  '("bind" "git_repository" "http_archive" "http_file" "http_jar"
-	"local_repository" "maven_jar" "maven_server" "new_git_repository"
-	"new_http_archive" "new_local_repository" "xcode_config" "xcode_version"))
-
 (defun bazel-mode--sort-strings-longest-first (l)
   "Sort strings by length and put the longest strings first.
 L is the list of strings to sort."
   (sort l #'(lambda (s1 s2) (> (length s1) (length s2)))))
-
-(defconst bazel-functions
-  (bazel-mode--sort-strings-longest-first
-   (append cc-rules extra-actions-rules function-rules general-rules java-rules
-		   platform-rules protobuf-rules python-rules workspace-rules)))
 
 ;; arguments to functions
 (defconst bind-args
@@ -151,7 +113,6 @@ L is the list of strings to sort."
 
 ;; generate regex string for each category of keywords
 (defvar bazel-keywords-regexp (regexp-opt bazel-keywords 'words))
-(defvar bazel-functions-regexp (regexp-opt bazel-functions 'words))
 (defvar bazel-type-regexp (regexp-opt bazel-types 'words))
 (defvar bazel-constant-regexp (regexp-opt bazel-constants 'words))
 (defvar bazel-event-regexp (regexp-opt bazel-events 'words))
@@ -159,7 +120,6 @@ L is the list of strings to sort."
 (defvar bazel-font-lock-keywords
       `(
         (,bazel-keywords-regexp . font-lock-keyword-face)
-        (,bazel-functions-regexp . font-lock-function-name-face)
         (,bazel-type-regexp . font-lock-type-face)
         (,bazel-constant-regexp . font-lock-constant-face)
         (,bazel-event-regexp . font-lock-builtin-face)
