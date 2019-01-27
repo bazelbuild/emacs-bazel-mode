@@ -112,12 +112,12 @@ L is the list of strings to sort."
 	  new-repository-args package-args py-buildrule-args)))
 
 ;; generate regex string for each category of keywords
-(defvar bazel-keywords-regexp (regexp-opt bazel-keywords 'words))
-(defvar bazel-type-regexp (regexp-opt bazel-types 'words))
-(defvar bazel-constant-regexp (regexp-opt bazel-constants 'words))
-(defvar bazel-event-regexp (regexp-opt bazel-events 'words))
+(defconst bazel-keywords-regexp (regexp-opt bazel-keywords 'words))
+(defconst bazel-type-regexp (regexp-opt bazel-types 'words))
+(defconst bazel-constant-regexp (regexp-opt bazel-constants 'words))
+(defconst bazel-event-regexp (regexp-opt bazel-events 'words))
 
-(defvar bazel-font-lock-keywords
+(defconst bazel-font-lock-keywords
       `(
         (,bazel-keywords-regexp . font-lock-keyword-face)
         (,bazel-type-regexp . font-lock-type-face)
