@@ -24,25 +24,25 @@
 ;;
 ;;; Code:
 
-(defun bazel-build (label)
-  "Build a Bazel LABEL."
-  (interactive "sbazel build //")
-  (bazel-build--run-bazel-command "build" label))
+(defun bazel-build (target)
+  "Build a Bazel TARGET."
+  (interactive "sbazel build ")
+  (bazel-build--run-bazel-command "build" target))
 
-(defun bazel-run (label)
-  "Run a Bazel LABEL."
-  (interactive "sbazel run //")
-  (bazel-build--run-bazel-command "run" label))
+(defun bazel-run (target)
+  "Build and run a Bazel TARGET."
+  (interactive "sbazel run ")
+  (bazel-build--run-bazel-command "run" target))
 
-(defun bazel-test (label)
-  "Run a Bazel test LABEL."
-  (interactive "sbazel test //")
-  (bazel-build--run-bazel-command "test" label))
+(defun bazel-test (target)
+  "Build and run a Bazel test TARGET."
+  (interactive "sbazel test ")
+  (bazel-build--run-bazel-command "test" target))
 
-(defun bazel-build--run-bazel-command (command label)
-  "Run Bazel tool with given COMMAND, e.g. build or run, on the given LABEL."
+(defun bazel-build--run-bazel-command (command target)
+  "Run Bazel tool with given COMMAND, e.g. build or run, on the given TARGET."
   (compile
-   (mapconcat #'shell-quote-argument (list "bazel" command label) " ")))
+   (mapconcat #'shell-quote-argument (list "bazel" command target) " ")))
 
 (provide 'bazel-build)
 
