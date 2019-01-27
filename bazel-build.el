@@ -24,29 +24,25 @@
 ;;
 ;;; Code:
 
-(require 'cl-lib)
+(defun bazel-build (label)
+  "Build a Bazel LABEL."
+  (interactive "sbazel build //")
+  (bazel-build--run-bazel-command "build" label))
 
-(defun bazel-build ()
-  "Find and build a Bazel target."
-  (interactive)
-  (bazel-build--run-bazel-command "build"))
+(defun bazel-run (label)
+  "Run a Bazel LABEL."
+  (interactive "sbazel run //")
+  (bazel-build--run-bazel-command "run" label))
 
-(defun bazel-run ()
-  "Find and run a Bazel target."
-  (interactive)
-  (bazel-build--run-bazel-command "run"))
+(defun bazel-test (label)
+  "Run a Bazel test LABEL."
+  (interactive "sbazel test //")
+  (bazel-build--run-bazel-command "test" label))
 
-(defun bazel-test ()
-  "Find and run a Bazel test target."
-  (interactive)
-  (bazel-build--run-bazel-command "test"))
-
-(defun bazel-build--run-bazel-command (command)
-  "Run Bazel tool with given COMMAND, e.g. build or run."
-  (let* ((target (read-from-minibuffer
-				  (format "bazel %s //" command))))
-    (compile
-     (mapconcat #'shell-quote-argument (list "bazel" command target) " "))))
+(defun bazel-build--run-bazel-command (command label)
+  "Run Bazel tool with given COMMAND, e.g. build or run, on the given LABEL."
+  (compile
+   (mapconcat #'shell-quote-argument (list "bazel" command label) " ")))
 
 (provide 'bazel-build)
 
