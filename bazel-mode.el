@@ -21,10 +21,23 @@
 ;;
 ;;; Code:
 
+(defconst bazel-mode-syntax-table
+  (let ((table (make-syntax-table)))
+    ;; single line comment start
+    (modify-syntax-entry ?# "<" table)
+    ;; single line comment end
+    (modify-syntax-entry ?\n ">" table)
+    table)
+  "Syntax table for `bazel-mode'.")
+
 ;;;###autoload
 (define-derived-mode bazel-mode prog-mode "Bazel"
-  "Major mode for editing Bazel BUILD and WORKSPACE files.")
-
+  "Major mode for editing Bazel BUILD and WORKSPACE files."
+  (setq-local comment-start "# ")
+  (setq-local comment-start-skip "#+")
+  (setq-local comment-end "")
+  (setq-local comment-use-syntax t)
+  (setq-local font-lock-defaults '(nil)))
 (provide 'bazel-mode)
 
 ;;; bazel-mode.el ends here
