@@ -26,23 +26,57 @@
 
 (defun bazel-build (target)
   "Build a Bazel TARGET."
-  (interactive "sbazel build ")
+  (interactive (list (bazel-build--read-target "bazel build ")))
   (bazel-build--run-bazel-command "build" target))
 
 (defun bazel-run (target)
   "Build and run a Bazel TARGET."
-  (interactive "sbazel run ")
+  (interactive (list (bazel-build--read-target "bazel run ")))
   (bazel-build--run-bazel-command "run" target))
 
 (defun bazel-test (target)
   "Build and run a Bazel test TARGET."
-  (interactive "sbazel test ")
+  (interactive (list (bazel-build--read-target "bazel test ")))
   (bazel-build--run-bazel-command "test" target))
 
 (defun bazel-build--run-bazel-command (command target)
   "Run Bazel tool with given COMMAND, e.g. build or run, on the given TARGET."
   (compile
    (mapconcat #'shell-quote-argument (list "bazel" command target) " ")))
+
+(defun bazel-build--read-target (prompt)
+  "Read a Bazel build target from the minibuffer.  PROMPT is a read-only prompt."
+  (let* ((file-name (buffer-file-name))
+         (workspace-root (or (bazel-build--find-workspace-root file-name)
+           (user-error "Not in a Bazel workspace. No WORKSPACE file found.")))
+         (package-name
+          (or (bazel-build--extract-package-name file-name workspace-root)
+           (user-error "Not in a Bazel package. No BUILD file found.")))
+         (initial-input (concat "//" package-name)))
+    (read-string prompt initial-input)))
+
+(defun bazel-build--find-workspace-root (file-name)
+  "Find the root of the Bazel workspace containing FILE-NAME.
+If current buffer is not in a Bazel workspace, return nil."
+  (let ((workspace-root (locate-dominating-file file-name "WORKSPACE")))
+    (when workspace-root (expand-file-name workspace-root))))
+
+(defun bazel-build--extract-package-name (file-name workspace-root)
+  "Return the nearest Bazel package for FILE-NAME under WORKSPACE-ROOT.
+If current buffer is not in a Bazel package, return nil."
+  (let* ((build-file-name
+          (cl-some (lambda (build-name)
+                     (locate-dominating-file file-name build-name))
+                   '("BUILD.bazel" "BUILD")))
+         (package-name
+          (when build-file-name
+            (file-relative-name
+             (directory-file-name build-file-name) workspace-root))))
+    ;; Only return package-name if we can confirm it is the local relative
+    ;; file name of a BUILD file.
+    (unless (or (file-remote-p package-name)
+                (file-name-absolute-p package-name))
+      package-name)))
 
 (provide 'bazel-build)
 
