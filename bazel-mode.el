@@ -21,6 +21,31 @@
 ;;
 ;;; Code:
 
+(defcustom buildifier-cmd "buildifier"
+  "Filename of buildifier executable."
+  :type 'string
+  :group 'bazel-mode)
+
+(defun buildifier ()
+  "Format current buffer using buildifier."
+  (interactive)
+  (let ((build-file-contents (buffer-string))
+		(input-buffer (current-buffer))
+		(orig-point (point)))
+	(with-current-buffer (get-buffer-create "*buildifier*")
+	  (erase-buffer)
+	  (insert build-file-contents)
+	  (let ((return-code
+			 (call-process-region (point-min) (point-max) buildifier-cmd t t)))
+		(unwind-protect
+		  (if (zerop return-code)
+			  (progn
+				(copy-to-buffer input-buffer (point-min) (point-max))
+				(kill-buffer))
+			  (set-buffer-modified-p nil)
+			  (display-buffer (current-buffer))))))
+	(goto-char orig-point)))
+
 (defconst bazel-mode-syntax-table
   (let ((table (make-syntax-table)))
     ;; single line comment start
@@ -38,6 +63,7 @@
   (setq-local comment-end "")
   (setq-local comment-use-syntax t)
   (setq-local font-lock-defaults '(nil)))
+
 (provide 'bazel-mode)
 
 ;;; bazel-mode.el ends here
