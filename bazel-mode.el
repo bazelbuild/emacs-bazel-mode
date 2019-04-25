@@ -21,30 +21,35 @@
 ;;
 ;;; Code:
 
+(defgroup bazel-mode nil
+  "Major mode for Bazel BUILD files."
+  :link '(url-link "https://github.com/bazelbuild/emacs-bazel-mode")
+  :group 'languages)
+
 (defcustom buildifier-cmd "buildifier"
   "Filename of buildifier executable."
-  :type 'string
+  :type 'file
   :group 'bazel-mode)
 
-(defun buildifier ()
+(defun bazel-mode--buildifier ()
   "Format current buffer using buildifier."
   (interactive)
   (let ((build-file-contents (buffer-string))
-		(input-buffer (current-buffer))
-		(orig-point (point)))
-	(with-current-buffer (get-buffer-create "*buildifier*")
-	  (erase-buffer)
-	  (insert build-file-contents)
-	  (let ((return-code
-			 (call-process-region (point-min) (point-max) buildifier-cmd t t)))
-		(unwind-protect
-		  (if (zerop return-code)
-			  (progn
-				(copy-to-buffer input-buffer (point-min) (point-max))
-				(kill-buffer))
-			  (set-buffer-modified-p nil)
-			  (display-buffer (current-buffer))))))
-	(goto-char orig-point)))
+        (input-buffer (current-buffer))
+		(buildifier-buffer (get-buffer-create "*buildifier*")))
+    (with-current-buffer buildifier-buffer
+      (erase-buffer)
+      (insert build-file-contents)
+      (let ((return-code
+             (call-process-region (point-min) (point-max) buildifier-cmd t t)))
+        (unwind-protect
+          (if (zerop return-code)
+              (progn
+				(set-buffer input-buffer)
+                (replace-buffer-contents buildifier-buffer)
+                (kill-buffer buildifier-buffer))
+              (set-buffer-modified-p nil)
+              (display-buffer buildifier-buffer)))))))
 
 (defconst bazel-mode-syntax-table
   (let ((table (make-syntax-table)))
