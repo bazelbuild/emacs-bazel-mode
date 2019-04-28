@@ -47,11 +47,12 @@
 (defun bazel-build--read-target (prompt)
   "Read a Bazel build target from the minibuffer.  PROMPT is a read-only prompt."
   (let* ((file-name (buffer-file-name))
-         (workspace-root (or (bazel-build--find-workspace-root file-name)
-           (user-error "Not in a Bazel workspace. No WORKSPACE file found.")))
+         (workspace-root
+          (or (bazel-build--find-workspace-root file-name)
+              (user-error "Not in a Bazel workspace. No WORKSPACE file found.")))
          (package-name
           (or (bazel-build--extract-package-name file-name workspace-root)
-           (user-error "Not in a Bazel package. No BUILD file found.")))
+              (user-error "Not in a Bazel package. No BUILD file found.")))
          (initial-input (concat "//" package-name)))
     (read-string prompt initial-input)))
 
@@ -74,9 +75,10 @@ If current buffer is not in a Bazel package, return nil."
              (directory-file-name build-file-name) workspace-root))))
     ;; Only return package-name if we can confirm it is the local relative
     ;; file name of a BUILD file.
-    (unless (or (file-remote-p package-name)
-                (file-name-absolute-p package-name))
-      package-name)))
+    (and package-name
+         (not (file-remote-p package-name))
+         (not (file-name-absolute-p package-name))
+         package-name)))
 
 (provide 'bazel-build)
 
