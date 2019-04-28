@@ -26,26 +26,27 @@
   :link '(url-link "https://github.com/bazelbuild/emacs-bazel-mode")
   :group 'languages)
 
-(defcustom buildifier-cmd "buildifier"
+(defcustom bazel-mode--buildifier-cmd "buildifier"
   "Filename of buildifier executable."
   :type 'file
   :group 'bazel-mode)
 
-(defun bazel-mode--buildifier ()
+(defun buildifier ()
   "Format current buffer using buildifier."
-  (interactive)
+  (interactive "*")
   (let ((build-file-contents (buffer-string))
         (input-buffer (current-buffer))
-		(buildifier-buffer (get-buffer-create "*buildifier*")))
+        (buildifier-buffer (get-buffer-create "*buildifier*")))
     (with-current-buffer buildifier-buffer
       (erase-buffer)
       (insert build-file-contents)
       (let ((return-code
-             (call-process-region (point-min) (point-max) buildifier-cmd t t)))
+             (call-process-region
+              (point-min) (point-max) buildifier-cmd t t nil "--type=build")))
         (unwind-protect
           (if (zerop return-code)
               (progn
-				(set-buffer input-buffer)
+                (set-buffer input-buffer)
                 (replace-buffer-contents buildifier-buffer)
                 (kill-buffer buildifier-buffer))
               (set-buffer-modified-p nil)
