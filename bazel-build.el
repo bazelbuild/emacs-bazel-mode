@@ -65,14 +65,14 @@ If current buffer is not in a Bazel workspace, return nil."
 (defun bazel-build--extract-package-name (file-name workspace-root)
   "Return the nearest Bazel package for FILE-NAME under WORKSPACE-ROOT.
 If current buffer is not in a Bazel package, return nil."
-  (let* ((build-file-name
+  (let* ((build-file-directory
           (cl-some (lambda (build-name)
                      (locate-dominating-file file-name build-name))
                    '("BUILD.bazel" "BUILD")))
          (package-name
-          (when build-file-name
+          (when build-file-directory
             (file-relative-name
-             (directory-file-name build-file-name) workspace-root))))
+             (directory-file-name build-file-directory) workspace-root))))
     ;; Only return package-name if we can confirm it is the local relative
     ;; file name of a BUILD file.
     (and package-name
