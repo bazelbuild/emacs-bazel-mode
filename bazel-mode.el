@@ -44,7 +44,7 @@
              (call-process-region
               (point-min) (point-max) buildifier-cmd t t nil "--type=build")))
         (unwind-protect
-          (if (zerop return-code)
+          (if (eq return-code 0)
               (progn
                 (set-buffer input-buffer)
                 (replace-buffer-contents buildifier-buffer)
