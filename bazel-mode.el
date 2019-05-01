@@ -26,12 +26,12 @@
   :link '(url-link "https://github.com/bazelbuild/emacs-bazel-mode")
   :group 'languages)
 
-(defcustom bazel-mode--buildifier-cmd "buildifier"
+(defcustom bazel-mode-buildifier-cmd "buildifier"
   "Filename of buildifier executable."
   :type 'file
   :group 'bazel-mode)
 
-(defun buildifier ()
+(defun bazel-mode-buildifier ()
   "Format current buffer using buildifier."
   (interactive "*")
   (let ((build-file-contents (buffer-string))
