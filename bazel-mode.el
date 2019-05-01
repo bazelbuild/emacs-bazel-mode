@@ -34,15 +34,13 @@
 (defun bazel-mode-buildifier ()
   "Format current buffer using buildifier."
   (interactive "*")
-  (let ((build-file-contents (buffer-string))
+  (let ((temp-file (make-temp-file "buildifier" nil nil (buffer-string)))
         (input-buffer (current-buffer))
         (buildifier-buffer (get-buffer-create "*buildifier*")))
     (with-current-buffer buildifier-buffer
       (erase-buffer)
-      (insert build-file-contents)
       (let ((return-code
-             (call-process-region
-              (point-min) (point-max) buildifier-cmd t t nil "--type=build")))
+             (process-file buildifier-cmd temp-file buildifier-buffer nil "-type=build")))
         (unwind-protect
           (if (eq return-code 0)
               (progn
