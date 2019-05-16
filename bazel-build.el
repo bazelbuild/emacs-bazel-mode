@@ -49,18 +49,17 @@
   (let* ((file-name (buffer-file-name))
          (workspace-root
           (or (bazel-build--find-workspace-root file-name)
-              (user-error "Not in a Bazel workspace. No WORKSPACE file found.")))
+              (user-error "Not in a Bazel workspace.  No WORKSPACE file found")))
          (package-name
           (or (bazel-build--extract-package-name file-name workspace-root)
-              (user-error "Not in a Bazel package. No BUILD file found.")))
+              (user-error "Not in a Bazel package.  No BUILD file found")))
          (initial-input (concat "//" package-name)))
     (read-string prompt initial-input)))
 
 (defun bazel-build--find-workspace-root (file-name)
   "Find the root of the Bazel workspace containing FILE-NAME.
 If FILE-NAME is not in a Bazel workspace, return nil."
-  (let ((workspace-root (locate-dominating-file file-name "WORKSPACE")))
-    (when workspace-root workspace-root)))
+  (locate-dominating-file file-name "WORKSPACE"))
 
 (defun bazel-build--extract-package-name (file-name workspace-root)
   "Return the nearest Bazel package for FILE-NAME under WORKSPACE-ROOT.
@@ -70,11 +69,11 @@ If FILE-NAME is not in a Bazel package, return nil."
                      (locate-dominating-file file-name build-name))
                    '("BUILD.bazel" "BUILD")))
          (package-name
-          (when build-file-directory
-            (cond ((string= workspace-root build-file-directory) "")
-                  ((string-prefix-p workspace-root build-file-directory)
-                   (file-relative-name build-file-directory workspace-root))
-                  (t nil)))))
+          (cond ((not build-file-directory) nil)
+                ((file-equal-p workspace-root build-file-directory) "")
+                ((file-in-directory-p build-file-directory workspace-root)
+                 (file-relative-name build-file-directory workspace-root))
+                (t nil))))
     ;; Only return package-name if we can confirm it is the local relative
     ;; file name of a BUILD file.
     (and package-name
