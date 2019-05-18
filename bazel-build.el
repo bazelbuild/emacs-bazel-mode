@@ -64,22 +64,22 @@ If FILE-NAME is not in a Bazel workspace, return nil."
 (defun bazel-build--extract-package-name (file-name workspace-root)
   "Return the nearest Bazel package for FILE-NAME under WORKSPACE-ROOT.
 If FILE-NAME is not in a Bazel package, return nil."
-  (let* ((build-file-directory
-          (cl-some (lambda (build-name)
-                     (locate-dominating-file file-name build-name))
-                   '("BUILD.bazel" "BUILD")))
-         (package-name
-          (cond ((not build-file-directory) nil)
-                ((file-equal-p workspace-root build-file-directory) "")
-                ((file-in-directory-p build-file-directory workspace-root)
-                 (file-relative-name build-file-directory workspace-root))
-                (t nil))))
-    ;; Only return package-name if we can confirm it is the local relative
-    ;; file name of a BUILD file.
-    (and package-name
-         (not (file-remote-p package-name))
-         (not (file-name-absolute-p package-name))
-         (directory-file-name package-name))))
+  (let ((build-file-directory
+         (cl-some (lambda (build-name)
+                    (locate-dominating-file file-name build-name))
+                  '("BUILD.bazel" "BUILD"))))
+    (cond ((not build-file-directory) nil)
+          ((file-equal-p workspace-root build-file-directory) "")
+          ((file-in-directory-p build-file-directory workspace-root)
+           (let ((package-name
+                  (file-relative-name build-file-directory workspace-root)))
+             ;; Only return package-name if we can confirm it is the local
+             ;; relative file name of a BUILD file.
+             (and package-name
+                  (not (file-remote-p package-name))
+                  (not (file-name-absolute-p package-name))
+                  (directory-file-name package-name))))
+          (t nil))))
 
 (provide 'bazel-build)
 
