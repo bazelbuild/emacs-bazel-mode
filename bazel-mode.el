@@ -29,26 +29,30 @@
 (defcustom bazel-mode-buildifier-cmd "buildifier"
   "Filename of buildifier executable."
   :type 'file
-  :group 'bazel-mode)
+  :group 'bazel-mode
+  :link "https://github.com/bazelbuild/buildtools/tree/master/buildifier")
 
 (defun bazel-mode-buildifier ()
   "Format current buffer using buildifier."
   (interactive "*")
-  (let ((temp-file (make-temp-file "buildifier" nil nil (buffer-string)))
-        (input-buffer (current-buffer))
-        (buildifier-buffer (get-buffer-create "*buildifier*")))
+  (let ((input-buffer (current-buffer))
+        (buildifier-buffer (get-buffer-create "*buildifier*"))
+        (temp-file (make-nearby-temp-file "buildifier")))
+    (with-temp-file temp-file (insert-buffer-substring input-buffer))
     (with-current-buffer buildifier-buffer
       (erase-buffer)
-      (let ((return-code
-             (process-file buildifier-cmd temp-file buildifier-buffer nil "-type=build")))
-        (unwind-protect
+      (unwind-protect
+        (let ((return-code
+               (process-file bazel-mode-buildifier-cmd temp-file
+                             buildifier-buffer nil "-type=build")))
           (if (eq return-code 0)
               (progn
                 (set-buffer input-buffer)
                 (replace-buffer-contents buildifier-buffer)
                 (kill-buffer buildifier-buffer))
-              (set-buffer-modified-p nil)
-              (display-buffer buildifier-buffer)))))))
+            (set-buffer-modified-p nil)
+            (display-buffer buildifier-buffer)))
+        (delete-file temp-file)))))
 
 (defconst bazel-mode-syntax-table
   (let ((table (make-syntax-table)))
