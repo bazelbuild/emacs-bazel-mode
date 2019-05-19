@@ -38,6 +38,7 @@
   (interactive "*")
   (let ((input-buffer (current-buffer))
         (buildifier-buffer (get-buffer-create "*buildifier*"))
+        ;; Run buildifier on a file to support remote BUILD files.
         (temp-file (make-nearby-temp-file "buildifier")))
     (write-region nil nil temp-file nil 1)
     (with-current-buffer buildifier-buffer
