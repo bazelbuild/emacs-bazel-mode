@@ -40,23 +40,22 @@
         (buildifier-buffer (get-buffer-create "*buildifier*"))
         ;; Run buildifier on a file to support remote BUILD files.
         (temp-file (make-nearby-temp-file "buildifier")))
-    (write-region nil nil temp-file nil 1)
-    (with-current-buffer buildifier-buffer
-      (setq-local inhibit-read-only t)
-      (erase-buffer)
-      (unwind-protect
+    (unwind-protect
+      (write-region (point-min) (point-max) temp-file nil :silent)
+      (with-current-buffer buildifier-buffer
+        (setq-local inhibit-read-only t)
+        (erase-buffer)
         (let ((return-code
                (process-file bazel-mode-buildifier-cmd temp-file
-                             buildifier-buffer nil "-type=build")))
+                             `(t ,temp-file) nil "-type=build")))
           (if (eq return-code 0)
               (progn
                 (set-buffer input-buffer)
                 (replace-buffer-contents buildifier-buffer)
                 (kill-buffer buildifier-buffer))
-            (let ((error-msg (buffer-string)))
-              (with-temp-buffer-window
-               buildifier-buffer nil nil (princ error-msg)))))
-        (delete-file temp-file)))))
+            (with-temp-buffer-window
+             buildifier-buffer nil nil (insert-file-contents temp-file)))))
+      (delete-file temp-file))))
 
 (defconst bazel-mode-syntax-table
   (let ((table (make-syntax-table)))
