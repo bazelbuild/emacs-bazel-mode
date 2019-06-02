@@ -33,6 +33,13 @@
   :link '(url-link
           "https://github.com/bazelbuild/buildtools/tree/master/buildifier"))
 
+(defcustom bazel-mode-buildifier-before-save nil
+  "Specifies whether to run buildifer in 'before-save-hook'."
+  :type 'boolean
+  :group 'bazel-mode
+  :link '(url-link
+          "https://github.com/bazelbuild/buildtools/tree/master/buildifier"))
+
 (defun bazel-mode-buildifier ()
   "Format current buffer using buildifier."
   (interactive "*")
@@ -60,6 +67,11 @@
       (delete-file buildifier-input-file)
       (delete-file buildifier-error-file))))
 
+(defun bazel-mode--buildifier-before-save-hook ()
+  "Run buildifer as a 'before-save-hook'."
+  (when bazel-mode-buildifier-before-save
+    (bazel-mode-buildifier)))
+
 (defconst bazel-mode-syntax-table
   (let ((table (make-syntax-table)))
     ;; single line comment start
@@ -76,7 +88,8 @@
   (setq-local comment-start-skip "#+")
   (setq-local comment-end "")
   (setq-local comment-use-syntax t)
-  (setq-local font-lock-defaults '(nil)))
+  (setq-local font-lock-defaults '(nil))
+  (add-hook 'before-save-hook 'bazel-mode--buildifier-before-save-hook))
 
 (provide 'bazel-mode)
 
