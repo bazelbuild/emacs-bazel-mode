@@ -21,6 +21,45 @@
 ;;
 ;;; Code:
 
+(defgroup bazel-mode nil
+  "Major mode for Bazel BUILD files."
+  :link '(url-link "https://github.com/bazelbuild/emacs-bazel-mode")
+  :group 'languages)
+
+(defcustom bazel-mode-buildifier-cmd "buildifier"
+  "Filename of buildifier executable."
+  :type 'file
+  :group 'bazel-mode
+  :link '(url-link
+          "https://github.com/bazelbuild/buildtools/tree/master/buildifier"))
+
+(defun bazel-mode-buildifier ()
+  "Format current buffer using buildifier."
+  (interactive "*")
+  (let ((input-buffer (current-buffer))
+        (buildifier-buffer (get-buffer-create "*buildifier*"))
+        ;; Run buildifier on a file to support remote BUILD files.
+        (buildifier-input-file (make-nearby-temp-file "buildifier"))
+        (buildifier-error-file (make-nearby-temp-file "buildifier")))
+    (unwind-protect
+      (write-region (point-min) (point-max) buildifier-input-file nil :silent)
+      (with-current-buffer buildifier-buffer
+        (setq-local inhibit-read-only t)
+        (erase-buffer)
+        (let ((return-code
+               (process-file bazel-mode-buildifier-cmd buildifier-input-file
+                             `(t ,buildifier-error-file) nil "-type=build")))
+          (if (eq return-code 0)
+              (progn
+                (set-buffer input-buffer)
+                (replace-buffer-contents buildifier-buffer)
+                (kill-buffer buildifier-buffer))
+            (with-temp-buffer-window
+             buildifier-buffer nil nil
+             (insert-file-contents buildifier-error-file)))))
+      (delete-file buildifier-input-file)
+      (delete-file buildifier-error-file))))
+
 (defconst bazel-mode-syntax-table
   (let ((table (make-syntax-table)))
     ;; single line comment start
@@ -38,6 +77,7 @@
   (setq-local comment-end "")
   (setq-local comment-use-syntax t)
   (setq-local font-lock-defaults '(nil)))
+
 (provide 'bazel-mode)
 
 ;;; bazel-mode.el ends here
