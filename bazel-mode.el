@@ -26,7 +26,7 @@
   :link '(url-link "https://github.com/bazelbuild/emacs-bazel-mode")
   :group 'languages)
 
-(defcustom bazel-mode-buildifier-cmd "buildifier"
+(defcustom bazel-mode-buildifier-command "buildifier"
   "Filename of buildifier executable."
   :type 'file
   :group 'bazel-mode
@@ -38,7 +38,8 @@
   :type 'boolean
   :group 'bazel-mode
   :link '(url-link
-          "https://github.com/bazelbuild/buildtools/tree/master/buildifier"))
+          "https://github.com/bazelbuild/buildtools/tree/master/buildifier")
+  :risky t)
 
 (defun bazel-mode-buildifier ()
   "Format current buffer using buildifier."
@@ -54,7 +55,7 @@
         (setq-local inhibit-read-only t)
         (erase-buffer)
         (let ((return-code
-               (process-file bazel-mode-buildifier-cmd buildifier-input-file
+               (process-file bazel-mode-buildifier-command buildifier-input-file
                              `(t ,buildifier-error-file) nil "-type=build")))
           (if (eq return-code 0)
               (progn
@@ -89,7 +90,8 @@
   (setq-local comment-end "")
   (setq-local comment-use-syntax t)
   (setq-local font-lock-defaults '(nil))
-  (add-hook 'before-save-hook 'bazel-mode--buildifier-before-save-hook))
+  (add-hook 'before-save-hook #'bazel-mode--buildifier-before-save-hook
+            nil :local))
 
 (provide 'bazel-mode)
 
