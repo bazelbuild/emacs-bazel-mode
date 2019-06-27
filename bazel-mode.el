@@ -26,7 +26,7 @@
   :link '(url-link "https://github.com/bazelbuild/emacs-bazel-mode")
   :group 'languages)
 
-(defcustom bazel-mode-buildifier-command "buildifier"
+(defcustom bazel-mode-buildifier-cmd "buildifier"
   "Filename of buildifier executable."
   :type 'file
   :group 'bazel-mode
@@ -34,7 +34,7 @@
           "https://github.com/bazelbuild/buildtools/tree/master/buildifier"))
 
 (defcustom bazel-mode-buildifier-before-save nil
-  "Specifies whether to run buildifer in 'before-save-hook'."
+  "Specifies whether to run buildifer in `before-save-hook'."
   :type 'boolean
   :group 'bazel-mode
   :link '(url-link
@@ -69,7 +69,7 @@
       (delete-file buildifier-error-file))))
 
 (defun bazel-mode--buildifier-before-save-hook ()
-  "Run buildifer as a 'before-save-hook'."
+  "Run buildifer in `before-save-hook'."
   (when bazel-mode-buildifier-before-save
     (bazel-mode-buildifier)))
 
