@@ -55,7 +55,7 @@
         (setq-local inhibit-read-only t)
         (erase-buffer)
         (let ((return-code
-               (process-file bazel-mode-buildifier-command buildifier-input-file
+               (process-file bazel-mode-buildifier-cmd buildifier-input-file
                              `(t ,buildifier-error-file) nil "-type=build")))
           (if (eq return-code 0)
               (progn
