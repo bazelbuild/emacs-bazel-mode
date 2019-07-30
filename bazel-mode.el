@@ -82,7 +82,7 @@
 
 (defconst bazel-mode--font-lock-defaults
   `((
-     (,(regexp-opt bazel-mode--builtins t) . font-lock-builtin-face)
+     (,(regexp-opt bazel-mode--builtins 'symbols) . font-lock-builtin-face)
      (,(regexp-opt bazel-mode--keywords 'symbols) . font-lock-keyword-face))))
 
 (defconst bazel-mode-syntax-table
