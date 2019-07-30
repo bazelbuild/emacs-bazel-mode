@@ -73,6 +73,18 @@
   (when bazel-mode-buildifier-before-save
     (bazel-mode-buildifier)))
 
+(defconst bazel-mode--builtins
+  '("exports_files" "glob" "licenses" "package"
+    "package_group" "select" "workspace"))
+
+(defconst bazel-mode--keywords
+  '("and" "else" "for" "if" "in" "load" "not" "or"))
+
+(defconst bazel-mode--font-lock-defaults
+  `((
+     (,(regexp-opt bazel-mode--builtins t) . font-lock-builtin-face)
+     (,(regexp-opt bazel-mode--keywords 'symbols) . font-lock-keyword-face))))
+
 (defconst bazel-mode-syntax-table
   (let ((table (make-syntax-table)))
     ;; single line comment start
@@ -89,7 +101,7 @@
   (setq-local comment-start-skip "#+")
   (setq-local comment-end "")
   (setq-local comment-use-syntax t)
-  (setq-local font-lock-defaults '(nil))
+  (setq-local font-lock-defaults bazel-mode--font-lock-defaults)
   (add-hook 'before-save-hook #'bazel-mode--buildifier-before-save-hook
             nil :local))
 
