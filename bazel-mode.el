@@ -73,17 +73,19 @@
   (when bazel-mode-buildifier-before-save
     (bazel-mode-buildifier)))
 
-(defconst bazel-mode--builtins
-  '("exports_files" "glob" "licenses" "package"
-    "package_group" "select" "workspace"))
-
-(defconst bazel-mode--keywords
-  '("and" "else" "for" "if" "in" "load" "not" "or"))
-
 (defconst bazel-mode--font-lock-defaults
-  `((
-     (,(regexp-opt bazel-mode--builtins 'symbols) . font-lock-builtin-face)
-     (,(regexp-opt bazel-mode--keywords 'symbols) . font-lock-keyword-face))))
+  `(
+    ;; Builtins for BUILD files are a subset of Starlark keywords. For details
+    ;; see https://docs.bazel.build/versions/master/skylark/language.html.
+    (,(regexp-opt '("exports_files" "glob" "licenses" "package"
+                    "package_group" "select" "workspace")
+                  'symbols)
+     . font-lock-builtin-face)
+    ;; Some Starlark functions are exposed to BUILD files as builtins. For
+    ;; details see https://github.com/bazelbuild/starlark/blob/master/spec.md.
+    (,(regexp-opt '("and" "else" "for" "if" "in" "load" "not" "or")
+                  'symbols)
+     . font-lock-keyword-face)))
 
 (defconst bazel-mode-syntax-table
   (let ((table (make-syntax-table)))
@@ -101,7 +103,7 @@
   (setq-local comment-start-skip "#+")
   (setq-local comment-end "")
   (setq-local comment-use-syntax t)
-  (setq-local font-lock-defaults bazel-mode--font-lock-defaults)
+  (setq-local font-lock-defaults (list bazel-mode--font-lock-defaults))
   (add-hook 'before-save-hook #'bazel-mode--buildifier-before-save-hook
             nil :local))
 
