@@ -24,6 +24,17 @@
 ;;
 ;;; Code:
 
+(defgroup bazel-build nil
+  "Package for building and running code using Bazel."
+  :link '(url-link "https://github.com/bazelbuild/emacs-bazel-mode")
+  :group 'languages)
+
+(defcustom bazel-build-bazel-program "bazel"
+  "Name of the 'bazel' program for 'bazel-build' and 'bazel-test'."
+  :type 'string
+  :group 'bazel-build
+  :link '(url-link "https://bazel.build/"))
+
 (defun bazel-build (target)
   "Build a Bazel TARGET."
   (interactive (list (bazel-build--read-target "bazel build ")))
@@ -42,7 +53,7 @@
 (defun bazel-build--run-bazel-command (command target)
   "Run Bazel tool with given COMMAND, e.g. build or run, on the given TARGET."
   (compile
-   (mapconcat #'shell-quote-argument (list "bazel" command target) " ")))
+   (mapconcat #'shell-quote-argument (list bazel-build-bazel-program command target) " ")))
 
 (defun bazel-build--read-target (prompt)
   "Read a Bazel build target from the minibuffer.  PROMPT is a read-only prompt."
