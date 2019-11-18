@@ -107,6 +107,11 @@
   (add-hook 'before-save-hook #'bazel-mode--buildifier-before-save-hook
             nil :local))
 
+;;;###autoload
+(add-to-list 'auto-mode-alist '("BUILD\\'" . bazel-mode))
+(add-to-list 'auto-mode-alist '("WORKSPACE\\'" . bazel-mode))
+(add-to-list 'auto-mode-alist '("\\.bazel\\'" . bazel-mode))
+
 (provide 'bazel-mode)
 
 ;;; bazel-mode.el ends here
