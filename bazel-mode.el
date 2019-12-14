@@ -107,6 +107,11 @@
   (add-hook 'before-save-hook #'bazel-mode--buildifier-before-save-hook
             nil :local))
 
+;;;###autoload
+(add-to-list 'auto-mode-alist
+             (cons (rx (or "/BUILD" "/WORKSPACE" ".bazel" ".bzl" ".BUILD") eos)
+                   #'bazel-mode))
+
 (provide 'bazel-mode)
 
 ;;; bazel-mode.el ends here
