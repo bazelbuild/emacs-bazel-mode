@@ -83,9 +83,21 @@
      . 'font-lock-builtin-face)
     ;; Keywords for BUILD files are a subset of Starlark keywords. For details
     ;; see https://docs.bazel.build/versions/master/skylark/language.html.
-    (,(regexp-opt '("and" "else" "for" "if" "in" "load" "not" "or")
+    (,(regexp-opt '("and" "else" "for" "if" "in" "not" "or" "load"
+                    "break" "continue" "def" "pass" "elif" "return")
                   'symbols)
-     . 'font-lock-keyword-face)))
+     . 'font-lock-keyword-face)
+    ;; Reserved keywords
+    (,(regexp-opt '("as" "is" "assert" "lambda" "class" "nonlocal" "del" "raise"
+                    "except" "try" "finally" "while" "from" "with" "global"
+                    "yield" "import")
+                  'symbols)
+     . 'font-lock-keyword-face)
+    ;; Constants
+    (,(regexp-opt '("True" "False" "None")
+                  'symbols)
+     . 'font-lock-constant-face)
+    ))
 
 (defconst bazel-mode-syntax-table
   (let ((table (make-syntax-table)))
