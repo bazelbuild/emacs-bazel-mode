@@ -81,8 +81,6 @@
                     "package_group" "select" "workspace")
                   'symbols)
      . 'font-lock-builtin-face)
-    ;; Keywords for BUILD files are a subset of Starlark keywords. For details
-    ;; see https://docs.bazel.build/versions/master/skylark/language.html.
     (,(regexp-opt '("and" "else" "for" "if" "in" "not" "or" "load"
                     "break" "continue" "def" "pass" "elif" "return")
                   'symbols)
