@@ -81,6 +81,9 @@
                     "package_group" "select" "workspace")
                   'symbols)
      . 'font-lock-builtin-face)
+    ;; Keywords for BUILD files are the same as bzl files. Even if some of them
+    ;; are forbidden in BUILD files, they should be highlighted.
+    ;; See spec link above.
     (,(regexp-opt '("and" "else" "for" "if" "in" "not" "or" "load"
                     "break" "continue" "def" "pass" "elif" "return")
                   'symbols)
