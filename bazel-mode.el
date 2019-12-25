@@ -115,7 +115,7 @@
 (define-derived-mode bazel-mode prog-mode "Bazel"
   "Major mode for editing Bazel BUILD and WORKSPACE files."
   (setq-local comment-start "# ")
-  (setq-local comment-start-skip "#+")
+  (setq-local comment-start-skip "#+ *")
   (setq-local comment-end "")
   (setq-local comment-use-syntax t)
   (setq-local font-lock-defaults (list bazel-mode--font-lock-keywords))
