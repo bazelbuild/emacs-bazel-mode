@@ -46,13 +46,12 @@
 
 (defun bazel-build--read-target (prompt)
   "Read a Bazel build target from the minibuffer.  PROMPT is a read-only prompt."
-  (let* ((file-name (buffer-file-name))
+  (let* ((file-name (or (buffer-file-name) default-directory))
          (workspace-root
           (or (bazel-build--find-workspace-root file-name)
               (user-error "Not in a Bazel workspace.  No WORKSPACE file found")))
          (package-name
-          (or (bazel-build--extract-package-name file-name workspace-root)
-              (user-error "Not in a Bazel package.  No BUILD file found")))
+          (bazel-build--extract-package-name file-name workspace-root))
          (initial-input (concat "//" package-name)))
     (read-string prompt initial-input)))
 
