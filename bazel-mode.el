@@ -106,6 +106,8 @@
     (modify-syntax-entry ?# "<" table)
     ;; single line comment end
     (modify-syntax-entry ?\n ">" table)
+    ;; strings using single quotes
+    (modify-syntax-entry ?' "\"" table)
     table)
   "Syntax table for `bazel-mode'.")
 
