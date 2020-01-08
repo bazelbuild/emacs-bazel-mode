@@ -106,6 +106,8 @@
     (modify-syntax-entry ?# "<" table)
     ;; single line comment end
     (modify-syntax-entry ?\n ">" table)
+    ;; strings using single quotes
+    (modify-syntax-entry ?' "\"" table)
     table)
   "Syntax table for `bazel-mode'.")
 
@@ -113,7 +115,7 @@
 (define-derived-mode bazel-mode prog-mode "Bazel"
   "Major mode for editing Bazel BUILD and WORKSPACE files."
   (setq-local comment-start "# ")
-  (setq-local comment-start-skip "#+")
+  (setq-local comment-start-skip "#+ *")
   (setq-local comment-end "")
   (setq-local comment-use-syntax t)
   (setq-local font-lock-defaults (list bazel-mode--font-lock-keywords))
