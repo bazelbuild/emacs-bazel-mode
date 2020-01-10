@@ -69,7 +69,8 @@
                 (kill-buffer buildifier-buffer))
             (with-temp-buffer-window
              buildifier-buffer nil nil
-             (insert-file-contents buildifier-error-file)))))
+             (insert-file-contents buildifier-error-file)
+             (compilation-minor-mode)))))
       (delete-file buildifier-input-file)
       (delete-file buildifier-error-file))))
 
