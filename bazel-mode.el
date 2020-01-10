@@ -21,6 +21,8 @@
 ;;
 ;;; Code:
 
+(require 'python)
+
 (defgroup bazel-mode nil
   "Major mode for Bazel BUILD files."
   :link '(url-link "https://github.com/bazelbuild/emacs-bazel-mode")
@@ -119,6 +121,8 @@
   (setq-local comment-end "")
   (setq-local comment-use-syntax t)
   (setq-local font-lock-defaults (list bazel-mode--font-lock-keywords))
+  (setq-local indent-line-function #'python-indent-line-function)
+  (setq-local indent-region-function #'python-indent-region)
   (add-hook 'before-save-hook #'bazel-mode--buildifier-before-save-hook
             nil :local))
 
