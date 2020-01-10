@@ -12,4 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-workspace(name = "bazelbuild_emacs_bazel_mode")
+SHELL := /bin/bash
+EMACS := emacs
+
+check: *.el
+	$(EMACS) --quick --batch --directory=. --load=./bazel-mode-test.el --funcall=ert-run-tests-batch-and-exit
+
+.PHONY: check

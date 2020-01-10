@@ -34,7 +34,14 @@
 (ert-deftest bazel-mode/indent-region ()
   (with-temp-buffer
     (bazel-mode)
-    (insert-file-contents "BUILD")
+    (insert "def foo():
+    return 1
+
+cc_library(
+    name = \"lib\",
+    srcs = [\"src.cc\"],
+)
+")
     (let ((before (buffer-string)))
       (indent-region (point-min) (point-max))
       (should (equal (buffer-string) before)))))
