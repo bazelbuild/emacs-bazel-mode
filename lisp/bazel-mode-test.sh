@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"${EMACS:-emacs}" --quick --batch \
+cd lisp && "${EMACS:-emacs}" --quick --batch \
   --directory="${PWD:?}" \
   --load="${PWD:?}/bazel-mode-test.el" \
   --funcall=ert-run-tests-batch-and-exit

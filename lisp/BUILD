@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Note: all files starting with "bazel-" have to be in a subdirectory due to
+# https://github.com/bazelbuild/bazel/issues/10560.
+
 sh_test(
     name = "bazel_mode_test",
     srcs = ["bazel-mode-test.sh"],
