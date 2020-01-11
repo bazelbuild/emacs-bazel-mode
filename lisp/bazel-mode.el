@@ -47,6 +47,7 @@
   "Format current buffer using buildifier."
   (interactive "*")
   (let ((input-buffer (current-buffer))
+        (input-file buffer-file-name)
         (buildifier-buffer (get-buffer-create "*buildifier*"))
         ;; Run buildifier on a file to support remote BUILD files.
         (buildifier-input-file (make-nearby-temp-file "buildifier"))
@@ -57,8 +58,10 @@
         (setq-local inhibit-read-only t)
         (erase-buffer)
         (let ((return-code
-               (process-file bazel-mode-buildifier-command buildifier-input-file
-                             `(t ,buildifier-error-file) nil "-type=build")))
+               (apply #'process-file
+                      bazel-mode-buildifier-command buildifier-input-file
+                      `(t ,buildifier-error-file) nil "-type=build"
+                      (and input-file (list (concat "-path=" input-file))))))
           (if (eq return-code 0)
               (progn
                 (set-buffer input-buffer)
