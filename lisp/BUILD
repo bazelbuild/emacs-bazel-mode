@@ -33,5 +33,6 @@ genrule(
     outs = [src + "c" for src in SRCS],
     cmd = ("$${EMACS:-emacs} --quick --batch --load=bytecomp --directory=$${PWD:?}/lisp " +
            "--eval='(setq byte-compile-dest-file-function (lambda (src) (expand-file-name (concat (file-name-base src) \".elc\") \"$(RULEDIR)\")))' " +
+           "--eval='(setq byte-compile-error-on-warn t)' " +
            "--funcall=batch-byte-compile $(SRCS)"),
 )
