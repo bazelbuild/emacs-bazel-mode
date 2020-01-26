@@ -1,0 +1,47 @@
+{
+    "success": false,
+    "files": [
+        {
+            "filename": "file_1.bzl",
+            "formatted": true,
+            "valid": true,
+            "warnings": [
+                {
+                    "start": {
+                        "line": 1,
+                        "column": 5
+                    },
+                    "end": {
+                        "line": 1,
+                        "column": 10
+                    },
+                    "category": "integer-division",
+                    "actionable": true,
+                    "message": "The \"/\" operator for integer division is deprecated in favor of \"//\".",
+                    "url": "https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md#integer-division"
+                }
+            ]
+        },
+        {
+            "filename": "file_2.bzl",
+            "formatted": false,
+            "valid": true,
+            "warnings": [],
+            "rewrites": {
+                "editoctal": 1
+            }
+        },
+        {
+            "filename": "file_3.bzl",
+            "formatted": true,
+            "valid": true,
+            "warnings": []
+        },
+        {
+            "filename": "file_4.not_bzl",
+            "formatted": false,
+            "valid": false,
+            "warnings": []
+        }
+    ]
+}
