@@ -22,6 +22,7 @@ sh_test(
         "BUILD",
         "bazel-mode.elc",
         "bazel-mode-test.elc",
+        "testdata/buildifier.json",
     ],
 )
 

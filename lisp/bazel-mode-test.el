@@ -39,4 +39,25 @@
       (indent-region (point-min) (point-max))
       (should (equal (buffer-string) before)))))
 
+(ert-deftest bazel-mode--make-diagnostics ()
+  "Unit test for ‘bazel-mode--make-diagnostics’.
+We test that function instead of the Flymake backend directly so
+we don’t have to start or mock a process."
+  (with-temp-buffer
+    (let ((output-buffer (current-buffer)))
+      ;; Example from
+      ;; https://github.com/bazelbuild/buildtools/blob/master/buildifier/README.md#file-diagnostics-in-json.
+      (insert-file-contents "testdata/buildifier.json")
+      (with-temp-buffer
+        ;; The exact contents of the input buffer don’t matter, but it should
+        ;; be large enough for the diagnostic to point to a valid position.
+        (insert "01234567890123456789\n")
+        (should (equal (bazel-mode--make-diagnostics output-buffer)
+                       (list (flymake-make-diagnostic
+                              (current-buffer) 6 11 :warning
+                              (concat "The \"/\" operator for integer division "
+                                      "is deprecated in favor of \"//\". "
+                                      "[integer-division] "
+                                      "(https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md#integer-division)")))))))))
+
 ;;; bazel-mode-test.el ends here
