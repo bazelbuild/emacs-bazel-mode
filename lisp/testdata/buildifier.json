@@ -2,18 +2,46 @@
     "success": false,
     "files": [
         {
-            "filename": "file_1.bzl",
+            "filename": "buildifier.bzl",
             "formatted": true,
             "valid": true,
             "warnings": [
                 {
                     "start": {
-                        "line": 1,
+                        "line": 15,
+                        "column": 1
+                    },
+                    "end": {
+                        "line": 15,
+                        "column": 2
+                    },
+                    "category": "module-docstring",
+                    "actionable": true,
+                    "message": "The file has no module docstring.\nA module docstring is a string literal (not a comment) which should be the first statement of a file (it may follow comment lines).",
+                    "url": "https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md#module-docstring"
+                },
+                {
+                    "start": {
+                        "line": 16,
                         "column": 5
                     },
                     "end": {
-                        "line": 1,
-                        "column": 10
+                        "line": 16,
+                        "column": 12
+                    },
+                    "category": "function-docstring-header",
+                    "actionable": true,
+                    "message": "The docstring for the function \"foo\" should start with a one-line summary.",
+                    "url": "https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md#function-docstring-header"
+                },
+                {
+                    "start": {
+                        "line": 17,
+                        "column": 9
+                    },
+                    "end": {
+                        "line": 17,
+                        "column": 14
                     },
                     "category": "integer-division",
                     "actionable": true,
@@ -21,27 +49,6 @@
                     "url": "https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md#integer-division"
                 }
             ]
-        },
-        {
-            "filename": "file_2.bzl",
-            "formatted": false,
-            "valid": true,
-            "warnings": [],
-            "rewrites": {
-                "editoctal": 1
-            }
-        },
-        {
-            "filename": "file_3.bzl",
-            "formatted": true,
-            "valid": true,
-            "warnings": []
-        },
-        {
-            "filename": "file_4.not_bzl",
-            "formatted": false,
-            "valid": false,
-            "warnings": []
         }
     ]
 }
