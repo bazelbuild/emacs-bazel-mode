@@ -26,6 +26,8 @@
 (require 'python)
 (require 'rx)
 
+(require 'bazel-util)
+
 (defgroup bazel-mode nil
   "Major mode for Bazel BUILD files."
   :link '(url-link "https://github.com/bazelbuild/emacs-bazel-mode")
@@ -194,7 +196,7 @@ appropriate flags, if possible.  Otherwise, return an empty
 list."
   (when buffer-file-name
     (delq nil
-          (let ((workspace (locate-dominating-file buffer-file-name "WORKSPACE"))
+          (let ((workspace (bazel-util-workspace-root buffer-file-name))
                 (base (file-name-base))
                 (extension (file-name-extension buffer-file-name :period)))
             (list (and workspace
