@@ -247,29 +247,44 @@ https://github.com/bazelbuild/buildtools/blob/master/buildifier/README.md#file-d
 WARNING should be a hashtable containing a single warning, as
 described in
 https://github.com/bazelbuild/buildtools/blob/master/buildifier/README.md#file-diagnostics-in-json."
-  (flymake-make-diagnostic
-   (current-buffer)
-   (bazel-mode--buildifier-pos (gethash "start" warning))
-   (bazel-mode--buildifier-pos (gethash "end" warning))
-   :warning
-   (format-message "%s [%s] (%s)"
-                   (gethash "message" warning)
-                   (gethash "category" warning)
-                   (gethash "url" warning))))
+  (let* ((case-fold-search nil)
+         (start (gethash "start" warning))
+         (end (gethash "end" warning))
+         ;; Note: Both line and column are one-based in the Buildifier output.
+         (start-line (gethash "line" start))
+         (start-column (1- (gethash "column" start)))
+         (end-line (gethash "line" end))
+         (end-column (1- (gethash "column" end)))
+         (message (gethash "message" warning)))
+    (when (and (= start-line end-line) (= start-column 0) (= end-column 1))
+      ;; Heuristic: assume this means the entire line.  Buildifier emits this
+      ;; e.g. for the module-docstring warning.  ‘bazel-mode--line-column-pos’
+      ;; ensures that we don’t cross line boundaries.
+      (setq end-column (buffer-size)))
+    (flymake-make-diagnostic
+     (current-buffer)
+     (bazel-mode--line-column-pos start-line start-column)
+     (bazel-mode--line-column-pos end-line end-column)
+     :warning
+     (format-message "%s [%s] (%s)"
+                     ;; We only take the first line of the message, otherwise
+                     ;; it becomes too long and looks ugly.
+                     (substring-no-properties message nil
+                                              (string-match-p (rx ?\n) message))
+                     (gethash "category" warning)
+                     (gethash "url" warning)))))
 
-(defun bazel-mode--buildifier-pos (location)
-  "Return buffer position for LOCATION returned by Buildifier.
-LOCATION should be a hashtable with keys “line” and “column.”
-Return the buffer position in the current buffer corresponding to
-that line and column."
+(defun bazel-mode--line-column-pos (line column)
+  "Return buffer position in the current buffer for LINE and COLUMN.
+Restrict LINE to the buffer size and COLUMN to the number of
+characters in LINE.  COLUMN is measured in characters, not visual
+columns."
   (save-excursion
     (save-restriction
       (widen)
       (goto-char (point-min))
-      (min (point-max)
-           (max (point-min)
-                (+ (line-beginning-position (gethash "line" location 1))
-                   (gethash "column" location 0)))))))
+      (forward-line (1- line))
+      (min (line-end-position) (+ (point) column)))))
 
 (defalias 'bazel-mode--json-parse-buffer
   (if (fboundp 'json-parse-buffer) #'json-parse-buffer
