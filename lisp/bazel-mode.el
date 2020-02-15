@@ -487,7 +487,7 @@ For a package “foo/bar”, “bar” is the default target."
   ;; string twice.
   (let ((reversed (reverse package)))
     (nreverse (substring-no-properties reversed nil
-                                       (string-match-p reversed (rx ?/))))))
+                                       (string-match-p (rx ?/) reversed)))))
 
 (defun bazel-mode--canonical (workspace package target)
   "Return a canonical label.
