@@ -22,7 +22,11 @@
 
 (require 'bazel-mode)
 
+(require 'cl-lib)
+(require 'eieio)
 (require 'ert)
+(require 'rx)
+(require 'xref)
 
 (ert-deftest bazel-mode/indent-after-colon ()
   (with-temp-buffer
@@ -73,5 +77,95 @@ we don’t have to start or mock a process."
                                  "is deprecated in favor of \"//\". "
                                  "[integer-division] "
                                  "(https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md#integer-division)"))))))))
+
+(defmacro bazel-mode-test--with-temp-directory (name &rest body)
+  "Create a new temporary directory.
+Bind the name of the directory to NAME and execute BODY while the
+directory exists.  Remove the directory and all its contents once
+BODY finishes."
+  (declare (indent 1) (debug (sexp body)))
+  (cl-check-type name symbol)
+  `(let ((,name (make-temp-file "bazel-mode-test-" :dir-flag)))
+     (unwind-protect
+         ,(macroexp-progn body)
+       (delete-directory ,name :recursive))))
+
+(defmacro bazel-mode-test--with-file-buffer (filename &rest body)
+  "Visit FILENAME in a temporary buffer.
+Execute BODY with the buffer that visits FILENAME current.  Kill
+that buffer once BODY finishes."
+  (declare (indent 1) (debug (sexp body)))
+  (let ((buffer (make-symbol "buffer")))
+    `(let ((,buffer (find-file-noselect ,filename)))
+       (unwind-protect
+           (with-current-buffer ,buffer ,@body)
+         (kill-buffer ,buffer)))))
+
+(ert-deftest bazel-mode/xref ()
+  "Unit test for XRef support."
+  (let ((definitions ()))
+    (bazel-mode-test--with-temp-directory dir
+      (make-directory (expand-file-name "root" dir))
+      (copy-file "testdata/xref.BUILD" (expand-file-name "root/BUILD" dir))
+      ;; Create empty files that the labels in the test BUILD file refer to.
+      (dolist (file '("WORKSPACE" "aaa.cc" "dir/bbb.cc" "pkg/BUILD" "pkg/ccc.cc"
+                      "bazel-root/external/ws/WORKSPACE"
+                      "bazel-root/external/ws/pkg/ddd.cc"))
+        (let ((full-filename (expand-file-name (concat "root/" file) dir)))
+          (make-directory (file-name-directory full-filename) :parents)
+          (write-region "" nil full-filename nil nil nil :mustbenew)))
+      (bazel-mode-test--with-file-buffer (expand-file-name "root/BUILD" dir)
+        (forward-comment (point-max))
+        ;; Search for all sources and dependencies.  These are strings that
+        ;; stand on their own in a line.
+        (while (re-search-forward (rx bol (* blank) ?\") nil t)
+          (let ((backend (xref-find-backend)))
+            (should (eq backend 'bazel-mode))
+            (ert-info ((format "line %d, %s" (line-number-at-pos)
+                               (buffer-substring-no-properties
+                                (1- (point)) (line-end-position))))
+              (let ((identifier (xref-backend-identifier-at-point backend)))
+                (should (stringp identifier))
+                (should
+                 (equal (get-text-property 0 'bazel-mode-workspace identifier)
+                        (file-name-as-directory (expand-file-name "root" dir))))
+                (should
+                 (equal (get-text-property 0 'bazel-mode-package identifier)
+                        ""))
+                (let* ((defs (xref-backend-definitions backend identifier))
+                       (def (car-safe defs)))
+                  (should (consp defs))
+                  ;; Check that ‘xref-backend-definitions’ still works if the
+                  ;; magic text properties aren’t present.  This allows users
+                  ;; to invoke ‘xref-find-definitions’ and enter a target
+                  ;; manually.
+                  (should
+                   (equal defs
+                          (xref-backend-definitions
+                           backend (substring-no-properties identifier))))
+                  ;; We only expect one definition for now.
+                  (should-not (cdr defs))
+                  (should (xref-item-p def))
+                  (push (list identifier
+                              (xref-item-summary def)
+                              (file-relative-name
+                               (buffer-file-name
+                                (marker-buffer
+                                 (xref-location-marker
+                                  (xref-item-location def))))
+                               (expand-file-name "root" dir)))
+                        definitions))))))))
+    (should (equal (nreverse definitions)
+                   '(("aaa.cc" "//:aaa.cc" "aaa.cc")
+                     ("dir/bbb.cc" "//:dir/bbb.cc" "dir/bbb.cc")
+                     (":aaa.cc" "//:aaa.cc" "aaa.cc")
+                     ("//:aaa.cc" "//:aaa.cc" "aaa.cc")
+                     ("//pkg:ccc.cc" "//pkg:ccc.cc" "pkg/ccc.cc")
+                     ("@ws//pkg:ddd.cc" "@ws//pkg:ddd.cc"
+                      "bazel-root/external/ws/pkg/ddd.cc")
+                     (":lib" "//:lib" "BUILD")
+                     ("//:lib" "//:lib" "BUILD")
+                     ("//pkg" "//pkg:pkg" "pkg/BUILD")
+                     ("//pkg:lib" "//pkg:lib" "pkg/BUILD"))))))
 
 ;;; bazel-mode-test.el ends here
