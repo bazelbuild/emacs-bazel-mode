@@ -65,8 +65,8 @@
         (let ((return-code
                (apply #'process-file
                       bazel-mode-buildifier-command buildifier-input-file
-                      `(t ,buildifier-error-file) nil "-type=build"
-                      (and input-file (list (concat "-path=" input-file))))))
+                      `(t ,buildifier-error-file) nil
+                      (bazel-mode--buildifier-file-flags input-file))))
           (if (eq return-code 0)
               (progn
                 (set-buffer input-buffer)
@@ -164,12 +164,13 @@ backends."
          (input-buffer (current-buffer))
          (output-buffer (generate-new-buffer
                          (format " *Buildifier output for %s*" (buffer-name))))
-         (process (apply #'start-file-process
-                         (format "Buildifier for %s" (buffer-name))
-                         output-buffer
-                         bazel-mode-buildifier-command
-                         `(,@(bazel-mode--buildifier-file-flags)
-                           "-mode=check" "-format=json" "-lint=warn"))))
+         (process
+          (apply #'start-file-process
+                 (format "Buildifier for %s" (buffer-name))
+                 output-buffer
+                 bazel-mode-buildifier-command
+                 `(,@(bazel-mode--buildifier-file-flags buffer-file-name)
+                   "-mode=check" "-format=json" "-lint=warn"))))
     (set-process-sentinel
      process
      (lambda (process event)
@@ -189,19 +190,18 @@ backends."
       (process-send-region process (point-min) (point-max)))
     (process-send-eof process)))
 
-(defun bazel-mode--buildifier-file-flags ()
+(defun bazel-mode--buildifier-file-flags (filename)
   "Return a list of -path and -type flags for Buildifier.
-Use the name of the file that the current buffer visits to derive
-appropriate flags, if possible.  Otherwise, return an empty
-list."
-  (when buffer-file-name
+Use FILENAME to derive appropriate flags, if possible.
+Otherwise, return an empty list."
+  (when filename
     (delq nil
-          (let ((workspace (bazel-util-workspace-root buffer-file-name))
-                (base (file-name-base))
-                (extension (file-name-extension buffer-file-name :period)))
+          (let ((workspace (bazel-util-workspace-root filename))
+                (base (file-name-base filename))
+                (extension (file-name-extension filename :period)))
             (list (and workspace
                        (concat "-path="
-                               (file-relative-name buffer-file-name workspace)))
+                               (file-relative-name filename workspace)))
                   (cond ((or (string-equal base "BUILD")
                              (string-equal extension ".BUILD"))
                          "-type=build")
