@@ -24,6 +24,8 @@
 ;;
 ;;; Code:
 
+(require 'bazel-util)
+
 (defun bazel-build (target)
   "Build a Bazel TARGET."
   (interactive (list (bazel-build--read-target "bazel build ")))
@@ -48,38 +50,13 @@
   "Read a Bazel build target from the minibuffer.  PROMPT is a read-only prompt."
   (let* ((file-name (buffer-file-name))
          (workspace-root
-          (or (bazel-build--find-workspace-root file-name)
+          (or (bazel-util-workspace-root file-name)
               (user-error "Not in a Bazel workspace.  No WORKSPACE file found")))
          (package-name
-          (or (bazel-build--extract-package-name file-name workspace-root)
+          (or (bazel-util-package-name file-name workspace-root)
               (user-error "Not in a Bazel package.  No BUILD file found")))
          (initial-input (concat "//" package-name)))
     (read-string prompt initial-input)))
-
-(defun bazel-build--find-workspace-root (file-name)
-  "Find the root of the Bazel workspace containing FILE-NAME.
-If FILE-NAME is not in a Bazel workspace, return nil."
-  (locate-dominating-file file-name "WORKSPACE"))
-
-(defun bazel-build--extract-package-name (file-name workspace-root)
-  "Return the nearest Bazel package for FILE-NAME under WORKSPACE-ROOT.
-If FILE-NAME is not in a Bazel package, return nil."
-  (let ((build-file-directory
-         (cl-some (lambda (build-name)
-                    (locate-dominating-file file-name build-name))
-                  '("BUILD.bazel" "BUILD"))))
-    (cond ((not build-file-directory) nil)
-          ((file-equal-p workspace-root build-file-directory) "")
-          ((file-in-directory-p build-file-directory workspace-root)
-           (let ((package-name
-                  (file-relative-name build-file-directory workspace-root)))
-             ;; Only return package-name if we can confirm it is the local
-             ;; relative file name of a BUILD file.
-             (and package-name
-                  (not (file-remote-p package-name))
-                  (not (file-name-absolute-p package-name))
-                  (directory-file-name package-name))))
-          (t nil))))
 
 (provide 'bazel-build)
 
