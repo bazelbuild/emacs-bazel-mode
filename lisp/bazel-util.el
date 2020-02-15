@@ -24,12 +24,17 @@
 
 (defun bazel-util-workspace-root (file-name)
   "Find the root of the Bazel workspace containing FILE-NAME.
-If FILE-NAME is not in a Bazel workspace, return nil."
-  (locate-dominating-file file-name "WORKSPACE"))
+If FILE-NAME is not in a Bazel workspace, return nil.  Otherwise,
+the return value is a directory name."
+  (cl-check-type file-name string)
+  (let ((result (locate-dominating-file file-name "WORKSPACE")))
+    (and result (file-name-as-directory result))))
 
 (defun bazel-util-package-name (file-name workspace-root)
   "Return the nearest Bazel package for FILE-NAME under WORKSPACE-ROOT.
 If FILE-NAME is not in a Bazel package, return nil."
+  (cl-check-type file-name string)
+  (cl-check-type file-name string)
   (let ((build-file-directory
          (cl-some (lambda (build-name)
                     (locate-dominating-file file-name build-name))
@@ -44,8 +49,7 @@ If FILE-NAME is not in a Bazel package, return nil."
              (and package-name
                   (not (file-remote-p package-name))
                   (not (file-name-absolute-p package-name))
-                  (directory-file-name package-name))))
-          (t nil))))
+                  (directory-file-name package-name)))))))
 
 (provide 'bazel-util)
 ;;; bazel-util.el ends here
