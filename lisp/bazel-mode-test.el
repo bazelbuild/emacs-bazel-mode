@@ -151,7 +151,12 @@ that buffer once BODY finishes."
                                  (xref-location-marker
                                   (xref-item-location def))))
                                (expand-file-name "root" dir)))
-                        definitions))))))))
+                        definitions))))))
+        ;; Test completions.
+        (should
+         (equal (all-completions
+                 ":" (xref-backend-identifier-completion-table 'bazel-mode))
+                '(":lib" ":bin" ":aaa.cc")))))
     (should (equal (nreverse definitions)
                    '(("//:aaa.cc" "aaa.cc")
                      ("//:dir/bbb.cc" "dir/bbb.cc")

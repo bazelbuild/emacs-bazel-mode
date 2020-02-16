@@ -355,9 +355,7 @@ This gets added to ‘xref-backend-functions’."
 
 (cl-defmethod xref-backend-identifier-completion-table
   ((_backend (eql bazel-mode)))
-  ;; Not yet implemented.  This function still needs to be defined, otherwise
-  ;; ‘xref-find-definitions’ signals an error outside of a string literal.
-  ())
+  (completion-table-with-cache #'bazel-mode--completion-table))
 
 (defun bazel-mode--target-location (workspace package target)
   "Return an ‘xref-location’ for a Bazel target.
@@ -380,6 +378,17 @@ valid file target is indeed a file target."
         (when build-file
           (bazel-mode--rule-location build-file target))))))
 
+(defun bazel-mode--completion-table (prefix)
+  "Return target completions for the given PREFIX.
+Right now, only supports targets in the current package."
+  (cl-check-type prefix string)
+  (let ((case-fold-search nil))
+    (pcase (substring-no-properties prefix)
+      ((rx bos (let colon (? ?:)) (let prefix (* (not (any ?: ?/)))) eos)
+       (mapcar (lambda (elem) (concat colon elem))
+               (append (bazel-mode--complete-rules prefix)
+                       (bazel-mode--complete-files prefix)))))))
+
 (defun bazel-mode--file-location (filename)
   "Return an ‘xref-location’ for the source file FILENAME."
   (cl-check-type filename string)
@@ -387,6 +396,23 @@ valid file target is indeed a file target."
   ;; within the already-visited file by pretending the reference isn’t found so
   ;; that we return point.
   (bazel-mode--xref-location filename (lambda ())))
+
+(defun bazel-mode--complete-files (prefix)
+  "Return file names in the current directory starting with PREFIX.
+Exclude files that are normally not Bazel targets, such as
+directories and BUILD files."
+  (let ((case-fold-search nil)
+        (files ()))
+    (dolist (data (directory-files-and-attributes
+                   default-directory nil
+                   (rx-to-string `(seq bos ,prefix) :no-group)))
+      (cl-destructuring-bind (filename &rest attributes) data
+        (unless (or (file-attribute-type attributes)  ; not a regular file
+                    (member filename '("BUILD" "BUILD.bazel" "WORKSPACE"))
+                    (equal (file-name-extension filename) "BUILD")
+                    (string-prefix-p "bazel-" filename))
+          (push filename files))))
+    (nreverse files)))
 
 (defun bazel-mode--rule-location (build-file name)
   "Return an ‘xref-location’ for a rule within a BUILD file.
@@ -444,6 +470,29 @@ or change the buffer state permanently."
         (xref-make-file-location filename
                                  (line-number-at-pos)
                                  (- (point) (line-beginning-position)))))))
+
+(defun bazel-mode--complete-rules (prefix)
+  "Find all rules starting with the given PREFIX in the current buffer.
+The current buffer should visit a BUILD file.  Return a list of
+rule names that start with PREFIX."
+  (cl-check-type prefix string)
+  (when (derived-mode-p 'bazel-mode)
+    (let ((case-fold-search nil)
+          (rules ()))
+      (save-excursion
+        ;; We don’t widen here.  If the user has narrows the buffer, it’s fair
+        ;; to assume they only want completions within the narrowed portion.
+        (goto-char (point-min))
+        (while (re-search-forward
+                (rx-to-string
+                 `(seq bol (* blank) "name" (* blank) ?= (* blank)
+                       (group (syntax ?\"))
+                       (group ,prefix (* (not (syntax ?\"))))
+                       (backref 1))
+                 :no-group)
+                nil t)
+          (push (match-string-no-properties 2) rules)))
+      (nreverse rules))))
 
 ;;; Utilities
 
