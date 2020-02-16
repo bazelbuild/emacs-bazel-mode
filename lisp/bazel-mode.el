@@ -301,24 +301,31 @@ This gets added to ‘xref-backend-functions’."
   ;; This only detects string literals representing labels.
   (let ((identifier (bazel-mode--string-at-point)))
     (when identifier
-      ;; Save the current workspace directory and package as text properties
-      ;; in case the user switches directories between this call and
-      ;; selecting a reference.  ‘xref-backend-definitions’ falls back to the
-      ;; current workspace and package if these properties aren’t present so
-      ;; that users can still invoke ‘xref-find-definitions’ and enter a
-      ;; label manually.  We don’t care about valid but exotic labels here,
-      ;; e.g., labels containing newlines or backslashes.
-      (let* ((workspace
-              (and buffer-file-name
-                   (bazel-util-workspace-root buffer-file-name)))
-             (package
-              (and workspace
-                   (bazel-util-package-name buffer-file-name workspace))))
-        (propertize identifier
-                    'bazel-mode-workspace workspace
-                    'bazel-mode-package package)))))
+      (cl-destructuring-bind (&whole valid-p &optional workspace package target)
+          (bazel-mode--parse-label identifier)
+        (when valid-p
+          ;; Save the current workspace directory as text property in case the
+          ;; user switches directories between this call and selecting a
+          ;; reference.  ‘xref-backend-definitions’ falls back to the current
+          ;; workspace if the property isn’t present so that users can still
+          ;; invoke ‘xref-find-definitions’ and enter a label manually.
+          ;; Likewise, save the current package if possible by canonicalizing
+          ;; the label.  We don’t care about valid but exotic labels here,
+          ;; e.g., labels containing newlines or backslashes.
+          (let* ((this-workspace
+                  (and buffer-file-name
+                       (bazel-util-workspace-root buffer-file-name)))
+                 (package
+                  (or package
+                      (and buffer-file-name this-workspace
+                           (bazel-util-package-name buffer-file-name
+                                                    this-workspace)))))
+            (propertize (bazel-mode--canonical workspace package target)
+                        'bazel-mode-workspace this-workspace)))))))
 
 (cl-defmethod xref-backend-definitions ((_backend (eql bazel-mode)) identifier)
+  ;; Reparse the identifier so that users can invoke ‘xref-find-definitions’
+  ;; and enter a label directly.
   (cl-destructuring-bind (&whole valid-p &optional workspace package target)
       (bazel-mode--parse-label identifier)
     (when valid-p
@@ -328,7 +335,6 @@ This gets added to ‘xref-backend-functions’."
                        (bazel-util-workspace-root buffer-file-name))))
              (package
               (or package
-                  (get-text-property 0 'bazel-mode-package identifier)
                   (and buffer-file-name this-workspace
                        (bazel-util-package-name buffer-file-name
                                                 this-workspace)))))
