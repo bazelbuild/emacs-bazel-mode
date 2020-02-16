@@ -128,6 +128,10 @@
 ;;;###autoload
 (define-derived-mode bazel-mode prog-mode "Bazel"
   "Major mode for editing Bazel BUILD and WORKSPACE files."
+  ;; Almost all Starlark code in existence uses 4 spaces for indentation.
+  ;; Buildifier also enforces this style.
+  (setq-local tab-width 4)
+  (setq-local indent-tabs-mode nil)
   ;; Take over some syntactic constructs from ‘python-mode’.
   (setq-local comment-start "# ")
   (setq-local comment-start-skip (rx (+ ?#) (* (syntax whitespace))))
