@@ -129,9 +129,6 @@ that buffer once BODY finishes."
                 (should
                  (equal (get-text-property 0 'bazel-mode-workspace identifier)
                         (file-name-as-directory (expand-file-name "root" dir))))
-                (should
-                 (equal (get-text-property 0 'bazel-mode-package identifier)
-                        ""))
                 (let* ((defs (xref-backend-definitions backend identifier))
                        (def (car-safe defs)))
                   (should (consp defs))
@@ -146,8 +143,8 @@ that buffer once BODY finishes."
                   ;; We only expect one definition for now.
                   (should-not (cdr defs))
                   (should (xref-item-p def))
+                  (should (equal (xref-item-summary def) identifier))
                   (push (list identifier
-                              (xref-item-summary def)
                               (file-relative-name
                                (buffer-file-name
                                 (marker-buffer
@@ -156,16 +153,15 @@ that buffer once BODY finishes."
                                (expand-file-name "root" dir)))
                         definitions))))))))
     (should (equal (nreverse definitions)
-                   '(("aaa.cc" "//:aaa.cc" "aaa.cc")
-                     ("dir/bbb.cc" "//:dir/bbb.cc" "dir/bbb.cc")
-                     (":aaa.cc" "//:aaa.cc" "aaa.cc")
-                     ("//:aaa.cc" "//:aaa.cc" "aaa.cc")
-                     ("//pkg:ccc.cc" "//pkg:ccc.cc" "pkg/ccc.cc")
-                     ("@ws//pkg:ddd.cc" "@ws//pkg:ddd.cc"
-                      "bazel-root/external/ws/pkg/ddd.cc")
-                     (":lib" "//:lib" "BUILD")
-                     ("//:lib" "//:lib" "BUILD")
-                     ("//pkg" "//pkg:pkg" "pkg/BUILD")
-                     ("//pkg:lib" "//pkg:lib" "pkg/BUILD"))))))
+                   '(("//:aaa.cc" "aaa.cc")
+                     ("//:dir/bbb.cc" "dir/bbb.cc")
+                     ("//:aaa.cc" "aaa.cc")
+                     ("//:aaa.cc" "aaa.cc")
+                     ("//pkg:ccc.cc" "pkg/ccc.cc")
+                     ("@ws//pkg:ddd.cc" "bazel-root/external/ws/pkg/ddd.cc")
+                     ("//:lib" "BUILD")
+                     ("//:lib" "BUILD")
+                     ("//pkg:pkg" "pkg/BUILD")
+                     ("//pkg:lib" "pkg/BUILD"))))))
 
 ;;; bazel-mode-test.el ends here
