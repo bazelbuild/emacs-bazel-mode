@@ -351,6 +351,12 @@ This gets added to ‘xref-backend-functions’."
               (list (xref-make (bazel-mode--canonical workspace package target)
                                location)))))))))
 
+(cl-defmethod xref-backend-identifier-completion-table
+  ((_backend (eql bazel-mode)))
+  ;; Not yet implemented.  This function still needs to be defined, otherwise
+  ;; ‘xref-find-definitions’ signals an error outside of a string literal.
+  ())
+
 (defun bazel-mode--file-location (filename)
   "Return an ‘xref-location’ for the source file FILENAME."
   (cl-check-type filename string)
