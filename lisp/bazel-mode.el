@@ -470,7 +470,7 @@ the lexical syntax of labels."
           ;; :target
           (seq ?: (let target (+ (not (any ?:)))))
           ;; target
-          (seq (let target (+ (not (any ?:))))))
+          (seq (let target (not (any ?: ?/ ?@)) (* (not (any ?:))))))
          eos)
      (unless target (setq target (bazel-mode--default-target package)))
      (and (or (null workspace)
