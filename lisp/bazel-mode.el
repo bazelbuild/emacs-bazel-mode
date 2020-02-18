@@ -471,7 +471,7 @@ the lexical syntax of labels."
           (or (null package)
               ;; https://docs.bazel.build/versions/2.0.0/build-ref.html#package-names-package-name
               (string-match-p (rx bos (* (any ?- "A-Za-z0-9/.")) eos) package))
-          ;; https://docs.bazel.build/versions/2.0.0/build-ref.html#package-names-package-name
+          ;; https://docs.bazel.build/versions/2.0.0/build-ref.html#name
           (string-match-p (rx bos
                               (+ (any ?- "a-zA-Z0-9!%-@^_` \"#$&'()*+,;<=>"
                                       "?[]{|}~/."))
