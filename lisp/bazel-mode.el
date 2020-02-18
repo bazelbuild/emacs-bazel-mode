@@ -128,13 +128,19 @@
 ;;;###autoload
 (define-derived-mode bazel-mode prog-mode "Bazel"
   "Major mode for editing Bazel BUILD and WORKSPACE files."
+  ;; Take over some syntactic constructs from ‘python-mode’.
   (setq-local comment-start "# ")
-  (setq-local comment-start-skip "#+ *")
+  (setq-local comment-start-skip (rx (+ ?#) (* (syntax whitespace))))
   (setq-local comment-end "")
   (setq-local comment-use-syntax t)
+  (setq-local parse-sexp-ignore-comments t)
+  (setq-local forward-sexp-function #'python-nav-forward-sexp)
   (setq-local font-lock-defaults (list bazel-mode--font-lock-keywords))
   (setq-local indent-line-function #'python-indent-line-function)
   (setq-local indent-region-function #'python-indent-region)
+  (setq-local electric-indent-inhibit t)
+  (setq-local beginning-of-defun-function #'python-nav-beginning-of-defun)
+  (setq-local end-of-defun-function #'python-nav-end-of-defun)
   (add-hook 'before-save-hook #'bazel-mode--buildifier-before-save-hook
             nil :local)
   (add-hook 'flymake-diagnostic-functions #'bazel-mode-flymake nil :local)
