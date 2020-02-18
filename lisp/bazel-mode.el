@@ -323,7 +323,7 @@ This gets added to ‘xref-backend-functions’."
       (bazel-mode--parse-label identifier)
     (when valid-p
       (let* ((this-workspace
-              (or (get-text-property 0 'bazel-workspace-mode identifier)
+              (or (get-text-property 0 'bazel-mode-workspace identifier)
                   (and buffer-file-name
                        (bazel-util-workspace-root buffer-file-name))))
              (package
