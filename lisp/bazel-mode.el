@@ -400,7 +400,8 @@ return point."
             (when (re-search-forward
                    (rx-to-string
                     `(seq bol (* blank) "name" (* blank) ?= (* blank)
-                          (group (any ?\" ?')) (group ,name) (backref 1)))
+                          (group (any ?\" ?')) (group ,name) (backref 1))
+                    :no-group)
                    nil t)
               (match-beginning 2))))
         (point))))
