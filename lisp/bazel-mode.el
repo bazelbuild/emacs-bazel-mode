@@ -345,20 +345,10 @@ This gets added to ‘xref-backend-functions’."
                        (bazel-util-package-name buffer-file-name
                                                 this-workspace)))))
         (when (and this-workspace package)
-          (let* ((workspace-root
-                  (bazel-mode--external-workspace workspace this-workspace))
-                 (directory (expand-file-name package workspace-root))
-                 (filename (expand-file-name target directory))
-                 (location
-                  (if (file-exists-p filename)
-                      ;; A label that likely refers to a source file.
-                      (bazel-mode--file-location filename)
-                    ;; A label that likely refers to a rule.  Try to find the
-                    ;; rule in the BUILD file of the package.
-                    (let ((build-file
-                           (locate-file "BUILD" (list directory) '("" ".bazel"))))
-                      (when build-file
-                        (bazel-mode--rule-location build-file target))))))
+          (let ((location
+                 (bazel-mode--target-location
+                  (bazel-mode--external-workspace workspace this-workspace)
+                  package target)))
             (when location
               (list (xref-make (bazel-mode--canonical workspace package target)
                                location)))))))))
@@ -368,6 +358,27 @@ This gets added to ‘xref-backend-functions’."
   ;; Not yet implemented.  This function still needs to be defined, otherwise
   ;; ‘xref-find-definitions’ signals an error outside of a string literal.
   ())
+
+(defun bazel-mode--target-location (workspace package target)
+  "Return an ‘xref-location’ for a Bazel target.
+The target is in the workspace with root directory WORKSPACE and
+the package PACKAGE.  Its local name is TARGET.  If no target was
+found, return nil.  This function uses heuristics to find the
+target; in particular, it assumes that a target that looks like a
+valid file target is indeed a file target."
+  (cl-check-type workspace string)
+  (cl-check-type package string)
+  (cl-check-type target string)
+  (let* ((directory (expand-file-name package workspace))
+         (filename (expand-file-name target directory)))
+    (if (file-exists-p filename)
+        ;; A label that likely refers to a source file.
+        (bazel-mode--file-location filename)
+      ;; A label that likely refers to a rule.  Try to find the rule in the
+      ;; BUILD file of the package.
+      (let ((build-file (locate-file "BUILD" (list directory) '("" ".bazel"))))
+        (when build-file
+          (bazel-mode--rule-location build-file target))))))
 
 (defun bazel-mode--file-location (filename)
   "Return an ‘xref-location’ for the source file FILENAME."
