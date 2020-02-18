@@ -383,14 +383,10 @@ valid file target is indeed a file target."
 (defun bazel-mode--file-location (filename)
   "Return an ‘xref-location’ for the source file FILENAME."
   (cl-check-type filename string)
-  (let ((buffer (find-buffer-visiting filename)))
-    (if buffer
-        ;; The location actually refers to the whole file.  Avoid jumping
-        ;; around within the already-visited file by pretending the reference
-        ;; is at point.
-        (xref-make-buffer-location buffer (with-current-buffer buffer (point)))
-      ;; File not yet visited; beginning of the file is fine.
-      (xref-make-file-location filename 1 0))))
+  ;; The location actually refers to the whole file.  Avoid jumping around
+  ;; within the already-visited file by pretending the reference isn’t found so
+  ;; that we return point.
+  (bazel-mode--xref-location filename (lambda ())))
 
 (defun bazel-mode--rule-location (build-file name)
   "Return an ‘xref-location’ for a rule within a BUILD file.
@@ -400,40 +396,54 @@ return a location referring to an arbitrary position within the
 BUILD file."
   (cl-check-type build-file string)
   (cl-check-type name string)
-  (let ((buffer (find-buffer-visiting build-file)))
-    ;; Reuse a buffer that already visits the BUILD file if possible.
-    (if buffer
-        (with-current-buffer buffer
-          (xref-make-buffer-location buffer (bazel-mode--find-rule name)))
-      (with-temp-buffer
-        (insert-file-contents build-file)
-        (goto-char (bazel-mode--find-rule name))
-        (xref-make-file-location build-file
-                                 (line-number-at-pos)
-                                 (- (point) (line-beginning-position)))))))
+  (bazel-mode--xref-location build-file
+                             (lambda () (bazel-mode--find-rule name))))
 
 (defun bazel-mode--find-rule (name)
   "Find the rule with the given NAME within the current buffer.
 The current buffer should visit a BUILD file.  If there’s a rule
 with the given NAME, return the location of the rule.  Otherwise,
-return point."
+return nil."
   (cl-check-type name string)
   (let ((case-fold-search nil))
-    (or (save-excursion
-          (save-restriction
-            (widen)
-            (goto-char (point-min))
-            ;; Heuristic: we search for a “name” attribute as it would show up
-            ;; in typical BUILD files.  That’s not 100% correct, but doesn’t
-            ;; rely on external processes and should work fine in common cases.
-            (when (re-search-forward
-                   (rx-to-string
-                    `(seq bol (* blank) "name" (* blank) ?= (* blank)
-                          (group (any ?\" ?')) (group ,name) (backref 1))
-                    :no-group)
-                   nil t)
-              (match-beginning 2))))
-        (point))))
+    (save-excursion
+      (save-restriction
+        (widen)
+        (goto-char (point-min))
+        ;; Heuristic: we search for a “name” attribute as it would show up
+        ;; in typical BUILD files.  That’s not 100% correct, but doesn’t
+        ;; rely on external processes and should work fine in common cases.
+        (when (re-search-forward
+               (rx-to-string
+                `(seq bol (* blank) "name" (* blank) ?= (* blank)
+                      (group (any ?\" ?')) (group ,name) (backref 1))
+                :no-group)
+               nil t)
+          (match-beginning 2))))))
+
+(defun bazel-mode--xref-location (filename find-function)
+  "Return an ‘xref-location’ for some entity within FILENAME.
+FIND-FUNCTION should be a function taking zero arguments.  This
+function calls FIND-FUNCTION in some buffer containing the
+contents of FILENAME.  FIND-FUNCTION should then either return
+nil (if the entity isn’t found) or the position of the entity
+within the current buffer.  FIND-FUNCTION should not move point
+or change the buffer state permanently."
+  (cl-check-type filename string)
+  (cl-check-type find-function function)
+  ;; Prefer a buffer that already visits FILENAME.
+  (let ((buffer (find-buffer-visiting filename)))
+    (if buffer
+        ;; If not found, use point to avoid jumping around in the buffer.
+        (xref-make-buffer-location buffer
+                                   (with-current-buffer buffer
+                                     (or (funcall find-function) (point))))
+      (with-temp-buffer
+        (insert-file-contents filename)
+        (goto-char (or (funcall find-function) (point-min)))
+        (xref-make-file-location filename
+                                 (line-number-at-pos)
+                                 (- (point) (line-beginning-position)))))))
 
 ;;; Utilities
 
