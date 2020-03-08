@@ -484,7 +484,7 @@ rule names that start with PREFIX."
     (let ((case-fold-search nil)
           (rules ()))
       (save-excursion
-        ;; We don’t widen here.  If the user has narrows the buffer, it’s fair
+        ;; We don’t widen here.  If the user has narrowed the buffer, it’s fair
         ;; to assume they only want completions within the narrowed portion.
         (goto-char (point-min))
         (while (re-search-forward
