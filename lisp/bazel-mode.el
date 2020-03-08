@@ -170,34 +170,56 @@ for how to install Buildifier.  The function ‘bazel-mode’ adds
 this function to ‘flymake-diagnostic-functions’.  See Info node
 ‘(Flymake) Backend functions’ for details about Flymake
 backends."
-  (when bazel-mode--flymake-process
-    (delete-process bazel-mode--flymake-process))
-  (let* ((coding-system-for-read 'utf-8-unix)
-         (coding-system-for-write 'utf-8-unix)
-         (process-connection-type nil)
+  (let ((process bazel-mode--flymake-process))
+    (when process
+      ;; The order here is important: ‘delete-process’ will trigger the
+      ;; sentinel, and then ‘bazel-mode--flymake-process’ already has to be nil
+      ;; to avoid an obsolete report.
+      (setq bazel-mode--flymake-process nil)
+      (delete-process process)))
+  (let* ((non-essential t)
+         (command `(,bazel-mode-buildifier-command
+                    ,@(bazel-mode--buildifier-file-flags buffer-file-name)
+                    "-mode=check" "-format=json" "-lint=warn"))
          (input-buffer (current-buffer))
          (output-buffer (generate-new-buffer
                          (format " *Buildifier output for %s*" (buffer-name))))
-         (process
-          (apply #'start-file-process
-                 (format "Buildifier for %s" (buffer-name))
-                 output-buffer
-                 bazel-mode-buildifier-command
-                 `(,@(bazel-mode--buildifier-file-flags buffer-file-name)
-                   "-mode=check" "-format=json" "-lint=warn"))))
-    (set-process-sentinel
-     process
-     (lambda (process event)
-       ;; First, make sure that the buffer to be linted is still alive.
-       (when (and (buffer-live-p input-buffer)
-                  (string-equal event "finished\n"))
-         (with-current-buffer input-buffer
-           ;; Don’t report anything if a new process has already been started.
-           (when (eq bazel-mode--flymake-process process)
-             (funcall report-fn (bazel-mode--make-diagnostics output-buffer)))
-           (setq bazel-mode--flymake-process nil))
-         (kill-buffer output-buffer))))
-    (set-process-query-on-exit-flag process nil)
+         (error-buffer (generate-new-buffer
+                        (format " *Buildifier errors for %s*" (buffer-name))))
+         (sentinel
+          (lambda (process event)
+            (let ((success (string-equal event "finished\n")))
+              ;; First, make sure that the buffer to be linted is still alive.
+              (when (buffer-live-p input-buffer)
+                (with-current-buffer input-buffer
+                  ;; Don’t report anything if a new process has already been
+                  ;; started.
+                  (when (eq bazel-mode--flymake-process process)
+                    ;; Report even in case of failure so that Flymake doesn’t
+                    ;; treat the backend as continuously running.
+                    (funcall report-fn
+                             (and success
+                                  (bazel-mode--make-diagnostics output-buffer)))
+                    (setq bazel-mode--flymake-process nil))))
+              (if success
+                  (progn (kill-buffer output-buffer)
+                         (kill-buffer error-buffer))
+                (flymake-log :warning
+                             (concat "Buildifier process failed; "
+                                     "see buffers ‘%s’ and ‘%s’ for details")
+                             output-buffer error-buffer)))))
+         ;; We always start a local process, even if visiting a remote
+         ;; filename.  If Buildifier is installed locally, the reports should
+         ;; match well enough.  Starting a remote process via Tramp tends to be
+         ;; way too slow to run interactively.
+         (process (make-process :name (format "Buildifier for %s" (buffer-name))
+                                :buffer output-buffer
+                                :command command
+                                :coding '(utf-8-unix . utf-8-unix)
+                                :connection-type 'pipe
+                                :noquery t
+                                :sentinel sentinel
+                                :stderr error-buffer)))
     (setq bazel-mode--flymake-process process)
     (save-restriction
       (widen)
