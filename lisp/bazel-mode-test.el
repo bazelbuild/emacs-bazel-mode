@@ -47,6 +47,9 @@
   "Unit test for ‘bazel-mode--make-diagnostics’.
 We test that function instead of the Flymake backend directly so
 we don’t have to start or mock a process."
+  ;; This test doesn’t work in Emacs 27 due to
+  ;; https://debbugs.gnu.org/cgi/bugreport.cgi?bug=39971.
+  (skip-unless (not (eql emacs-major-version 27)))
   (with-temp-buffer
     (let ((output-buffer (current-buffer))
           (diagnostics nil))
