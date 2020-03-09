@@ -28,6 +28,11 @@
 (require 'rx)
 (require 'xref)
 
+(defconst bazel-mode-test--directory
+  ;; https://docs.bazel.build/versions/2.2.0/test-encyclopedia.html#initial-conditions.
+  (substitute-in-file-name "$TEST_SRCDIR/$TEST_WORKSPACE/lisp/")
+  "Directory with data dependencies for this package.")
+
 (ert-deftest bazel-mode/indent-after-colon ()
   (with-temp-buffer
     (bazel-mode)
@@ -38,7 +43,7 @@
 (ert-deftest bazel-mode/indent-region ()
   (with-temp-buffer
     (bazel-mode)
-    (insert-file-contents "BUILD")
+    (insert-file-contents (expand-file-name "BUILD" bazel-mode-test--directory))
     (let ((before (buffer-string)))
       (indent-region (point-min) (point-max))
       (should (equal (buffer-string) before)))))
@@ -53,9 +58,12 @@ we don’t have to start or mock a process."
   (with-temp-buffer
     (let ((output-buffer (current-buffer))
           (diagnostics nil))
-      (insert-file-contents "testdata/buildifier.json")
+      (insert-file-contents
+       (expand-file-name "testdata/buildifier.json" bazel-mode-test--directory))
       (with-temp-buffer
-        (insert-file-contents "testdata/buildifier.bzl")
+        (insert-file-contents
+         (expand-file-name "testdata/buildifier.bzl"
+                           bazel-mode-test--directory))
         (dolist (diag (bazel-mode--make-diagnostics output-buffer))
           (ert-info ((prin1-to-string diag))
             (should (eq (flymake-diagnostic-buffer diag) (current-buffer)))
@@ -109,7 +117,9 @@ that buffer once BODY finishes."
   (let ((definitions ()))
     (bazel-mode-test--with-temp-directory dir
       (make-directory (expand-file-name "root" dir))
-      (copy-file "testdata/xref.BUILD" (expand-file-name "root/BUILD" dir))
+      (copy-file
+       (expand-file-name "testdata/xref.BUILD" bazel-mode-test--directory)
+       (expand-file-name "root/BUILD" dir))
       ;; Create empty files that the labels in the test BUILD file refer to.
       (dolist (file '("WORKSPACE" "aaa.cc" "dir/bbb.cc" "pkg/BUILD" "pkg/ccc.cc"
                       "bazel-root/external/ws/WORKSPACE"
@@ -130,7 +140,8 @@ that buffer once BODY finishes."
               (let ((identifier (xref-backend-identifier-at-point backend)))
                 (should (stringp identifier))
                 (should
-                 (equal (get-text-property 0 'bazel-mode-workspace identifier)
+                 (equal (expand-file-name
+                         (get-text-property 0 'bazel-mode-workspace identifier))
                         (file-name-as-directory (expand-file-name "root" dir))))
                 (let* ((defs (xref-backend-definitions backend identifier))
                        (def (car-safe defs)))
