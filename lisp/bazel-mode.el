@@ -112,7 +112,8 @@
     (,(regexp-opt '("True" "False" "None")
                   'symbols)
      . 'font-lock-constant-face)
-    ))
+    ;; Magic comments
+    (bazel-mode--find-magic-comment 0 'font-lock-preprocessor-face prepend)))
 
 (defconst bazel-mode-syntax-table
   (let ((table (make-syntax-table)))
@@ -145,6 +146,14 @@
   (setq-local electric-indent-inhibit t)
   (setq-local beginning-of-defun-function #'python-nav-beginning-of-defun)
   (setq-local end-of-defun-function #'python-nav-end-of-defun)
+  ;; “keep sorted” is a magic comment that tells Buildifier to keep a list
+  ;; sorted.  We treat it as a separate paragraph for filling.
+  (setq-local paragraph-start
+              (rx-to-string
+               `(or (seq (* (syntax whitespace)) (regexp ,comment-start-skip)
+                         "keep sorted")
+                    (regexp ,paragraph-start))
+               :no-group))
   (add-hook 'before-save-hook #'bazel-mode--buildifier-before-save-hook
             nil :local)
   (add-hook 'flymake-diagnostic-functions #'bazel-mode-flymake nil :local)
@@ -624,6 +633,13 @@ strings.  Return either @WORKSPACE//PACKAGE:TARGET or
           ;; Jump to the closing quotation mark.
           (parse-partial-sexp (point) (point-max) nil nil state 'syntax-table)
           (buffer-substring-no-properties start (1- (point))))))))
+
+(defun bazel-mode--find-magic-comment (bound)
+  "Search for a magic comment from point to BOUND.
+If a magic comment was found, return non-nil and set the match to
+the comment text."
+  (and (search-forward "keep sorted" bound t)
+       (nth 4 (syntax-ppss))))
 
 (defun bazel-mode--line-column-pos (line column)
   "Return buffer position in the current buffer for LINE and COLUMN.

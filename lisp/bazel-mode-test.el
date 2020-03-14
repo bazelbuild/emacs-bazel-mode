@@ -172,4 +172,14 @@ that buffer once BODY finishes."
                      ("//pkg:pkg" "pkg/BUILD")
                      ("//pkg:lib" "pkg/BUILD"))))))
 
+(ert-deftest bazel-mode/fill ()
+  "Check that “keep sorted” comments are left alone."
+  (with-temp-buffer
+    (insert-file-contents "testdata/fill.BUILD")
+    (bazel-mode)
+    (search-forward "# The Foobar files")
+    (let ((before (buffer-string)))
+      (fill-paragraph)
+      (should (equal (buffer-string) before)))))
+
 ;;; bazel-mode-test.el ends here
