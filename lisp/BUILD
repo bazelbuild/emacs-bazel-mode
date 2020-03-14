@@ -25,6 +25,7 @@ sh_test(
         "bazel-util.elc",
         "testdata/buildifier.bzl",
         "testdata/buildifier.json",
+        "testdata/fill.BUILD",
         "testdata/xref.BUILD",
     ],
 )
