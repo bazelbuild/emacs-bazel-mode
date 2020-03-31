@@ -1,4 +1,4 @@
-;;; bazel-build.el --- Emacs utilities for using Bazel -*- lexical-binding: t; -*-
+;;; bazel-build.el --- Utilities for using Bazel -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (C) 2018 Google LLC
 ;; Licensed under the Apache License, Version 2.0 (the "License");

@@ -1,4 +1,4 @@
-;;; bazel-util.el --- utility functions for Bazel workspaces  -*- lexical-binding: t; -*-
+;;; bazel-util.el --- Utility functions for Bazel workspaces -*- lexical-binding: t; -*-
 
 ;; Copyright 2020 Google LLC
 ;;

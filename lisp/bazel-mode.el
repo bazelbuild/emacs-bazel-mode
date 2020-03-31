@@ -1,4 +1,4 @@
-;;; bazel-mode.el --- Emacs major mode for editing Bazel BUILD and WORKSPACE files -*- lexical-binding: t; -*-
+;;; bazel-mode.el --- Major mode for editing Bazel BUILD and WORKSPACE files -*- lexical-binding: t; -*-
 
 ;; URL: https://github.com/bazelbuild/emacs-bazel-mode
 ;; Keywords: build tools, languages
