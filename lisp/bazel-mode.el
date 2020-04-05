@@ -1,5 +1,9 @@
 ;;; bazel-mode.el --- Emacs major mode for editing Bazel BUILD and WORKSPACE files -*- lexical-binding: t; -*-
 
+;; URL: https://github.com/bazelbuild/emacs-bazel-mode
+;; Keywords: build tools, languages
+;; Package-Requires: ((emacs "26.1"))
+;; Version: 0
 
 ;; Copyright (C) 2018 Google LLC
 ;; Licensed under the Apache License, Version 2.0 (the "License");
