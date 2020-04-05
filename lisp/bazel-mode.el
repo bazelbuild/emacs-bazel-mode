@@ -31,7 +31,7 @@
 
 (require 'bazel-util)
 
-(defgroup bazel-mode nil
+(defgroup bazel nil
   "Major mode for Bazel BUILD files."
   :link '(url-link "https://github.com/bazelbuild/emacs-bazel-mode")
   :group 'languages)
@@ -39,14 +39,14 @@
 (defcustom bazel-mode-buildifier-command "buildifier"
   "Filename of buildifier executable."
   :type 'file
-  :group 'bazel-mode
+  :group 'bazel
   :link '(url-link
           "https://github.com/bazelbuild/buildtools/tree/master/buildifier"))
 
 (defcustom bazel-mode-buildifier-before-save nil
   "Specifies whether to run buildifer in `before-save-hook'."
   :type 'boolean
-  :group 'bazel-mode
+  :group 'bazel
   :link '(url-link
           "https://github.com/bazelbuild/buildtools/tree/master/buildifier")
   :risky t)
