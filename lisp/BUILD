@@ -15,29 +15,31 @@
 # Note: all files starting with "bazel-" have to be in a subdirectory due to
 # https://github.com/bazelbuild/bazel/issues/10560.
 
-sh_test(
-    name = "bazel_mode_test",
-    srcs = ["bazel-mode-test.sh"],
-    data = [
-        "BUILD",
-        "bazel-mode.elc",
-        "bazel-mode-test.elc",
-        "bazel-util.elc",
-        "testdata/buildifier.bzl",
-        "testdata/buildifier.json",
-        "testdata/fill.BUILD",
-        "testdata/xref.BUILD",
-    ],
+load("@phst_rules_elisp//elisp:defs.bzl", "elisp_library", "elisp_test")
+
+elisp_library(
+    name = "bazel_build",
+    srcs = ["bazel-build.el"],
+    load_path = ["."],
+    deps = [":bazel_util"],
 )
 
-SRCS = glob(["*.el"])
+elisp_library(
+    name = "bazel_mode",
+    srcs = ["bazel-mode.el"],
+    load_path = ["."],
+    deps = [":bazel_util"],
+)
 
-genrule(
-    name = "byte_compile",
-    srcs = SRCS,
-    outs = [src + "c" for src in SRCS],
-    cmd = ("$${EMACS:-emacs} --quick --batch --load=bytecomp --directory=$${PWD:?}/lisp " +
-           "--eval='(setq byte-compile-dest-file-function (lambda (src) (expand-file-name (concat (file-name-base src) \".elc\") \"$(RULEDIR)\")))' " +
-           "--eval='(setq byte-compile-error-on-warn t)' " +
-           "--funcall=batch-byte-compile $(SRCS)"),
+elisp_test(
+    name = "bazel_mode_test",
+    srcs = ["bazel-mode-test.el"],
+    data = ["BUILD"] + glob(["testdata/*"]),
+    deps = [":bazel_mode"],
+)
+
+elisp_library(
+    name = "bazel_util",
+    srcs = ["bazel-util.el"],
+    load_path = ["."],
 )
