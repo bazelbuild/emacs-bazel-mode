@@ -31,6 +31,7 @@
 (require 'pcase)
 (require 'python)
 (require 'rx)
+(require 'subr-x)
 (require 'xref)
 
 (require 'bazel-util)
@@ -55,6 +56,13 @@
           "https://github.com/bazelbuild/buildtools/tree/master/buildifier")
   :risky t)
 
+(defvar-local bazel-mode--buildifier-type nil
+  "Type of the file that the current buffer visits.
+This must be a symbol and a valid value for the Buildifier -type
+flag.  See
+https://github.com/bazelbuild/buildtools/blob/2.2.0/buildifier/utils/flags.go#L11.
+If nil, don’t pass a -type flag to Buildifier.")
+
 (defun bazel-mode-buildifier ()
   "Format current buffer using buildifier."
   (interactive "*")
@@ -63,7 +71,8 @@
         (buildifier-buffer (get-buffer-create "*buildifier*"))
         ;; Run buildifier on a file to support remote BUILD files.
         (buildifier-input-file (make-nearby-temp-file "buildifier"))
-        (buildifier-error-file (make-nearby-temp-file "buildifier")))
+        (buildifier-error-file (make-nearby-temp-file "buildifier"))
+        (type bazel-mode--buildifier-type))
     (unwind-protect
       (write-region (point-min) (point-max) buildifier-input-file nil :silent)
       (with-current-buffer buildifier-buffer
@@ -73,7 +82,7 @@
                (apply #'process-file
                       bazel-mode-buildifier-command buildifier-input-file
                       `(t ,buildifier-error-file) nil
-                      (bazel-mode--buildifier-file-flags input-file))))
+                      (bazel-mode--buildifier-file-flags type input-file))))
           (if (eq return-code 0)
               (progn
                 (set-buffer input-buffer)
@@ -130,9 +139,11 @@
     table)
   "Syntax table for `bazel-mode'.")
 
-;;;###autoload
 (define-derived-mode bazel-mode prog-mode "Bazel"
-  "Major mode for editing Bazel BUILD and WORKSPACE files."
+  "Major mode for editing Bazel BUILD and WORKSPACE files.
+This is the parent mode for the more specific modes
+‘bazel-build-mode’, ‘bazel-workspace-mode’, and
+‘bazel-starlark-mode’."
   ;; Almost all Starlark code in existence uses 4 spaces for indentation.
   ;; Buildifier also enforces this style.
   (setq-local tab-width 4)
@@ -164,9 +175,35 @@
   (add-hook 'xref-backend-functions #'bazel-mode-xref-backend nil :local))
 
 ;;;###autoload
+(define-derived-mode bazel-build-mode bazel-mode "Bazel BUILD"
+  "Major mode for editing Bazel BUILD files."
+  (setq bazel-mode--buildifier-type 'build))
+
+;;;###autoload
 (add-to-list 'auto-mode-alist
-             (cons (rx (or "/BUILD" "/WORKSPACE" ".bazel" ".bzl" ".BUILD") eos)
-                   #'bazel-mode))
+             ;; https://docs.bazel.build/versions/3.0.0/build-ref.html#packages
+             (cons (rx ?/ (or "BUILD" "BUILD.bazel") eos) #'bazel-build-mode))
+
+;;;###autoload
+(define-derived-mode bazel-workspace-mode bazel-mode "Bazel WORKSPACE"
+  "Major mode for editing Bazel WORKSPACE files."
+  (setq bazel-mode--buildifier-type 'workspace))
+
+;;;###autoload
+(add-to-list 'auto-mode-alist
+             ;; https://docs.bazel.build/versions/3.0.0/build-ref.html#workspace
+             (cons (rx ?/ (or "WORKSPACE" "WORKSPACE.bazel") eos)
+                   #'bazel-workspace-mode))
+
+;;;###autoload
+(define-derived-mode bazel-starlark-mode bazel-mode "Starlark"
+  "Major mode for editing Bazel Starlark files."
+  (setq bazel-mode--buildifier-type 'bzl))
+
+;;;###autoload
+(add-to-list 'auto-mode-alist
+             ;; https://docs.bazel.build/versions/3.0.0/skylark/concepts.html#getting-started
+             (cons (rx ?/ (+ nonl) ".bzl" eos) #'bazel-starlark-mode))
 
 ;;; Flymake support using Buildifier
 
@@ -192,7 +229,8 @@ backends."
       (delete-process process)))
   (let* ((non-essential t)
          (command `(,bazel-mode-buildifier-command
-                    ,@(bazel-mode--buildifier-file-flags buffer-file-name)
+                    ,@(bazel-mode--buildifier-file-flags
+                       bazel-mode--buildifier-type buffer-file-name)
                     "-mode=check" "-format=json" "-lint=warn"))
          (input-buffer (current-buffer))
          (output-buffer (generate-new-buffer
@@ -239,25 +277,17 @@ backends."
       (process-send-region process (point-min) (point-max)))
     (process-send-eof process)))
 
-(defun bazel-mode--buildifier-file-flags (filename)
+(defun bazel-mode--buildifier-file-flags (type filename)
   "Return a list of -path and -type flags for Buildifier.
-Use FILENAME to derive appropriate flags, if possible.
-Otherwise, return an empty list."
-  (when filename
-    (delq nil
-          (let ((workspace (bazel-util-workspace-root filename))
-                (base (file-name-base filename))
-                (extension (file-name-extension filename :period)))
-            (list (and workspace
-                       (concat "-path="
-                               (file-relative-name filename workspace)))
-                  (cond ((or (string-equal base "BUILD")
-                             (string-equal extension ".BUILD"))
-                         "-type=build")
-                        ((string-equal extension ".bzl")
-                         "-type=bzl")
-                        ((string-equal base "WORKSPACE")
-                         "-type=workspace")))))))
+TYPE should be one of the possible values of
+‘bazel-mode--buildifier-type’.  Use TYPE and FILENAME to derive
+appropriate flags, if possible.  Otherwise, return an empty
+list."
+  (delq nil
+        (list (when-let* (filename
+                          (workspace (bazel-util-workspace-root filename)))
+                (concat "-path=" (file-relative-name filename workspace)))
+              (and type (concat "-type=" (symbol-name type))))))
 
 (defun bazel-mode--make-diagnostics (output-buffer)
   "Return Flymake diagnostics for the Buildifier report in OUTPUT-BUFFER.
