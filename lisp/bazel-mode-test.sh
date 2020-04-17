@@ -14,7 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cd lisp && "${EMACS:-emacs}" --quick --batch \
-  --directory="${PWD:?}" \
-  --load="${PWD:?}/bazel-mode-test.elc" \
+
+# https://docs.bazel.build/versions/2.2.0/test-encyclopedia.html#initial-conditions.
+declare -r dir="${TEST_SRCDIR:?}/${TEST_WORKSPACE:?}/lisp"
+
+"${EMACS:-emacs}" --quick --batch \
+  --directory="${dir:?}/" \
+  --load="${dir:?}/bazel-mode-test.elc" \
   --funcall=ert-run-tests-batch-and-exit
