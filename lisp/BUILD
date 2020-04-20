@@ -39,6 +39,13 @@ elisp_test(
 )
 
 elisp_library(
+    name = "bazelrc_mode",
+    srcs = ["bazelrc-mode.el"],
+    load_path = ["."],
+    deps = [":bazel_util"],
+)
+
+elisp_library(
     name = "bazel_util",
     srcs = ["bazel-util.el"],
     load_path = ["."],
