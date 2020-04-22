@@ -26,6 +26,7 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'ffap)
 (require 'flymake)
 (require 'json)
 (require 'pcase)
@@ -563,6 +564,29 @@ rule names that start with PREFIX."
           (push (match-string-no-properties 2) rules)))
       (nreverse rules))))
 
+;;;; ‘find-file-at-point’ support
+
+;; Since we match every filename, we want to come last.
+(add-to-list 'ffap-alist (cons (rx anything) #'bazel-mode-ffap) :append)
+
+(defun bazel-mode-ffap (filename)
+  "Attempt to find FILENAME in all workspaces.
+This gets added to ‘ffap-alist’."
+  (when-let ((main-root (bazel-util-workspace-root filename)))
+    (let ((external-roots
+           (condition-case nil
+               (directory-files
+                (bazel-mode--external-workspace-dir main-root)
+                :full
+                ;; Assume that workspace names follow similar patters as
+                ;; package names,
+                ;; https://docs.bazel.build/versions/3.0.0/build-ref.html#package-names-package-name.
+                (rx bos (+ (any alnum "-._")) eos))
+             ;; If there’s no external workspace directory, don’t signal an
+             ;; error.
+             (file-missing nil))))
+      (locate-file filename (cons main-root external-roots)))))
+
 ;;; Utilities
 
 (defun bazel-mode--external-workspace (workspace-name this-workspace-root)
@@ -585,12 +609,22 @@ return value is a directory name."
        ;; might block indefinitely if another Bazel instance holds the lock.
        ;; We don’t check whether the directory exists, because it’s generated
        ;; and cached when needed.
-       (expand-file-name (concat "bazel-"
-                                 (file-name-nondirectory
-                                  (directory-file-name this-workspace-root))
-                                 "/external/" workspace-name)
-                         this-workspace-root)
+       (expand-file-name
+        workspace-name
+        (bazel-mode--external-workspace-dir this-workspace-root))
      this-workspace-root)))
+
+(defun bazel-mode--external-workspace-dir (root)
+  "Return a directory name for the parent directory of the external workspaces.
+ROOT should be the main workspace root as returned by
+‘bazel-util-workspace-root’."
+  (cl-check-type root string)
+  ;; See the commentary in ‘bazel-mode--external-workspace’ for how to find
+  ;; external workspaces.
+  (expand-file-name
+   (concat "bazel-" (file-name-nondirectory (directory-file-name root))
+           "/external/" )
+   root))
 
 (defun bazel-mode--parse-label (label)
   "Parse Bazel label LABEL.
