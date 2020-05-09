@@ -133,7 +133,8 @@ that buffer once BODY finishes."
         ;; Search for all sources and dependencies.  These are strings that
         ;; stand on their own in a line.
         (while (re-search-forward (rx bol (* blank) ?\") nil t)
-          (let ((backend (xref-find-backend)))
+          (let ((backend (xref-find-backend))
+                (root (expand-file-name "root" dir)))
             (should (eq backend 'bazel-mode))
             (ert-info ((format "line %d, %s" (line-number-at-pos)
                                (buffer-substring-no-properties
@@ -143,7 +144,7 @@ that buffer once BODY finishes."
                 (should
                  (equal (expand-file-name
                          (get-text-property 0 'bazel-mode-workspace identifier))
-                        (file-name-as-directory (expand-file-name "root" dir))))
+                        (file-name-as-directory root)))
                 (let* ((defs (xref-backend-definitions backend identifier))
                        (def (car-safe defs)))
                   (should (consp defs))
@@ -159,14 +160,17 @@ that buffer once BODY finishes."
                   (should-not (cdr defs))
                   (should (xref-item-p def))
                   (should (equal (xref-item-summary def) identifier))
-                  (push (list identifier
-                              (file-relative-name
-                               (buffer-file-name
-                                (marker-buffer
-                                 (xref-location-marker
-                                  (xref-item-location def))))
-                               (expand-file-name "root" dir)))
-                        definitions))))))
+                  (let ((ref-file (buffer-file-name
+                                   (marker-buffer
+                                    (xref-location-marker
+                                     (xref-item-location def))))))
+                    (when (< emacs-major-version 27)
+                      ;; Work around
+                      ;; https://debbugs.gnu.org/cgi/bugreport.cgi?bug=29579.
+                      (cl-callf file-name-unquote root)
+                      (cl-callf file-name-unquote ref-file))
+                    (push (list identifier (file-relative-name ref-file root))
+                          definitions)))))))
         ;; Test completions.
         (should
          (equal (all-completions

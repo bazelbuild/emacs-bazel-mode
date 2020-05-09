@@ -35,6 +35,10 @@ the return value is a directory name."
 If FILE-NAME is not in a Bazel package, return nil."
   (cl-check-type file-name string)
   (cl-check-type file-name string)
+  (when (< emacs-major-version 27)
+    ;; Work around https://debbugs.gnu.org/cgi/bugreport.cgi?bug=29579.
+    (cl-callf file-name-unquote file-name)
+    (cl-callf file-name-unquote workspace-root))
   (let ((build-file-directory
          (cl-some (lambda (build-name)
                     (locate-dominating-file file-name build-name))
