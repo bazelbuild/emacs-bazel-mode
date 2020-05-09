@@ -215,7 +215,8 @@ that buffer once BODY finishes."
 (ert-deftest bazel-mode/fill ()
   "Check that “keep sorted” comments are left alone."
   (with-temp-buffer
-    (insert-file-contents "lisp/testdata/fill.BUILD")
+    (insert-file-contents
+     (expand-file-name "testdata/fill.BUILD" bazel-mode-test--directory))
     (bazel-mode)
     (search-forward "# The Foobar files")
     (let ((before (buffer-string)))
