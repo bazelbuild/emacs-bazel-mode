@@ -208,13 +208,15 @@ that buffer once BODY finishes."
                   nil nil nil 'excl)
     (bazel-mode-test--with-file-buffer (expand-file-name "root/pkg/aaa.c" dir)
       (search-forward "\"" (line-end-position))
-      (should (equal (ffap-file-at-point) (expand-file-name "root/aaa.h" dir)))
+      (should (equal (ffap-file-at-point)
+                     (file-name-unquote (expand-file-name "root/aaa.h" dir))))
       (forward-line)
       (search-forward "\"" (line-end-position))
       (forward-comment (point-max))
       (should (equal
                (ffap-file-at-point)
-               (expand-file-name "root/bazel-root/external/ws/bbb.h" dir))))))
+               (file-name-unquote
+                (expand-file-name "root/bazel-root/external/ws/bbb.h" dir)))))))
 
 (ert-deftest bazel-mode/fill ()
   "Check that “keep sorted” comments are left alone."
