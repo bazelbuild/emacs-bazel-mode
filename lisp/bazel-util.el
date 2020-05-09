@@ -49,6 +49,7 @@ If FILE-NAME is not in a Bazel package, return nil."
              (and package-name
                   (not (file-remote-p package-name))
                   (not (file-name-absolute-p package-name))
+                  (not (string-prefix-p "." package-name))
                   (directory-file-name package-name)))))))
 
 (provide 'bazel-util)
