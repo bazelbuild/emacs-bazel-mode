@@ -162,6 +162,11 @@ This is the parent mode for the more specific modes
   (setq-local electric-indent-inhibit t)
   (setq-local beginning-of-defun-function #'python-nav-beginning-of-defun)
   (setq-local end-of-defun-function #'python-nav-end-of-defun)
+
+  ;; Simple regex over method names
+  (setq-local imenu-generic-expression
+              '(("Build rule" "name *= *\"\\(.*\\)\"" 1)))
+
   ;; “keep sorted” is a magic comment that tells Buildifier to keep a list
   ;; sorted.  We treat it as a separate paragraph for filling.
   (setq-local paragraph-start
