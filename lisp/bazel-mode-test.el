@@ -27,6 +27,7 @@
 (require 'eieio)
 (require 'ert)
 (require 'ffap)
+(require 'imenu)
 (require 'rx)
 (require 'xref)
 
@@ -309,6 +310,16 @@ the rule."
           (should (equal line "UnknownType foo;")))
         (ert-info ("No more errors")
           (should-error (compilation-next-error 1)))))))
+
+(ert-deftest bazel-build-mode/imenu ()
+  "Check that ‘imenu’ finds BUILD rules."
+  (with-temp-buffer
+    (insert-file-contents
+     (expand-file-name "testdata/xref.BUILD" bazel-mode-test--directory))
+    (bazel-build-mode)
+    (let ((imenu-use-markers nil))
+      (should (equal (funcall imenu-create-index-function)
+                     '(("lib" . 577) ("bin" . 761)))))))
 
 (put #'looking-at-p 'ert-explainer #'bazel-mode-test--explain-looking-at-p)
 

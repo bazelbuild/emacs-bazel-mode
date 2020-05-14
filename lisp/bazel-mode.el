@@ -29,6 +29,7 @@
 (require 'compile)
 (require 'ffap)
 (require 'flymake)
+(require 'imenu)
 (require 'json)
 (require 'pcase)
 (require 'python)
@@ -181,7 +182,8 @@ This is the parent mode for the more specific modes
   ;; In BUILD files, we don’t have function definitions.  Instead, treat rules
   ;; (= Python statements) as functions.
   (setq-local beginning-of-defun-function #'python-nav-beginning-of-statement)
-  (setq-local end-of-defun-function #'python-nav-end-of-statement))
+  (setq-local end-of-defun-function #'python-nav-end-of-statement)
+  (setq-local imenu-create-index-function #'bazel-mode-create-index))
 
 ;;;###autoload
 (add-to-list 'auto-mode-alist
@@ -195,7 +197,8 @@ This is the parent mode for the more specific modes
   ;; In WORKSPACE files, we don’t have function definitions.  Instead, treat
   ;; rules (= Python statements) as functions.
   (setq-local beginning-of-defun-function #'python-nav-beginning-of-statement)
-  (setq-local end-of-defun-function #'python-nav-end-of-statement))
+  (setq-local end-of-defun-function #'python-nav-end-of-statement)
+  (setq-local imenu-create-index-function #'bazel-mode-create-index))
 
 ;;;###autoload
 (add-to-list 'auto-mode-alist
@@ -210,7 +213,9 @@ This is the parent mode for the more specific modes
   ;; In Starlark files, we do have Python-like function definitions, so use the
   ;; Python commands to navigate.
   (setq-local beginning-of-defun-function #'python-nav-beginning-of-defun)
-  (setq-local end-of-defun-function #'python-nav-end-of-defun))
+  (setq-local end-of-defun-function #'python-nav-end-of-defun)
+  (setq-local imenu-extract-index-name-function
+              #'bazel-mode-extract-function-name))
 
 ;;;###autoload
 (add-to-list 'auto-mode-alist
@@ -629,6 +634,46 @@ the message type, as in ‘compilation-error-regexp-alist’."
 (bazel-mode--add-compilation-error-regexp bazel-mode-info "INFO" 0)
 (bazel-mode--add-compilation-error-regexp bazel-mode-warning "WARNING" 1)
 (bazel-mode--add-compilation-error-regexp bazel-mode-error "ERROR" 2)
+
+;;;; Imenu support
+
+(defun bazel-mode-create-index ()
+  "Return an Imenu index for the rules in the current buffer.
+This function is useful as ‘imenu-create-index-function’ for
+‘bazel-build-mode’ and ‘bazel-workspace-mode’.  See Info node
+‘(elisp) Imenu’ for details."
+  (save-excursion
+    (save-restriction
+      (widen)
+      (goto-char (point-min))
+      (let ((index ()))
+        ;; Heuristic: We search for “name” attributes as they would show in
+        ;; typical BUILD files.  That’s not 100% correct, but doesn’t rely on
+        ;; external processes and should work fine in common cases.
+        (while (re-search-forward
+                ;; The target pattern isn’t the same as
+                ;; https://docs.bazel.build/versions/3.1.0/build-ref.html#name
+                ;; (we don’t allow quotation marks in target names), but should
+                ;; be good enough here.
+                (rx bol (* blank) "name" (* blank) ?= (* blank)
+                    (group (any ?\" ?'))
+                    (group (+ (any "a-z" "A-Z" "0-9"
+                                   ?- "!%@^_` #$&()*+,;<=>?[]{|}~/.")))
+                    (backref 1))
+                nil t)
+          (let ((name (match-string-no-properties 2))
+                (pos (save-excursion
+                       (python-nav-beginning-of-statement)
+                       (if imenu-use-markers (point-marker) (point)))))
+            (push (cons name pos) index)))
+        (nreverse index)))))
+
+(defun bazel-mode-extract-function-name ()
+  "Return the name of the Starlark function at point.
+Return nil if no name was found.  This function is useful as
+‘imenu-extract-index-name-function’ for ‘bazel-starlark-mode’."
+  (and (looking-at python-nav-beginning-of-defun-regexp)
+       (match-string-no-properties 1)))
 
 ;;;; Utilities
 
