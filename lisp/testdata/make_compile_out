@@ -1,0 +1,51 @@
+#!/bin/bash
+
+# Copyright 2020 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Run this script to regenerate compile.out.
+
+set -eu
+
+# Bazel formats output differently when invoked from Emacs.
+export INSIDE_EMACS='26.1,compile'
+
+workspace="$(bazel info workspace)" || exit
+testdata="${workspace:?}/lisp/testdata"
+
+dir="$(mktemp --directory)" || exit
+trap 'rm --recursive --force -- "${dir}"' EXIT
+
+# Set up a basic workspace layout in the temporary directory.
+cp --no-target-directory -- "${testdata:?}/test.WORKSPACE" "${dir:?}/WORKSPACE"
+mkdir -- "${dir:?}/package" || exit
+cp --no-target-directory -- \
+  "${testdata:?}/compile.BUILD" "${dir:?}/package/BUILD"
+cp --target-directory="${dir:?}/package" -- "${testdata:?}/test.cc"
+
+execroot="$(cd "${dir:?}" && bazel --bazelrc=/dev/null info execution_root)"
+
+# We explicitly compile with the current directory set to a subdirectory to
+# ensure that workspace-relative filenames still work as expected.  Invert the
+# exit status of “bazel build” because we expect it to fail.
+out="$(cd "${dir:?}/package" && ! bazel --bazelrc=/dev/null build //... 2>&1)"
+
+# Replace the arbitrary temporary directory in the output with placeholders.
+out="${out//${dir}/%WORKSPACE%}"
+
+# The execution root is somewhere else, but since we only access source files,
+# we can virtually merge it with the workspace root.
+out="${out//${execroot}/%WORKSPACE%}"
+
+echo "${out:?}" > "${testdata:?}/compile.out"

@@ -26,6 +26,7 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'compile)
 (require 'ffap)
 (require 'flymake)
 (require 'json)
@@ -596,6 +597,38 @@ This gets added to ‘ffap-alist’."
              ;; error.
              (file-missing nil))))
       (locate-file filename (cons main-root external-roots)))))
+
+;;;; Compilation support
+
+;; Add entries to ‘compilation-error-regexp-alist’.  Bazel errors are of the
+;; form “SEVERITY: FILE:LINE:COLUMN: MESSAGE.”  We restrict the filename to the
+;; most common characters to avoid matching too much.  In particular, Bazel
+;; doesn’t allow spaces in filenames
+;; (https://github.com/bazelbuild/bazel/issues/167), so we don’t have to look
+;; for spaces here.
+
+(eval-when-compile
+  (defmacro bazel-mode--add-compilation-error-regexp (name prefix type)
+    "Add a new entry NAME to ‘compilation-error-regexp-alist’.
+PREFIX is a literal string specifying the line prefix.  TYPE is
+the message type, as in ‘compilation-error-regexp-alist’."
+    (declare (debug nil) (indent 0))
+    (cl-check-type name symbol)
+    (cl-check-type prefix string)
+    (cl-check-type type natnum)
+    (let ((regexp (rx-to-string
+                   `(seq bol ,prefix ": "
+                         (group (+ (any "/._-" alnum)) "/BUILD" (? ".bazel")) ?:
+                         (group (+ digit)) ?: (group (+ digit)) ": ")
+                   :no-group)))
+      `(progn
+         (add-to-list 'compilation-error-regexp-alist ',name)
+         (add-to-list 'compilation-error-regexp-alist-alist
+                      (list ',name ,regexp 1 2 3 ,type))))))
+
+(bazel-mode--add-compilation-error-regexp bazel-mode-info "INFO" 0)
+(bazel-mode--add-compilation-error-regexp bazel-mode-warning "WARNING" 1)
+(bazel-mode--add-compilation-error-regexp bazel-mode-error "ERROR" 2)
 
 ;;;; Utilities
 
