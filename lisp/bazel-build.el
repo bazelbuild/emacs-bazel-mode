@@ -1,5 +1,5 @@
 ;;; bazel-build.el --- Emacs utilities for using Bazel -*- lexical-binding: t; -*-
-;;
+
 ;; Copyright (C) 2018 Google LLC
 ;; Licensed under the Apache License, Version 2.0 (the "License");
 ;; you may not use this file except in compliance with the License.
@@ -12,16 +12,16 @@
 ;; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 ;; See the License for the specific language governing permissions and
 ;; limitations under the License.
-;;
+
 ;;; Commentary:
-;;
+
 ;; This package provides commands to build and run code using Bazel.
 ;; It defines interactive commands which perform completion of available Bazel
 ;; targets:
 ;;   - `bazel-build'
 ;;   - `bazel-run'
 ;;   - `bazel-test'
-;;
+
 ;;; Code:
 
 (require 'bazel-util)

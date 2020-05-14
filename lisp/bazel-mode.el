@@ -17,12 +17,12 @@
 ;; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 ;; See the License for the specific language governing permissions and
 ;; limitations under the License.
-;;
+
 ;;; Commentary:
-;;
+
 ;; This package provides Emacs bazel-mode, a major mode for editing Bazel
 ;; BUILD and WORKSPACE files.
-;;
+
 ;;; Code:
 
 (require 'cl-lib)
@@ -216,7 +216,7 @@ This is the parent mode for the more specific modes
              ;; https://docs.bazel.build/versions/3.0.0/skylark/concepts.html#getting-started
              (cons (rx ?/ (+ nonl) ".bzl" eos) #'bazel-starlark-mode))
 
-;;; Flymake support using Buildifier
+;;;; Flymake support using Buildifier
 
 (defvar-local bazel-mode--flymake-process nil
   "Current Buildifier process for this buffer.
@@ -366,7 +366,7 @@ https://github.com/bazelbuild/buildtools/blob/master/buildifier/README.md#file-d
                      (gethash "category" warning)
                      (gethash "url" warning)))))
 
-;;; XRef backend
+;;;; XRef backend
 
 ;; This backend is optimized for speed, not correctness.  This means that we
 ;; use heuristics to find BUILD files and targets.  In particular, we assume
@@ -597,7 +597,7 @@ This gets added to ‘ffap-alist’."
              (file-missing nil))))
       (locate-file filename (cons main-root external-roots)))))
 
-;;; Utilities
+;;;; Utilities
 
 (defun bazel-mode--external-workspace (workspace-name this-workspace-root)
   "Return the workspace root of an external workspace.
