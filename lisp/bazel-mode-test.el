@@ -23,6 +23,7 @@
 (require 'bazel-mode)
 
 (require 'cl-lib)
+(require 'compile)
 (require 'eieio)
 (require 'ert)
 (require 'ffap)
@@ -249,5 +250,74 @@ the rule."
     (search-forward "bazel-mode.el")
     (end-of-defun)
     (should (looking-back (rx "\n)\n") nil))))
+
+(ert-deftest bazel-mode/compile ()
+  "Check that \\[next-error] jumps to the correct places."
+  (bazel-mode-test--with-temp-directory dir
+    (copy-file
+     (expand-file-name "testdata/test.WORKSPACE" bazel-mode-test--directory)
+     (expand-file-name "WORKSPACE" dir))
+    (make-directory (expand-file-name "package" dir))
+    (copy-file
+     (expand-file-name "testdata/compile.BUILD" bazel-mode-test--directory)
+     (expand-file-name "package/BUILD" dir))
+    (copy-file
+     (expand-file-name "testdata/test.cc" bazel-mode-test--directory)
+     (expand-file-name "package/test.cc" dir))
+    (with-temp-buffer
+      (let* ((file nil) (line nil)
+             (next-error-move-function
+              (lambda (_from to)
+                (goto-char to)
+                (setq file buffer-file-name
+                      line (buffer-substring-no-properties
+                            (line-beginning-position) (line-end-position)))))
+             (case-fold-search nil)
+             (compilation-skip-to-next-location nil))
+        (insert-file-contents
+         (expand-file-name "testdata/compile.out" bazel-mode-test--directory))
+        ;; Replace the %WORKSPACE% placeholder added by
+        ;; testdata/make_compile_out by our temporary root.
+        (goto-char (point-min))
+        (while (search-forward "%WORKSPACE%" nil t)
+          (replace-match (file-name-unquote dir) :fixedcase :literal))
+        (goto-char (point-min))
+        (compilation-minor-mode)
+        (ert-info ("Deprecation warning")
+          (compilation-next-error 1)
+          (should (looking-at-p
+                   (rx bol "WARNING: " (+ nonl) "/package/BUILD:15:1: target "
+                       "'//package:test' is deprecated: Deprecated!" eol)))
+          (compile-goto-error)
+          (should (equal file (file-name-unquote
+                               (expand-file-name "package/BUILD" dir))))
+          (should (equal line "cc_library(")))
+        (ert-info ("Target failure")
+          (compilation-next-error 1)
+          (should (looking-at-p
+                   (rx bol "ERROR: " (+ nonl) "/package/BUILD:15:1: "
+                       "C++ compilation")))
+          (compile-goto-error)
+          (should (equal file (file-name-unquote
+                               (expand-file-name "package/BUILD" dir))))
+          (should (equal line "cc_library(")))
+        (ert-info ("Compiler error")
+          (compilation-next-error 1)
+          (compile-goto-error)
+          (should (equal file (file-name-unquote
+                               (expand-file-name "package/test.cc" dir))))
+          (should (equal line "UnknownType foo;")))
+        (ert-info ("No more errors")
+          (should-error (compilation-next-error 1)))))))
+
+(put #'looking-at-p 'ert-explainer #'bazel-mode-test--explain-looking-at-p)
+
+(defun bazel-mode-test--explain-looking-at-p (regexp)
+  "ERT explainer for ‘looking-at-p’.
+See Info node ‘(ert) Defining Explanation Functions’.  REGEXP is
+the expected regular expression."
+  (unless (looking-at-p regexp)
+    `(rest-of-line ,(buffer-substring-no-properties
+                     (point) (line-end-position)))))
 
 ;;; bazel-mode-test.el ends here

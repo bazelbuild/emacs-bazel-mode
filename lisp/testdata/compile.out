@@ -1,0 +1,22 @@
+Loading: 
+Loading: 0 packages loaded
+WARNING: %WORKSPACE%/package/BUILD:15:1: target '//package:test' is deprecated: Deprecated!
+Analyzing: target //package:test (1 packages loaded, 0 targets configured)
+Analyzing: target //package:test (11 packages loaded, 18 targets configured)
+INFO: Analyzed target //package:test (14 packages loaded, 47 targets configured).
+INFO: Found 1 target...
+bazel: Entering directory `%WORKSPACE%/'
+[0 / 6] [Prepa] Writing file package/libtest.a-2.params
+ERROR: %WORKSPACE%/package/BUILD:15:1: C++ compilation of rule '//package:test' failed (Exit 1) gcc failed: error executing command /usr/bin/gcc -U_FORTIFY_SOURCE -fstack-protector -Wall -Wunused-but-set-parameter -Wno-free-nonheap-object -fno-omit-frame-pointer '-std=c++0x' -MD -MF ... (remaining 16 argument(s) skipped)
+
+Use --sandbox_debug to see verbose messages from the sandbox
+package/test.cc:15:1: error: 'UnknownType' does not name a type
+   15 | UnknownType foo;
+      | ^~~~~~~~~~~
+bazel: Leaving directory `%WORKSPACE%/'
+Target //package:test failed to build
+Use --verbose_failures to see the command lines of failed build steps.
+INFO: Elapsed time: 1.769s, Critical Path: 0.09s
+INFO: 0 processes.
+FAILED: Build did NOT complete successfully
+FAILED: Build did NOT complete successfully
