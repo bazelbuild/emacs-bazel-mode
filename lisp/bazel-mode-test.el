@@ -29,6 +29,7 @@
 (require 'ffap)
 (require 'imenu)
 (require 'rx)
+(require 'speedbar)
 (require 'xref)
 
 (defconst bazel-mode-test--directory
@@ -320,6 +321,14 @@ the rule."
     (let ((imenu-use-markers nil))
       (should (equal (funcall imenu-create-index-function)
                      '(("lib" . 577) ("bin" . 761)))))))
+
+(ert-deftest bazel-mode/speedbar ()
+  "Check that \\[speedbar] detects BUILD files."
+  (with-temp-buffer
+    (speedbar-default-directory-list bazel-mode-test--directory 0)
+    (goto-char (point-min))
+    (let ((case-fold-search nil))
+      (search-forward "BUILD"))))
 
 (put #'looking-at-p 'ert-explainer #'bazel-mode-test--explain-looking-at-p)
 

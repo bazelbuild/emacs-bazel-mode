@@ -675,6 +675,13 @@ Return nil if no name was found.  This function is useful as
   (and (looking-at python-nav-beginning-of-defun-regexp)
        (match-string-no-properties 1)))
 
+;;;; Speedbar
+
+(with-eval-after-load 'speedbar
+  (speedbar-add-supported-extension (rx "BUILD" (? ".bazel"))))
+
+(declare-function speedbar-add-supported-extension "speedbar" (extension))
+
 ;;;; Utilities
 
 (defun bazel-mode--external-workspace (workspace-name this-workspace-root)
