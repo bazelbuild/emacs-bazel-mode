@@ -229,4 +229,25 @@ that buffer once BODY finishes."
       (fill-paragraph)
       (should (equal (buffer-string) before)))))
 
+(ert-deftest bazel-build-mode/beginning-of-defun ()
+  "Check that ‘beginning-of-defun’ in BUILD buffers moves to the
+beginning of the rule."
+  (with-temp-buffer
+    (insert-file-contents (expand-file-name "BUILD" bazel-mode-test--directory))
+    (bazel-build-mode)
+    (search-forward "bazel-mode.el")
+    (beginning-of-defun)
+    (should (looking-at-p (rx bol "elisp_library(" ?\n
+                              "    name = \"bazel_mode\",")))))
+
+(ert-deftest bazel-build-mode/end-of-defun ()
+  "Check that ‘end-of-defun’ in BUILD buffers moves to the end of
+the rule."
+  (with-temp-buffer
+    (insert-file-contents (expand-file-name "BUILD" bazel-mode-test--directory))
+    (bazel-build-mode)
+    (search-forward "bazel-mode.el")
+    (end-of-defun)
+    (should (looking-back (rx "\n)\n") nil))))
+
 ;;; bazel-mode-test.el ends here

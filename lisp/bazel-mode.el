@@ -160,8 +160,6 @@ This is the parent mode for the more specific modes
   (setq-local indent-line-function #'python-indent-line-function)
   (setq-local indent-region-function #'python-indent-region)
   (setq-local electric-indent-inhibit t)
-  (setq-local beginning-of-defun-function #'python-nav-beginning-of-defun)
-  (setq-local end-of-defun-function #'python-nav-end-of-defun)
   ;; “keep sorted” is a magic comment that tells Buildifier to keep a list
   ;; sorted.  We treat it as a separate paragraph for filling.
   (setq-local paragraph-start
@@ -178,7 +176,11 @@ This is the parent mode for the more specific modes
 ;;;###autoload
 (define-derived-mode bazel-build-mode bazel-mode "Bazel BUILD"
   "Major mode for editing Bazel BUILD files."
-  (setq bazel-mode--buildifier-type 'build))
+  (setq bazel-mode--buildifier-type 'build)
+  ;; In BUILD files, we don’t have function definitions.  Instead, treat rules
+  ;; (= Python statements) as functions.
+  (setq-local beginning-of-defun-function #'python-nav-beginning-of-statement)
+  (setq-local end-of-defun-function #'python-nav-end-of-statement))
 
 ;;;###autoload
 (add-to-list 'auto-mode-alist
@@ -188,7 +190,11 @@ This is the parent mode for the more specific modes
 ;;;###autoload
 (define-derived-mode bazel-workspace-mode bazel-mode "Bazel WORKSPACE"
   "Major mode for editing Bazel WORKSPACE files."
-  (setq bazel-mode--buildifier-type 'workspace))
+  (setq bazel-mode--buildifier-type 'workspace)
+  ;; In WORKSPACE files, we don’t have function definitions.  Instead, treat
+  ;; rules (= Python statements) as functions.
+  (setq-local beginning-of-defun-function #'python-nav-beginning-of-statement)
+  (setq-local end-of-defun-function #'python-nav-end-of-statement))
 
 ;;;###autoload
 (add-to-list 'auto-mode-alist
@@ -199,7 +205,11 @@ This is the parent mode for the more specific modes
 ;;;###autoload
 (define-derived-mode bazel-starlark-mode bazel-mode "Starlark"
   "Major mode for editing Bazel Starlark files."
-  (setq bazel-mode--buildifier-type 'bzl))
+  (setq bazel-mode--buildifier-type 'bzl)
+  ;; In Starlark files, we do have Python-like function definitions, so use the
+  ;; Python commands to navigate.
+  (setq-local beginning-of-defun-function #'python-nav-beginning-of-defun)
+  (setq-local end-of-defun-function #'python-nav-end-of-defun))
 
 ;;;###autoload
 (add-to-list 'auto-mode-alist
