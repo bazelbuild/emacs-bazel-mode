@@ -26,10 +26,13 @@
 (require 'compile)
 (require 'eieio)
 (require 'ert)
+(require 'faces)
 (require 'ffap)
+(require 'font-lock)
 (require 'imenu)
 (require 'rx)
 (require 'speedbar)
+(require 'syntax)
 (require 'xref)
 
 (defconst bazel-mode-test--directory
@@ -329,6 +332,30 @@ the rule."
     (goto-char (point-min))
     (let ((case-fold-search nil))
       (search-forward "BUILD"))))
+
+(ert-deftest bazel-mode/triple-quoted-strings ()
+  "Check that triple-quoted strings work as expected."
+  ;; See https://docs.bazel.build/versions/3.1.0/skylark/lib/string.html.
+  (with-temp-buffer
+    (bazel-build-mode)
+    (insert "\"\"\"\n\"foo\"\n\"\"\"\n")
+    (font-lock-flush)
+    (font-lock-ensure)
+    (goto-char (point-min))
+    (while (not (eobp))
+      (ert-info ((format "at position %d; rest of buffer is %S"
+                         (point)
+                         (buffer-substring-no-properties (point) (point-max))))
+        (cl-destructuring-bind
+            (depth _ _ in-string-p in-comment-p _ _ _ string-start . rest)
+            (syntax-ppss)
+          (should (eq depth 0))
+          (when (< 4 (point) (- (point-max) 5)) (should in-string-p))
+          (should-not in-comment-p)
+          (should (eq string-start (and in-string-p 1))))
+        (should (eq (face-at-point)
+                    (and (< (point) (1- (point-max))) 'font-lock-string-face)))
+        (forward-char)))))
 
 (put #'looking-at-p 'ert-explainer #'bazel-mode-test--explain-looking-at-p)
 
