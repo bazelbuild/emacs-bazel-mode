@@ -35,6 +35,7 @@
 (require 'python)
 (require 'rx)
 (require 'subr-x)
+(require 'syntax)
 (require 'xref)
 
 (require 'bazel-util)
@@ -159,6 +160,7 @@ This is the parent mode for the more specific modes
   (setq-local parse-sexp-ignore-comments t)
   (setq-local forward-sexp-function #'python-nav-forward-sexp)
   (setq-local font-lock-defaults (list bazel-mode--font-lock-keywords))
+  (setq-local syntax-propertize-function python-syntax-propertize-function)
   (setq-local indent-line-function #'python-indent-line-function)
   (setq-local indent-region-function #'python-indent-region)
   (setq-local electric-indent-inhibit t)
@@ -572,8 +574,8 @@ rule names that start with PREFIX."
         (while (re-search-forward
                 (rx-to-string
                  `(seq bol (* blank) "name" (* blank) ?= (* blank)
-                       (group (syntax ?\"))
-                       (group ,prefix (* (not (syntax ?\"))))
+                       (group (any ?\" ?'))
+                       (group ,prefix (* (not (any ?\" ?' ?\n))))
                        (backref 1))
                  :no-group)
                 nil t)
