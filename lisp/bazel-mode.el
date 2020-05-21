@@ -191,6 +191,7 @@ This is the parent mode for the more specific modes
 (add-to-list 'auto-mode-alist
              ;; https://docs.bazel.build/versions/3.0.0/build-ref.html#packages
              (cons (rx ?/ (or "BUILD" "BUILD.bazel") eos) #'bazel-build-mode))
+(add-to-list 'auto-mode-alist '("\\.BUILD\\'" . bazel-build-mode))
 
 ;;;###autoload
 (define-derived-mode bazel-workspace-mode bazel-mode "Bazel WORKSPACE"
