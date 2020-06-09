@@ -52,6 +52,15 @@
   (compile
    (mapconcat #'shell-quote-argument (list bazel-command command target) " ")))
 
+(defun bazel-build--run-bazel-command-from-root (command target)
+  "Launch an interactive compilation on the target of the current buffer."
+  (let ((root-dir (or (bazel-util-workspace-root
+                       (or (buffer-file-name)
+                           (and dired-directory (directory-file-name dired-directory))))
+                      (user-error "Could not find workspace."))))
+    (compile (format "cd %s && %s %s %s" root-dir
+                     bazel-command command target))))
+
 (defun bazel-build--call-process (&rest args)
   "Run a bazel subcommand. Return stdout as string."
   ;; Note: The current working directory of the subprocess is set to the current
@@ -98,7 +107,7 @@
       (bazel-build--target-for-directory file-or-dir)
     (bazel-build--target-for-file file-or-dir)))
 
-(defun bazel-build--read-target (&optional filename)
+(defun bazel-build--read-target (prompt &optional filename)
   "Read a target name for the given or current file or dired directory name."
   ;; Bazel query invocation can be slow, issue a message.
   (message "Generating completions...")
@@ -115,7 +124,7 @@
                     (buffer-file-name)
                     ;; Open on a dired directory.
                     (and dired-directory (directory-file-name dired-directory))))))
-    (completing-read "Target: " targets nil nil (car targets))))
+    (completing-read (format "Target for %s: " prompt) targets nil nil (car targets))))
 
 ;; TODO(blais): There may be a cl equivalent for this.
 (defun string-rstrip (str)
