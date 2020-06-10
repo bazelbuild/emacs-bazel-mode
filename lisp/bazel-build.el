@@ -28,17 +28,17 @@
 
 (defun bazel-build (target)
   "Build a Bazel TARGET."
-  (interactive (list (bazel-build--read-target "bazel build ")))
+  (interactive (list (bazel-build--read-target "bazel build")))
   (bazel-build--run-bazel-command "build" target))
 
 (defun bazel-run (target)
   "Build and run a Bazel TARGET."
-  (interactive (list (bazel-build--read-target "bazel run ")))
+  (interactive (list (bazel-build--read-target "bazel run")))
   (bazel-build--run-bazel-command "run" target))
 
 (defun bazel-test (target)
   "Build and run a Bazel test TARGET."
-  (interactive (list (bazel-build--read-target "bazel test ")))
+  (interactive (list (bazel-build--read-target "bazel test")))
   (bazel-build--run-bazel-command "test" target))
 
 (defvar bazel-command "bazel"
@@ -47,19 +47,21 @@
 (defvar bazel-query-args '("query" "--noblock_for_lock")
   "Bazel query subcommand and arguments.")
 
+(defvar bazel-run-commands-from-root nil
+  "A flag indicating to run commands from the workspace root.")
+
 (defun bazel-build--run-bazel-command (command target)
   "Run Bazel tool with given COMMAND, e.g. build or run, on the given TARGET."
-  (compile
-   (mapconcat #'shell-quote-argument (list bazel-command command target) " ")))
-
-(defun bazel-build--run-bazel-command-from-root (command target)
-  "Launch an interactive compilation on the target of the current buffer."
-  (let ((root-dir (or (bazel-util-workspace-root
-                       (or (buffer-file-name)
-                           (and dired-directory (directory-file-name dired-directory))))
-                      (user-error "Could not find workspace."))))
-    (compile (format "cd %s && %s %s %s" root-dir
-                     bazel-command command target))))
+  (let ((command
+         (if bazel-run-commands-from-root
+             (let ((root-dir (or (bazel-util-workspace-root
+                                  (or (buffer-file-name)
+                                      (and dired-directory (directory-file-name dired-directory))))
+                                 (user-error "Could not find workspace."))))
+               (format "cd %s && %s %s %s" root-dir
+                       bazel-command command target))
+           (mapconcat #'shell-quote-argument (list bazel-command command target) " "))))
+    (compile command)))
 
 (defun bazel-build--call-process (&rest args)
   "Run a bazel subcommand. Return stdout as string."
