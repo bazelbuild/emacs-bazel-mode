@@ -64,7 +64,7 @@
            (mapconcat #'shell-quote-argument (list bazel-command command target) " "))))
     (compile command)))
 
-(defun bazel-build--call-process (&rest args)
+(defun bazel-build--process (&rest args)
   "Run a bazel subcommand. Return stdout as string."
   ;; Note: The current working directory of the subprocess is set to the current
   ;; buffer's value of default-directory.
@@ -73,7 +73,7 @@
         (string-trim-right
          (with-output-to-string
            (let ((status
-                  (apply #'call-process bazel-command
+                  (apply #'process-file bazel-command
                          nil (list standard-output stderr-file) nil args)))
              (if (/= status 0)
                  (with-temp-buffer
@@ -84,7 +84,7 @@
 
 (defun bazel-query (&rest args)
   "Run a bazel query subcommand. Return stdout as string."
-  (apply #'bazel-build--call-process (append bazel-query-args args)))
+  (apply #'bazel-build--process (append bazel-query-args args)))
 
 (defun bazel-build--target-for-file (filename)
   "Get the list of targets which includes the given filename."
