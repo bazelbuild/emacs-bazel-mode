@@ -25,6 +25,7 @@
 ;;; Code:
 
 (require 'bazel-util)
+(require 'subr-x)
 
 (defun bazel-build (target)
   "Build a Bazel TARGET."
@@ -69,7 +70,7 @@
   ;; buffer's value of default-directory.
   (let ((stderr-file (make-temp-file "bazel-stderr")))
     (unwind-protect
-        (string-rstrip
+        (string-trim-right
          (with-output-to-string
            (let ((status
                   (apply #'call-process bazel-command
@@ -127,12 +128,6 @@
                     ;; Open on a dired directory.
                     (and dired-directory (directory-file-name dired-directory))))))
     (completing-read (format "Target for %s: " prompt) targets nil nil (car targets))))
-
-;; TODO(blais): There may be a cl equivalent for this.
-(defun string-rstrip (str)
-  "Strips the whitespace at the end of string STR."
-  (string-match "[ \t\n]*\\'" str)
-  (substring str 0 (match-beginning 0)))
 
 (provide 'bazel-build)
 
