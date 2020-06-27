@@ -27,8 +27,7 @@
 If FILE-NAME is not in a Bazel workspace, return nil.  Otherwise,
 the return value is a directory name."
   (cl-check-type file-name string)
-  (let ((result (or (locate-dominating-file file-name "WORKSPACE")
-                    (locate-dominating-file file-name "WORKSPACE.bazel"))))
+  (let ((result (locate-dominating-file file-name "WORKSPACE")))
     (and result (file-name-as-directory result))))
 
 (defun bazel-util-package-name (file-name workspace-root)
