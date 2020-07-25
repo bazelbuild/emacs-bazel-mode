@@ -102,7 +102,7 @@
          (results (split-string
                    (bazel-query "kind('.*rule', ':all')")))
          (package (car (split-string (car results) ":"))))
-    (append (list (concat package ":all")) results)))
+    (cons (concat package ":all") results)))
 
 (defun bazel-build--target-for-directory-or-filename (file-or-dir)
   "Get the list of targets under the FILE-OR-DIR, a filename or a directory name."
