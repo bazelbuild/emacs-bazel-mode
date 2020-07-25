@@ -100,7 +100,7 @@
   "Get the list of targets under the given directory name."
   (let* ((default-directory dirname)
          (results (split-string
-                   (bazel-query "kind('.*rule', ':*')")))
+                   (bazel-query "kind('.*rule', ':all')")))
          (package (car (split-string (car results) ":"))))
     (append (list (concat package ":all")) results)))
 
