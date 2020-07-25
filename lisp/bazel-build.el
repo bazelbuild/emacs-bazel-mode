@@ -121,7 +121,9 @@
                     ;; Open on a BUILD file.
                     (let* ((file-name (buffer-file-name)))
                       (when (and file-name
-                                 (string= (file-name-nondirectory file-name) "BUILD"))
+                                 (let ((basename (file-name-nondirectory file-name)))
+                                   (or (string= basename "BUILD")
+                                       (string= basename "BUILD.bazel"))))
                         (directory-file-name (file-name-directory file-name))))
                     ;; The buffer filename.
                     (buffer-file-name)
