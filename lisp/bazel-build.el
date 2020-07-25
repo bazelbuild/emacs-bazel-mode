@@ -58,14 +58,14 @@
              (let ((root-dir (or (bazel-util-workspace-root
                                   (or (buffer-file-name)
                                       (and dired-directory (directory-file-name dired-directory))))
-                                 (user-error "Could not find workspace."))))
+                                 (user-error "Could not find workspace"))))
                (format "cd %s && %s %s %s" root-dir
                        bazel-command command target))
            (mapconcat #'shell-quote-argument (list bazel-command command target) " "))))
     (compile command)))
 
 (defun bazel-build--process (&rest args)
-  "Run a bazel subcommand. Return stdout as string."
+  "Run a bazel subcommand with arguments ARGS. Return stdout as string."
   ;; Note: The current working directory of the subprocess is set to the current
   ;; buffer's value of default-directory.
   (let ((stderr-file (make-temp-file "bazel-stderr")))
@@ -83,11 +83,11 @@
 	  (delete-file stderr-file)))))
 
 (defun bazel-query (&rest args)
-  "Run a bazel query subcommand. Return stdout as string."
+  "Run a bazel query subcommand with argument ARGS. Return stdout as string."
   (apply #'bazel-build--process (append bazel-query-args args)))
 
 (defun bazel-build--target-for-file (filename)
-  "Get the list of targets which includes the given filename."
+  "Get the list of targets which includes FILENAME."
   (let* ((default-directory (file-name-directory filename))
          ;; Resolve label for file with bazel query.
          (fullname (bazel-query (file-name-nondirectory filename))))
@@ -97,7 +97,7 @@
       (split-string (bazel-query cmd)))))
 
 (defun bazel-build--target-for-directory (dirname)
-  "Get the list of targets under the given directory name."
+  "Get the list of targets under DIRNAME."
   (let* ((default-directory dirname)
          (results (split-string
                    (bazel-query "kind('.*rule', ':all')")))
@@ -105,13 +105,14 @@
     (append (list (concat package ":all")) results)))
 
 (defun bazel-build--target-for-directory-or-filename (file-or-dir)
-  "Get the list of targets under the given file or directory name."
+  "Get the list of targets under the FILE-OR-DIR, a filename or a directory name."
   (if (file-directory-p file-or-dir)
       (bazel-build--target-for-directory file-or-dir)
     (bazel-build--target-for-file file-or-dir)))
 
 (defun bazel-build--read-target (prompt &optional filename)
-  "Read a target name for the given or current file or dired directory name."
+  "Read a target name for current buffer or dired directory name FILENAME.
+Prompt with PROMPT."
   ;; Bazel query invocation can be slow, issue a message.
   (message "Generating completions...")
   (let* ((targets (bazel-build--target-for-directory-or-filename
