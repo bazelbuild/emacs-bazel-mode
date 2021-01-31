@@ -175,7 +175,8 @@ that buffer once BODY finishes."
                       ;; https://debbugs.gnu.org/cgi/bugreport.cgi?bug=29579.
                       (cl-callf file-name-unquote root)
                       (cl-callf file-name-unquote ref-file))
-                    (push (list identifier (file-relative-name ref-file root))
+                    (push (list (substring-no-properties identifier)
+                                (file-relative-name ref-file root))
                           definitions)))))))
         ;; Test completions.
         (should
