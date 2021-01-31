@@ -96,6 +96,53 @@ we don’t have to start or mock a process."
                                  "[integer-division] "
                                  "(https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md#integer-division)"))))))))
 
+(ert-deftest bazel-mode-flymake ()
+  "Unit test for the ‘bazel-mode-flymake’ Flymake backend."
+  (with-temp-buffer
+    (let ((bazel-mode-buildifier-command
+           (expand-file-name "testdata/fake_buildifier"
+                             bazel-mode-test--directory))
+          (flymake-diagnostic-functions '(bazel-mode-flymake))
+          (warning-minimum-log-level :debug)
+          (diagnostics ()))
+      (skip-unless (file-executable-p bazel-mode-buildifier-command))
+      (insert-file-contents
+       (expand-file-name "testdata/buildifier.bzl" bazel-mode-test--directory))
+      (flymake-mode)
+      (flymake-start)
+      (should (flymake-is-running))
+      (should (equal (flymake-running-backends) '(bazel-mode-flymake)))
+      ;; Wait for the backend to start reporting.
+      (while (not (memq #'bazel-mode-flymake (flymake-reporting-backends)))
+        (sleep-for 0.1))
+      ;; Give the backend some time to report.  This isn’t 100% robust, but
+      ;; should be good enough in typical cases.
+      (sleep-for 1)
+      (dolist (diag (flymake-diagnostics))
+        (ert-info ((prin1-to-string diag))
+          (should (eq (flymake-diagnostic-buffer diag) (current-buffer)))
+          (should (eq (flymake-diagnostic-type diag) :warning))
+          (push (list (buffer-substring-no-properties
+                       (flymake-diagnostic-beg diag)
+                       (flymake-diagnostic-end diag))
+                      (flymake-diagnostic-text diag))
+                diagnostics)))
+      (should (equal diagnostics
+                     `(("def foo(bar):"
+                        ,(concat "The file has no module docstring. "
+                                 "[module-docstring] "
+                                 "(https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md#module-docstring)"))
+                       ("\"\"\" \"\"\""
+                        ,(concat "The docstring for the function \"foo\" "
+                                 "should start with a one-line summary. "
+                                 "[function-docstring-header] "
+                                 "(https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md#function-docstring-header)"))
+                       ("1 / 2"
+                        ,(concat "The \"/\" operator for integer division "
+                                 "is deprecated in favor of \"//\". "
+                                 "[integer-division] "
+                                 "(https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md#integer-division)"))))))))
+
 (defmacro bazel-mode-test--with-temp-directory (name &rest body)
   "Create a new temporary directory.
 Bind the name of the directory to NAME and execute BODY while the
