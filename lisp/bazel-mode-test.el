@@ -340,7 +340,7 @@ the rule."
           (should (looking-at-p
                    (rx bol "WARNING: " (+ nonl) "/package/BUILD:15:1: target "
                        "'//package:test' is deprecated: Deprecated!" eol)))
-          (compile-goto-error)
+          (save-current-buffer (compile-goto-error))
           (should (equal file (file-name-unquote
                                (expand-file-name "package/BUILD" dir))))
           (should (equal line "cc_library(")))
@@ -349,13 +349,13 @@ the rule."
           (should (looking-at-p
                    (rx bol "ERROR: " (+ nonl) "/package/BUILD:15:1: "
                        "C++ compilation")))
-          (compile-goto-error)
+          (save-current-buffer (compile-goto-error))
           (should (equal file (file-name-unquote
                                (expand-file-name "package/BUILD" dir))))
           (should (equal line "cc_library(")))
         (ert-info ("Compiler error")
           (compilation-next-error 1)
-          (compile-goto-error)
+          (save-current-buffer (compile-goto-error))
           (should (equal file (file-name-unquote
                                (expand-file-name "package/test.cc" dir))))
           (should (equal line "UnknownType foo;")))
