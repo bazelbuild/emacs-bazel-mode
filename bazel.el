@@ -906,6 +906,11 @@ Look for an imported file with the given NAME."
   (interactive (list (bazel-build--read-target "test")))
   (bazel-build--run-bazel-command "test" target))
 
+(defun bazel-coverage (target)
+  "Run Bazel test TARGET with coverage instrumentation enabled."
+  (interactive (list (bazel-build--read-target "coverage")))
+  (bazel-build--run-bazel-command "coverage" target))
+
 (defun bazel-build--run-bazel-command (command target)
   "Run Bazel tool with given COMMAND, e.g. build or run, on the given TARGET."
   (compile
