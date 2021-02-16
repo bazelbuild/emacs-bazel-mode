@@ -217,11 +217,10 @@ that buffer once BODY finishes."
                                    (marker-buffer
                                     (xref-location-marker
                                      (xref-item-location def))))))
-                    (when (< emacs-major-version 27)
-                      ;; Work around
-                      ;; https://debbugs.gnu.org/cgi/bugreport.cgi?bug=29579.
-                      (cl-callf file-name-unquote root)
-                      (cl-callf file-name-unquote ref-file))
+                    ;; Work around
+                    ;; https://debbugs.gnu.org/cgi/bugreport.cgi?bug=46219.
+                    (cl-callf file-name-unquote root)
+                    (cl-callf file-name-unquote ref-file)
                     (push (list (substring-no-properties identifier)
                                 (file-relative-name ref-file root))
                           definitions)))))))
