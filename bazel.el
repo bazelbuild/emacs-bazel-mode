@@ -1356,6 +1356,12 @@ the containing workspace.  This function is suitable for
   "Return the external workspace roots of the Bazel workspace PROJECT."
   (bazel--external-workspace-roots (bazel-workspace-root project)))
 
+(cl-defmethod project-ignores ((project bazel-workspace) dir)
+  "Return glob patterns for files to be ignored in a Bazel workspace PROJECT.
+DIR is the Bazel workspace directory to consider."
+  ;; Ignore the convenience symbolic links.
+  (cons "./bazel-*" (cl-call-next-method project dir)))
+
 ;;;; Commands to build and run code using Bazel
 
 (defun bazel-build (target)
