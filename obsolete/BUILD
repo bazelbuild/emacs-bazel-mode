@@ -1,4 +1,4 @@
-# Copyright 2020 Google LLC
+# Copyright 2020, 2021 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,32 +21,35 @@ elisp_library(
     name = "bazel_build",
     srcs = ["bazel-build.el"],
     load_path = ["."],
-    deps = [":bazel_util"],
+    deps = [
+        ":bazel_util",
+        "//:bazel",
+    ],
 )
 
 elisp_library(
     name = "bazel_mode",
     srcs = ["bazel-mode.el"],
     load_path = ["."],
-    deps = [":bazel_util"],
-)
-
-elisp_test(
-    name = "bazel_mode_test",
-    srcs = ["bazel-mode-test.el"],
-    data = ["BUILD"] + glob(["testdata/*"]),
-    deps = [":bazel_mode"],
+    deps = [
+        ":bazel_util",
+        "//:bazel",
+    ],
 )
 
 elisp_library(
     name = "bazelrc_mode",
     srcs = ["bazelrc-mode.el"],
     load_path = ["."],
-    deps = [":bazel_util"],
+    deps = [
+        ":bazel_util",
+        "//:bazel",
+    ],
 )
 
 elisp_library(
     name = "bazel_util",
     srcs = ["bazel-util.el"],
     load_path = ["."],
+    deps = ["//:bazel"],
 )
