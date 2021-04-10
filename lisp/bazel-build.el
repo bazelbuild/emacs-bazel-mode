@@ -26,28 +26,42 @@
 
 (require 'bazel-util)
 
+(defgroup bazel-build nil
+  "Package for editing, building, and running code using Bazel."
+  :link '(url-link "https://bazel.build")
+  :link '(url-link "https://github.com/bazelbuild/emacs-bazel-mode")
+  :group 'languages)
+
+(defcustom bazel-build-bazel-command '("bazel")
+  "Command and arguments that should be used to invoke Bazel."
+  :type '(repeat string)
+  :risky t
+  :group 'bazel-build)
+
 (defun bazel-build (target)
   "Build a Bazel TARGET."
-  (interactive (list (bazel-build--read-target "bazel build ")))
+  (interactive (list (bazel-build--read-target "build")))
   (bazel-build--run-bazel-command "build" target))
 
 (defun bazel-run (target)
   "Build and run a Bazel TARGET."
-  (interactive (list (bazel-build--read-target "bazel run ")))
+  (interactive (list (bazel-build--read-target "run")))
   (bazel-build--run-bazel-command "run" target))
 
 (defun bazel-test (target)
   "Build and run a Bazel test TARGET."
-  (interactive (list (bazel-build--read-target "bazel test ")))
+  (interactive (list (bazel-build--read-target "test")))
   (bazel-build--run-bazel-command "test" target))
 
 (defun bazel-build--run-bazel-command (command target)
   "Run Bazel tool with given COMMAND, e.g. build or run, on the given TARGET."
   (compile
-   (mapconcat #'shell-quote-argument (list "bazel" command target) " ")))
+   (mapconcat #'shell-quote-argument
+              (append bazel-build-bazel-command (list command target)) " ")))
 
-(defun bazel-build--read-target (prompt)
-  "Read a Bazel build target from the minibuffer.  PROMPT is a read-only prompt."
+(defun bazel-build--read-target (command)
+  "Read a Bazel build target from the minibuffer.
+COMMAND is a Bazel command to be included in the minibuffer prompt."
   (let* ((file-name (buffer-file-name))
          (workspace-root
           (or (bazel-util-workspace-root file-name)
@@ -55,7 +69,9 @@
          (package-name
           (or (bazel-util-package-name file-name workspace-root)
               (user-error "Not in a Bazel package.  No BUILD file found")))
-         (initial-input (concat "//" package-name)))
+         (initial-input (concat "//" package-name))
+         (prompt (combine-and-quote-strings
+                  (append bazel-build-bazel-command (list command "")))))
     (read-string prompt initial-input)))
 
 (provide 'bazel-build)
