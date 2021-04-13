@@ -15,4 +15,4 @@
 # limitations under the License.
 
 # Fake some Buildifier output.
-cat -- "${TEST_SRCDIR:?}/${TEST_WORKSPACE:?}/lisp/testdata/buildifier.json"
+cat -- "${TEST_SRCDIR:?}/${TEST_WORKSPACE:?}/testdata/buildifier.json"

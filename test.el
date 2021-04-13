@@ -1,6 +1,6 @@
-;;; bazel-mode-test.el --- unit tests for bazel-mode.el  -*- lexical-binding: t; -*-
+;;; test.el --- unit tests for bazel.el  -*- lexical-binding: t; -*-
 
-;; Copyright 2020 Google LLC
+;; Copyright 2020, 2021 Google LLC
 ;;
 ;; Licensed under the Apache License, Version 2.0 (the "License");
 ;; you may not use this file except in compliance with the License.
@@ -16,11 +16,11 @@
 
 ;;; Commentary:
 
-;; Unit tests for bazel-mode.el.
+;; Unit tests for bazel.el.
 
 ;;; Code:
 
-(require 'bazel-mode)
+(require 'bazel)
 
 (require 'cl-lib)
 (require 'compile)
@@ -37,7 +37,7 @@
 
 (defconst bazel-mode-test--directory
   ;; https://docs.bazel.build/versions/2.2.0/test-encyclopedia.html#initial-conditions.
-  (substitute-in-file-name "$TEST_SRCDIR/$TEST_WORKSPACE/lisp/")
+  (substitute-in-file-name "$TEST_SRCDIR/$TEST_WORKSPACE/")
   "Directory with data dependencies for this package.")
 
 (ert-deftest bazel-mode/indent-after-colon ()
@@ -288,10 +288,10 @@ beginning of the rule."
   (with-temp-buffer
     (insert-file-contents (expand-file-name "BUILD" bazel-mode-test--directory))
     (bazel-build-mode)
-    (search-forward "bazel-mode.el")
+    (search-forward "bazel.el")
     (beginning-of-defun)
     (should (looking-at-p (rx bol "elisp_library(" ?\n
-                              "    name = \"bazel_mode\",")))))
+                              "    name = \"bazel\",")))))
 
 (ert-deftest bazel-build-mode/end-of-defun ()
   "Check that ‘end-of-defun’ in BUILD buffers moves to the end of
@@ -299,7 +299,7 @@ the rule."
   (with-temp-buffer
     (insert-file-contents (expand-file-name "BUILD" bazel-mode-test--directory))
     (bazel-build-mode)
-    (search-forward "bazel-mode.el")
+    (search-forward "bazel.el")
     (end-of-defun)
     (should (looking-back (rx "\n)\n") nil))))
 
@@ -414,4 +414,4 @@ the expected regular expression."
     `(rest-of-line ,(buffer-substring-no-properties
                      (point) (line-end-position)))))
 
-;;; bazel-mode-test.el ends here
+;;; test.el ends here
