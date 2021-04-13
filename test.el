@@ -99,13 +99,13 @@ we don’t have to start or mock a process."
 (ert-deftest bazel-mode-flymake ()
   "Unit test for the ‘bazel-mode-flymake’ Flymake backend."
   (with-temp-buffer
-    (let ((bazel-mode-buildifier-command
+    (let ((bazel-buildifier-command
            (expand-file-name "testdata/fake_buildifier"
                              bazel-mode-test--directory))
           (flymake-diagnostic-functions '(bazel-mode-flymake))
           (warning-minimum-log-level :debug)
           (diagnostics ()))
-      (skip-unless (file-executable-p bazel-mode-buildifier-command))
+      (skip-unless (file-executable-p bazel-buildifier-command))
       (insert-file-contents
        (expand-file-name "testdata/buildifier.bzl" bazel-mode-test--directory))
       (flymake-mode)
