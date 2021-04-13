@@ -603,7 +603,7 @@ rule names that start with PREFIX."
           (push (match-string-no-properties 2) rules)))
       (nreverse rules))))
 
-;;;; ‘find-file-at-point’ support
+;;;; ‘find-file-at-point’ support for ‘bazel-mode’
 
 ;; Since we match every filename, we want to come last.
 (add-to-list 'ffap-alist (cons (rx anything) #'bazel-mode-ffap) :append)
@@ -625,6 +625,27 @@ This gets added to ‘ffap-alist’."
              ;; error.
              (file-missing nil))))
       (locate-file filename (cons main-root external-roots)))))
+
+;;;; ‘find-file-at-point’ support for ‘bazelrc-mode’
+
+(add-to-list 'ffap-string-at-point-mode-alist
+             ;; By default the percent sign isn’t included in the list of
+             ;; allowed filename characters, so this would miss %workspace%
+             ;; names.
+             (list #'bazelrc-mode "-_/.%[:alnum:]" "" ""))
+
+(add-to-list 'ffap-alist (cons #'bazelrc-mode #'bazelrc-ffap))
+
+(defun bazelrc-ffap (name)
+  "Function for ‘ffap-alist’ in ‘bazelrc-mode’.
+Look for an imported file with the given NAME."
+  ;; https://docs.bazel.build/versions/3.0.0/guide.html#imports
+  (pcase name
+    ((rx bos "%workspace%" (+ ?/) (let rest (+ nonl)))
+     (when buffer-file-name
+       (when-let ((workspace (bazel-util-workspace-root buffer-file-name)))
+         (let ((file-name (expand-file-name rest workspace)))
+           (and (file-exists-p file-name) file-name)))))))
 
 ;;;; Compilation support
 
@@ -715,25 +736,6 @@ Return nil if no name was found.  This function is useful as
 (add-to-list 'auto-mode-alist
              ;; https://docs.bazel.build/versions/3.0.0/guide.html#where-are-the-bazelrc-files
              (cons (rx ?/ (or "bazel.bazelrc" ".bazelrc") eos) #'bazelrc-mode))
-
-(add-to-list 'ffap-string-at-point-mode-alist
-             ;; By default the percent sign isn’t included in the list of
-             ;; allowed filename characters, so this would miss %workspace%
-             ;; names.
-             (list #'bazelrc-mode "-_/.%[:alnum:]" "" ""))
-
-(add-to-list 'ffap-alist (cons #'bazelrc-mode #'bazelrc-ffap))
-
-(defun bazelrc-ffap (name)
-  "Function for ‘ffap-alist’ in ‘bazelrc-mode’.
-Look for an imported file with the given NAME."
-  ;; https://docs.bazel.build/versions/3.0.0/guide.html#imports
-  (pcase name
-    ((rx bos "%workspace%" (+ ?/) (let rest (+ nonl)))
-     (when buffer-file-name
-       (when-let ((workspace (bazel-util-workspace-root buffer-file-name)))
-         (let ((file-name (expand-file-name rest workspace)))
-           (and (file-exists-p file-name) file-name)))))))
 
 (font-lock-add-keywords
  #'bazelrc-mode
