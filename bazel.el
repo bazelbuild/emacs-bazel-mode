@@ -52,18 +52,25 @@
 (require 'xref)
 
 (defgroup bazel nil
-  "Major mode for Bazel BUILD files."
+  "Package for editing, building, and running code using Bazel."
+  :link '(url-link "https://bazel.build")
   :link '(url-link "https://github.com/bazelbuild/emacs-bazel-mode")
   :group 'languages)
 
-(defcustom bazel-mode-buildifier-command "buildifier"
+(define-obsolete-variable-alias 'bazel-mode-buildifier-command
+  'bazel-buildifier-command "2021-04-13")
+
+(defcustom bazel-buildifier-command "buildifier"
   "Filename of buildifier executable."
   :type 'file
   :group 'bazel
   :link '(url-link
           "https://github.com/bazelbuild/buildtools/tree/master/buildifier"))
 
-(defcustom bazel-mode-buildifier-before-save nil
+(define-obsolete-variable-alias 'bazel-mode-buildifier-before-save
+  'bazel-buildififer-before-save "2021-04-13")
+
+(defcustom bazel-buildifier-before-save nil
   "Specifies whether to run buildifer in `before-save-hook'."
   :type 'boolean
   :group 'bazel
@@ -78,7 +85,7 @@ flag.  See
 https://github.com/bazelbuild/buildtools/blob/2.2.0/buildifier/utils/flags.go#L11.
 If nil, don’t pass a -type flag to Buildifier.")
 
-(defun bazel-mode-buildifier ()
+(defun bazel-buildifier ()
   "Format current buffer using buildifier."
   (interactive "*")
   (let ((input-buffer (current-buffer))
@@ -110,10 +117,13 @@ If nil, don’t pass a -type flag to Buildifier.")
       (delete-file buildifier-input-file)
       (delete-file buildifier-error-file))))
 
+(define-obsolete-function-alias 'bazel-mode-buildifier
+  #'bazel-buildifier "2021-04-13")
+
 (defun bazel-mode--buildifier-before-save-hook ()
   "Run buildifer in `before-save-hook'."
   (when bazel-mode-buildifier-before-save
-    (bazel-mode-buildifier)))
+    (bazel-buildifier)))
 
 (defconst bazel-mode--font-lock-keywords
   `(
@@ -879,17 +889,14 @@ Look for an imported file with the given NAME."
 
 ;;;; Commands to build and run code using Bazel
 
-(defgroup bazel-build nil
-  "Package for editing, building, and running code using Bazel."
-  :link '(url-link "https://bazel.build")
-  :link '(url-link "https://github.com/bazelbuild/emacs-bazel-mode")
-  :group 'languages)
+(define-obsolete-variable-alias 'bazel-build-bazel-command
+  'bazel-command "2021-04-13")
 
-(defcustom bazel-build-bazel-command '("bazel")
+(defcustom bazel-command '("bazel")
   "Command and arguments that should be used to invoke Bazel."
   :type '(repeat string)
   :risky t
-  :group 'bazel-build)
+  :group 'bazel)
 
 (defun bazel-build (target)
   "Build a Bazel TARGET."
