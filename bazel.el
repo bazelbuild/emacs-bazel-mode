@@ -57,6 +57,15 @@
   :link '(url-link "https://github.com/bazelbuild/emacs-bazel-mode")
   :group 'languages)
 
+(define-obsolete-variable-alias 'bazel-build-bazel-command
+  'bazel-command "2021-04-13")
+
+(defcustom bazel-command '("bazel")
+  "Command and arguments that should be used to invoke Bazel."
+  :type '(repeat string)
+  :risky t
+  :group 'bazel)
+
 (define-obsolete-variable-alias 'bazel-mode-buildifier-command
   'bazel-buildifier-command "2021-04-13")
 
@@ -743,15 +752,6 @@ Return nil if no name was found.  This function is useful as
  (list (rx symbol-start (or "import" "try-import") symbol-end)))
 
 ;;;; Commands to build and run code using Bazel
-
-(define-obsolete-variable-alias 'bazel-build-bazel-command
-  'bazel-command "2021-04-13")
-
-(defcustom bazel-command '("bazel")
-  "Command and arguments that should be used to invoke Bazel."
-  :type '(repeat string)
-  :risky t
-  :group 'bazel)
 
 (defun bazel-build (target)
   "Build a Bazel TARGET."
