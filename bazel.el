@@ -334,7 +334,7 @@ appropriate flags, if possible.  Otherwise, return an empty
 list."
   (delq nil
         (list (when-let* (filename
-                          (workspace (bazel-util-workspace-root filename)))
+                          (workspace (bazel--workspace-root filename)))
                 (concat "-path=" (file-relative-name filename workspace)))
               (and type (concat "-type=" (symbol-name type))))))
 
@@ -418,7 +418,7 @@ This gets added to ‘xref-backend-functions’."
        buffer-file-name
        ;; It only makes sense to find targets if we are in a workspace,
        ;; otherwise we don’t know how to resolve absolute labels.
-       (bazel-util-workspace-root buffer-file-name)
+       (bazel--workspace-root buffer-file-name)
        'bazel-mode))
 
 (cl-defmethod xref-backend-identifier-at-point ((_backend (eql bazel-mode)))
@@ -438,12 +438,12 @@ This gets added to ‘xref-backend-functions’."
           ;; e.g., labels containing newlines or backslashes.
           (let* ((this-workspace
                   (and buffer-file-name
-                       (bazel-util-workspace-root buffer-file-name)))
+                       (bazel--workspace-root buffer-file-name)))
                  (package
                   (or package
                       (and buffer-file-name this-workspace
-                           (bazel-util-package-name buffer-file-name
-                                                    this-workspace)))))
+                           (bazel--package-name buffer-file-name
+                                                this-workspace)))))
             (propertize (bazel-mode--canonical workspace package target)
                         'bazel-mode-workspace this-workspace)))))))
 
@@ -456,12 +456,11 @@ This gets added to ‘xref-backend-functions’."
       (let* ((this-workspace
               (or (get-text-property 0 'bazel-mode-workspace identifier)
                   (and buffer-file-name
-                       (bazel-util-workspace-root buffer-file-name))))
+                       (bazel--workspace-root buffer-file-name))))
              (package
               (or package
                   (and buffer-file-name this-workspace
-                       (bazel-util-package-name buffer-file-name
-                                                this-workspace)))))
+                       (bazel--package-name buffer-file-name this-workspace)))))
         (when (and this-workspace package)
           (let ((location
                  (bazel-mode--target-location
@@ -620,7 +619,7 @@ rule names that start with PREFIX."
 (defun bazel-mode-ffap (filename)
   "Attempt to find FILENAME in all workspaces.
 This gets added to ‘ffap-alist’."
-  (when-let ((main-root (bazel-util-workspace-root filename)))
+  (when-let ((main-root (bazel--workspace-root filename)))
     (let ((external-roots
            (condition-case nil
                (directory-files
@@ -652,7 +651,7 @@ Look for an imported file with the given NAME."
   (pcase name
     ((rx bos "%workspace%" (+ ?/) (let rest (+ nonl)))
      (when buffer-file-name
-       (when-let ((workspace (bazel-util-workspace-root buffer-file-name)))
+       (when-let ((workspace (bazel--workspace-root buffer-file-name)))
          (let ((file-name (expand-file-name rest workspace)))
            (and (file-exists-p file-name) file-name)))))))
 
@@ -784,10 +783,10 @@ Return nil if no name was found.  This function is useful as
 COMMAND is a Bazel command to be included in the minibuffer prompt."
   (let* ((file-name (buffer-file-name))
          (workspace-root
-          (or (bazel-util-workspace-root file-name)
+          (or (bazel--workspace-root file-name)
               (user-error "Not in a Bazel workspace.  No WORKSPACE file found")))
          (package-name
-          (or (bazel-util-package-name file-name workspace-root)
+          (or (bazel--package-name file-name workspace-root)
               (user-error "Not in a Bazel package.  No BUILD file found")))
          (initial-input (concat "//" package-name))
          (prompt (combine-and-quote-strings
@@ -800,12 +799,27 @@ COMMAND is a Bazel command to be included in the minibuffer prompt."
   "Find the root of the Bazel workspace containing FILE-NAME.
 If FILE-NAME is not in a Bazel workspace, return nil.  Otherwise,
 the return value is a directory name."
+  (declare (obsolete "don’t use it, as it’s an internal function."
+                     "2021-04-13"))
+  (bazel--workspace-root file-name))
+
+(defun bazel--workspace-root (file-name)
+  "Find the root of the Bazel workspace containing FILE-NAME.
+If FILE-NAME is not in a Bazel workspace, return nil.  Otherwise,
+the return value is a directory name."
   (cl-check-type file-name string)
   (let ((result (or (locate-dominating-file file-name "WORKSPACE")
                     (locate-dominating-file file-name "WORKSPACE.bazel"))))
     (and result (file-name-as-directory result))))
 
 (defun bazel-util-package-name (file-name workspace-root)
+  "Return the nearest Bazel package for FILE-NAME under WORKSPACE-ROOT.
+If FILE-NAME is not in a Bazel package, return nil."
+  (declare (obsolete "don’t use it, as it’s an internal function."
+                     "2021-04-13"))
+  (bazel--package-name file-name workspace-root))
+
+(defun bazel--package-name (file-name workspace-root)
   "Return the nearest Bazel package for FILE-NAME under WORKSPACE-ROOT.
 If FILE-NAME is not in a Bazel package, return nil."
   (cl-check-type file-name string)
@@ -836,7 +850,7 @@ If FILE-NAME is not in a Bazel package, return nil."
 WORKSPACE-NAME should be either a string naming an external
 workspace, or nil to refer to the current workspace.
 THIS-WORKSPACE-ROOT should be the name of the current workspace
-root directory, as returned by ‘bazel-util-workspace-root’.  The
+root directory, as returned by ‘bazel--workspace-root’.  The
 return value is a directory name."
   (cl-check-type workspace-name (or null string))
   (cl-check-type this-workspace-root string)
@@ -859,7 +873,7 @@ return value is a directory name."
 (defun bazel-mode--external-workspace-dir (root)
   "Return a directory name for the parent directory of the external workspaces.
 ROOT should be the main workspace root as returned by
-‘bazel-util-workspace-root’."
+‘bazel--workspace-root’."
   (cl-check-type root string)
   ;; See the commentary in ‘bazel-mode--external-workspace’ for how to find
   ;; external workspaces.
