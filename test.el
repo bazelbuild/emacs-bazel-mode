@@ -35,7 +35,7 @@
 (require 'syntax)
 (require 'xref)
 
-(defconst bazel-mode-test--directory
+(defconst bazel-test--directory
   ;; https://docs.bazel.build/versions/2.2.0/test-encyclopedia.html#initial-conditions.
   (substitute-in-file-name "$TEST_SRCDIR/$TEST_WORKSPACE/")
   "Directory with data dependencies for this package.")
@@ -50,13 +50,13 @@
 (ert-deftest bazel-mode/indent-region ()
   (with-temp-buffer
     (bazel-mode)
-    (insert-file-contents (expand-file-name "BUILD" bazel-mode-test--directory))
+    (insert-file-contents (expand-file-name "BUILD" bazel-test--directory))
     (let ((before (buffer-string)))
       (indent-region (point-min) (point-max))
       (should (equal (buffer-string) before)))))
 
-(ert-deftest bazel-mode--make-diagnostics ()
-  "Unit test for ‘bazel-mode--make-diagnostics’.
+(ert-deftest bazel--make-diagnostics ()
+  "Unit test for ‘bazel--make-diagnostics’.
 We test that function instead of the Flymake backend directly so
 we don’t have to start or mock a process."
   ;; This test doesn’t work in Emacs 27 due to
@@ -66,12 +66,11 @@ we don’t have to start or mock a process."
     (let ((output-buffer (current-buffer))
           (diagnostics nil))
       (insert-file-contents
-       (expand-file-name "testdata/buildifier.json" bazel-mode-test--directory))
+       (expand-file-name "testdata/buildifier.json" bazel-test--directory))
       (with-temp-buffer
         (insert-file-contents
-         (expand-file-name "testdata/buildifier.bzl"
-                           bazel-mode-test--directory))
-        (dolist (diag (bazel-mode--make-diagnostics output-buffer))
+         (expand-file-name "testdata/buildifier.bzl" bazel-test--directory))
+        (dolist (diag (bazel--make-diagnostics output-buffer))
           (ert-info ((prin1-to-string diag))
             (should (eq (flymake-diagnostic-buffer diag) (current-buffer)))
             (should (eq (flymake-diagnostic-type diag) :warning))
@@ -100,14 +99,13 @@ we don’t have to start or mock a process."
   "Unit test for the ‘bazel-mode-flymake’ Flymake backend."
   (with-temp-buffer
     (let ((bazel-buildifier-command
-           (expand-file-name "testdata/fake_buildifier"
-                             bazel-mode-test--directory))
+           (expand-file-name "testdata/fake_buildifier" bazel-test--directory))
           (flymake-diagnostic-functions '(bazel-mode-flymake))
           (warning-minimum-log-level :debug)
           (diagnostics ()))
       (skip-unless (file-executable-p bazel-buildifier-command))
       (insert-file-contents
-       (expand-file-name "testdata/buildifier.bzl" bazel-mode-test--directory))
+       (expand-file-name "testdata/buildifier.bzl" bazel-test--directory))
       (flymake-mode)
       (flymake-start)
       (should (flymake-is-running))
@@ -143,7 +141,7 @@ we don’t have to start or mock a process."
                                  "[integer-division] "
                                  "(https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md#integer-division)"))))))))
 
-(defmacro bazel-mode-test--with-temp-directory (name &rest body)
+(defmacro bazel-test--with-temp-directory (name &rest body)
   "Create a new temporary directory.
 Bind the name of the directory to NAME and execute BODY while the
 directory exists.  Remove the directory and all its contents once
@@ -155,7 +153,7 @@ BODY finishes."
          ,(macroexp-progn body)
        (delete-directory ,name :recursive))))
 
-(defmacro bazel-mode-test--with-file-buffer (filename &rest body)
+(defmacro bazel-test--with-file-buffer (filename &rest body)
   "Visit FILENAME in a temporary buffer.
 Execute BODY with the buffer that visits FILENAME current.  Kill
 that buffer once BODY finishes."
@@ -169,10 +167,10 @@ that buffer once BODY finishes."
 (ert-deftest bazel-mode/xref ()
   "Unit test for XRef support."
   (let ((definitions ()))
-    (bazel-mode-test--with-temp-directory dir
+    (bazel-test--with-temp-directory dir
       (make-directory (expand-file-name "root" dir))
       (copy-file
-       (expand-file-name "testdata/xref.BUILD" bazel-mode-test--directory)
+       (expand-file-name "testdata/xref.BUILD" bazel-test--directory)
        (expand-file-name "root/BUILD" dir))
       ;; Create empty files that the labels in the test BUILD file refer to.
       (dolist (file '("WORKSPACE" "aaa.cc" "dir/bbb.cc" "pkg/BUILD" "pkg/ccc.cc"
@@ -181,7 +179,7 @@ that buffer once BODY finishes."
         (let ((full-filename (expand-file-name (concat "root/" file) dir)))
           (make-directory (file-name-directory full-filename) :parents)
           (write-region "" nil full-filename nil nil nil :mustbenew)))
-      (bazel-mode-test--with-file-buffer (expand-file-name "root/BUILD" dir)
+      (bazel-test--with-file-buffer (expand-file-name "root/BUILD" dir)
         (forward-comment (point-max))
         ;; Search for all sources and dependencies.  These are strings that
         ;; stand on their own in a line.
@@ -243,7 +241,7 @@ that buffer once BODY finishes."
 
 (ert-deftest bazel-mode/ffap ()
   "Unit test for ‘find-file-at-point’ support."
-  (bazel-mode-test--with-temp-directory dir
+  (bazel-test--with-temp-directory dir
     (make-directory (expand-file-name "root" dir))
     (write-region "" nil (expand-file-name "root/WORKSPACE" dir)
                   nil nil nil 'excl)
@@ -259,7 +257,7 @@ that buffer once BODY finishes."
     (write-region "" nil
                   (expand-file-name "root/bazel-root/external/ws/bbb.h" dir)
                   nil nil nil 'excl)
-    (bazel-mode-test--with-file-buffer (expand-file-name "root/pkg/aaa.c" dir)
+    (bazel-test--with-file-buffer (expand-file-name "root/pkg/aaa.c" dir)
       (search-forward "\"" (line-end-position))
       (should (equal (ffap-file-at-point)
                      (file-name-unquote (expand-file-name "root/aaa.h" dir))))
@@ -275,7 +273,7 @@ that buffer once BODY finishes."
   "Check that “keep sorted” comments are left alone."
   (with-temp-buffer
     (insert-file-contents
-     (expand-file-name "testdata/fill.BUILD" bazel-mode-test--directory))
+     (expand-file-name "testdata/fill.BUILD" bazel-test--directory))
     (bazel-mode)
     (search-forward "# The Foobar files")
     (let ((before (buffer-string)))
@@ -286,7 +284,7 @@ that buffer once BODY finishes."
   "Check that ‘beginning-of-defun’ in BUILD buffers moves to the
 beginning of the rule."
   (with-temp-buffer
-    (insert-file-contents (expand-file-name "BUILD" bazel-mode-test--directory))
+    (insert-file-contents (expand-file-name "BUILD" bazel-test--directory))
     (bazel-build-mode)
     (search-forward "bazel.el")
     (beginning-of-defun)
@@ -297,7 +295,7 @@ beginning of the rule."
   "Check that ‘end-of-defun’ in BUILD buffers moves to the end of
 the rule."
   (with-temp-buffer
-    (insert-file-contents (expand-file-name "BUILD" bazel-mode-test--directory))
+    (insert-file-contents (expand-file-name "BUILD" bazel-test--directory))
     (bazel-build-mode)
     (search-forward "bazel.el")
     (end-of-defun)
@@ -305,16 +303,16 @@ the rule."
 
 (ert-deftest bazel-mode/compile ()
   "Check that \\[next-error] jumps to the correct places."
-  (bazel-mode-test--with-temp-directory dir
+  (bazel-test--with-temp-directory dir
     (copy-file
-     (expand-file-name "testdata/test.WORKSPACE" bazel-mode-test--directory)
+     (expand-file-name "testdata/test.WORKSPACE" bazel-test--directory)
      (expand-file-name "WORKSPACE" dir))
     (make-directory (expand-file-name "package" dir))
     (copy-file
-     (expand-file-name "testdata/compile.BUILD" bazel-mode-test--directory)
+     (expand-file-name "testdata/compile.BUILD" bazel-test--directory)
      (expand-file-name "package/BUILD" dir))
     (copy-file
-     (expand-file-name "testdata/test.cc" bazel-mode-test--directory)
+     (expand-file-name "testdata/test.cc" bazel-test--directory)
      (expand-file-name "package/test.cc" dir))
     (with-temp-buffer
       (let* ((file nil) (line nil)
@@ -327,7 +325,7 @@ the rule."
              (case-fold-search nil)
              (compilation-skip-to-next-location nil))
         (insert-file-contents
-         (expand-file-name "testdata/compile.out" bazel-mode-test--directory))
+         (expand-file-name "testdata/compile.out" bazel-test--directory))
         ;; Replace the %WORKSPACE% placeholder added by
         ;; testdata/make_compile_out by our temporary root.
         (goto-char (point-min))
@@ -366,7 +364,7 @@ the rule."
   "Check that ‘imenu’ finds BUILD rules."
   (with-temp-buffer
     (insert-file-contents
-     (expand-file-name "testdata/xref.BUILD" bazel-mode-test--directory))
+     (expand-file-name "testdata/xref.BUILD" bazel-test--directory))
     (bazel-build-mode)
     (let ((imenu-use-markers nil))
       (should (equal (funcall imenu-create-index-function)
@@ -375,7 +373,7 @@ the rule."
 (ert-deftest bazel-mode/speedbar ()
   "Check that \\[speedbar] detects BUILD files."
   (with-temp-buffer
-    (speedbar-default-directory-list bazel-mode-test--directory 0)
+    (speedbar-default-directory-list bazel-test--directory 0)
     (goto-char (point-min))
     (let ((case-fold-search nil))
       (search-forward "BUILD"))))
@@ -404,9 +402,9 @@ the rule."
                     (and (< (point) (1- (point-max))) 'font-lock-string-face)))
         (forward-char)))))
 
-(put #'looking-at-p 'ert-explainer #'bazel-mode-test--explain-looking-at-p)
+(put #'looking-at-p 'ert-explainer #'bazel-test--explain-looking-at-p)
 
-(defun bazel-mode-test--explain-looking-at-p (regexp)
+(defun bazel-test--explain-looking-at-p (regexp)
   "ERT explainer for ‘looking-at-p’.
 See Info node ‘(ert) Defining Explanation Functions’.  REGEXP is
 the expected regular expression."
