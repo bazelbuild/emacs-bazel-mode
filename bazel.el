@@ -705,7 +705,129 @@ Return nil if no name was found.  This function is useful as
 
 (declare-function speedbar-add-supported-extension "speedbar" (extension))
 
-;;;; Utilities
+;;;; ‘bazelrc-mode’
+
+;;;###autoload
+(define-derived-mode bazelrc-mode conf-space-mode "bazelrc"
+  "Major mode for editing .bazelrc files.")
+
+;;;###autoload
+(add-to-list 'auto-mode-alist
+             ;; https://docs.bazel.build/versions/3.0.0/guide.html#where-are-the-bazelrc-files
+             (cons (rx ?/ (or "bazel.bazelrc" ".bazelrc") eos) #'bazelrc-mode))
+
+(add-to-list 'ffap-string-at-point-mode-alist
+             ;; By default the percent sign isn’t included in the list of
+             ;; allowed filename characters, so this would miss %workspace%
+             ;; names.
+             (list #'bazelrc-mode "-_/.%[:alnum:]" "" ""))
+
+(add-to-list 'ffap-alist (cons #'bazelrc-mode #'bazelrc-ffap))
+
+(defun bazelrc-ffap (name)
+  "Function for ‘ffap-alist’ in ‘bazelrc-mode’.
+Look for an imported file with the given NAME."
+  ;; https://docs.bazel.build/versions/3.0.0/guide.html#imports
+  (pcase name
+    ((rx bos "%workspace%" (+ ?/) (let rest (+ nonl)))
+     (when buffer-file-name
+       (when-let ((workspace (bazel-util-workspace-root buffer-file-name)))
+         (let ((file-name (expand-file-name rest workspace)))
+           (and (file-exists-p file-name) file-name)))))))
+
+(font-lock-add-keywords
+ #'bazelrc-mode
+ ;; https://docs.bazel.build/versions/3.0.0/guide.html#imports
+ (list (rx symbol-start (or "import" "try-import") symbol-end)))
+
+;;;; Commands to build and run code using Bazel
+
+(define-obsolete-variable-alias 'bazel-build-bazel-command
+  'bazel-command "2021-04-13")
+
+(defcustom bazel-command '("bazel")
+  "Command and arguments that should be used to invoke Bazel."
+  :type '(repeat string)
+  :risky t
+  :group 'bazel)
+
+(defun bazel-build (target)
+  "Build a Bazel TARGET."
+  (interactive (list (bazel-build--read-target "build")))
+  (bazel-build--run-bazel-command "build" target))
+
+(defun bazel-run (target)
+  "Build and run a Bazel TARGET."
+  (interactive (list (bazel-build--read-target "run")))
+  (bazel-build--run-bazel-command "run" target))
+
+(defun bazel-test (target)
+  "Build and run a Bazel test TARGET."
+  (interactive (list (bazel-build--read-target "test")))
+  (bazel-build--run-bazel-command "test" target))
+
+(defun bazel-coverage (target)
+  "Run Bazel test TARGET with coverage instrumentation enabled."
+  (interactive (list (bazel-build--read-target "coverage")))
+  (bazel-build--run-bazel-command "coverage" target))
+
+(defun bazel-build--run-bazel-command (command target)
+  "Run Bazel tool with given COMMAND, e.g. build or run, on the given TARGET."
+  (compile
+   (mapconcat #'shell-quote-argument
+              (append bazel-build-bazel-command (list command target)) " ")))
+
+(defun bazel-build--read-target (command)
+  "Read a Bazel build target from the minibuffer.
+COMMAND is a Bazel command to be included in the minibuffer prompt."
+  (let* ((file-name (buffer-file-name))
+         (workspace-root
+          (or (bazel-util-workspace-root file-name)
+              (user-error "Not in a Bazel workspace.  No WORKSPACE file found")))
+         (package-name
+          (or (bazel-util-package-name file-name workspace-root)
+              (user-error "Not in a Bazel package.  No BUILD file found")))
+         (initial-input (concat "//" package-name))
+         (prompt (combine-and-quote-strings
+                  (append bazel-build-bazel-command (list command "")))))
+    (read-string prompt initial-input)))
+
+;;;; Utility functions to work with Bazel workspaces
+
+(defun bazel-util-workspace-root (file-name)
+  "Find the root of the Bazel workspace containing FILE-NAME.
+If FILE-NAME is not in a Bazel workspace, return nil.  Otherwise,
+the return value is a directory name."
+  (cl-check-type file-name string)
+  (let ((result (or (locate-dominating-file file-name "WORKSPACE")
+                    (locate-dominating-file file-name "WORKSPACE.bazel"))))
+    (and result (file-name-as-directory result))))
+
+(defun bazel-util-package-name (file-name workspace-root)
+  "Return the nearest Bazel package for FILE-NAME under WORKSPACE-ROOT.
+If FILE-NAME is not in a Bazel package, return nil."
+  (cl-check-type file-name string)
+  (cl-check-type workspace-root string)
+  (when (< emacs-major-version 27)
+    ;; Work around https://debbugs.gnu.org/cgi/bugreport.cgi?bug=29579.
+    (cl-callf file-name-unquote file-name)
+    (cl-callf file-name-unquote workspace-root))
+  (let ((build-file-directory
+         (cl-some (lambda (build-name)
+                    (locate-dominating-file file-name build-name))
+                  '("BUILD.bazel" "BUILD"))))
+    (cond ((not build-file-directory) nil)
+          ((file-equal-p workspace-root build-file-directory) "")
+          ((file-in-directory-p build-file-directory workspace-root)
+           (let ((package-name
+                  (file-relative-name build-file-directory workspace-root)))
+             ;; Only return package-name if we can confirm it is the local
+             ;; relative file name of a BUILD file.
+             (and package-name
+                  (not (file-remote-p package-name))
+                  (not (file-name-absolute-p package-name))
+                  (not (string-prefix-p "." package-name))
+                  (directory-file-name package-name)))))))
 
 (defun bazel-mode--external-workspace (workspace-name this-workspace-root)
   "Return the workspace root of an external workspace.
@@ -851,130 +973,6 @@ columns."
             (json-pre-element-read-function nil)
             (json-post-element-read-function nil))
         (json-read)))))
-
-;;;; ‘bazelrc-mode’
-
-;;;###autoload
-(define-derived-mode bazelrc-mode conf-space-mode "bazelrc"
-  "Major mode for editing .bazelrc files.")
-
-;;;###autoload
-(add-to-list 'auto-mode-alist
-             ;; https://docs.bazel.build/versions/3.0.0/guide.html#where-are-the-bazelrc-files
-             (cons (rx ?/ (or "bazel.bazelrc" ".bazelrc") eos) #'bazelrc-mode))
-
-(add-to-list 'ffap-string-at-point-mode-alist
-             ;; By default the percent sign isn’t included in the list of
-             ;; allowed filename characters, so this would miss %workspace%
-             ;; names.
-             (list #'bazelrc-mode "-_/.%[:alnum:]" "" ""))
-
-(add-to-list 'ffap-alist (cons #'bazelrc-mode #'bazelrc-ffap))
-
-(defun bazelrc-ffap (name)
-  "Function for ‘ffap-alist’ in ‘bazelrc-mode’.
-Look for an imported file with the given NAME."
-  ;; https://docs.bazel.build/versions/3.0.0/guide.html#imports
-  (pcase name
-    ((rx bos "%workspace%" (+ ?/) (let rest (+ nonl)))
-     (when buffer-file-name
-       (when-let ((workspace (bazel-util-workspace-root buffer-file-name)))
-         (let ((file-name (expand-file-name rest workspace)))
-           (and (file-exists-p file-name) file-name)))))))
-
-(font-lock-add-keywords
- #'bazelrc-mode
- ;; https://docs.bazel.build/versions/3.0.0/guide.html#imports
- (list (rx symbol-start (or "import" "try-import") symbol-end)))
-
-;;;; Commands to build and run code using Bazel
-
-(define-obsolete-variable-alias 'bazel-build-bazel-command
-  'bazel-command "2021-04-13")
-
-(defcustom bazel-command '("bazel")
-  "Command and arguments that should be used to invoke Bazel."
-  :type '(repeat string)
-  :risky t
-  :group 'bazel)
-
-(defun bazel-build (target)
-  "Build a Bazel TARGET."
-  (interactive (list (bazel-build--read-target "build")))
-  (bazel-build--run-bazel-command "build" target))
-
-(defun bazel-run (target)
-  "Build and run a Bazel TARGET."
-  (interactive (list (bazel-build--read-target "run")))
-  (bazel-build--run-bazel-command "run" target))
-
-(defun bazel-test (target)
-  "Build and run a Bazel test TARGET."
-  (interactive (list (bazel-build--read-target "test")))
-  (bazel-build--run-bazel-command "test" target))
-
-(defun bazel-coverage (target)
-  "Run Bazel test TARGET with coverage instrumentation enabled."
-  (interactive (list (bazel-build--read-target "coverage")))
-  (bazel-build--run-bazel-command "coverage" target))
-
-(defun bazel-build--run-bazel-command (command target)
-  "Run Bazel tool with given COMMAND, e.g. build or run, on the given TARGET."
-  (compile
-   (mapconcat #'shell-quote-argument
-              (append bazel-build-bazel-command (list command target)) " ")))
-
-(defun bazel-build--read-target (command)
-  "Read a Bazel build target from the minibuffer.
-COMMAND is a Bazel command to be included in the minibuffer prompt."
-  (let* ((file-name (buffer-file-name))
-         (workspace-root
-          (or (bazel-util-workspace-root file-name)
-              (user-error "Not in a Bazel workspace.  No WORKSPACE file found")))
-         (package-name
-          (or (bazel-util-package-name file-name workspace-root)
-              (user-error "Not in a Bazel package.  No BUILD file found")))
-         (initial-input (concat "//" package-name))
-         (prompt (combine-and-quote-strings
-                  (append bazel-build-bazel-command (list command "")))))
-    (read-string prompt initial-input)))
-
-;;;; Utility functions to work with Bazel workspaces
-
-(defun bazel-util-workspace-root (file-name)
-  "Find the root of the Bazel workspace containing FILE-NAME.
-If FILE-NAME is not in a Bazel workspace, return nil.  Otherwise,
-the return value is a directory name."
-  (cl-check-type file-name string)
-  (let ((result (or (locate-dominating-file file-name "WORKSPACE")
-                    (locate-dominating-file file-name "WORKSPACE.bazel"))))
-    (and result (file-name-as-directory result))))
-
-(defun bazel-util-package-name (file-name workspace-root)
-  "Return the nearest Bazel package for FILE-NAME under WORKSPACE-ROOT.
-If FILE-NAME is not in a Bazel package, return nil."
-  (cl-check-type file-name string)
-  (cl-check-type workspace-root string)
-  (when (< emacs-major-version 27)
-    ;; Work around https://debbugs.gnu.org/cgi/bugreport.cgi?bug=29579.
-    (cl-callf file-name-unquote file-name)
-    (cl-callf file-name-unquote workspace-root))
-  (let ((build-file-directory
-         (cl-some (lambda (build-name)
-                    (locate-dominating-file file-name build-name))
-                  '("BUILD.bazel" "BUILD"))))
-    (cond ((not build-file-directory) nil)
-          ((file-equal-p workspace-root build-file-directory) "")
-          ((file-in-directory-p build-file-directory workspace-root)
-           (let ((package-name
-                  (file-relative-name build-file-directory workspace-root)))
-             ;; Only return package-name if we can confirm it is the local
-             ;; relative file name of a BUILD file.
-             (and package-name
-                  (not (file-remote-p package-name))
-                  (not (file-name-absolute-p package-name))
-                  (not (string-prefix-p "." package-name))
-                  (directory-file-name package-name)))))))
 
 (provide 'bazel)
 ;;; bazel.el ends here
