@@ -425,6 +425,57 @@ the rule."
       (should (file-equal-p (car (project-roots project)) dir))
       (should-not (project-external-roots project)))))
 
+(ert-deftest bazel-test/coverage ()
+  "Test coverage parsing and display."
+  (bazel-test--with-temp-directory dir
+    ;; Set up a fake workspace and execution root.  We use DIR for both.
+    (let* ((package-dir (expand-file-name "package" dir))
+           (library (expand-file-name "library.h" package-dir))
+           (test-dir (expand-file-name "bazel-out/k8-fastbuild/testlogs/package/library_test" dir))
+           (coverage (expand-file-name "coverage.dat" test-dir)))
+      (copy-file
+       (expand-file-name "testdata/test.WORKSPACE" bazel-test--directory)
+       (expand-file-name "WORKSPACE" dir))
+      (make-directory package-dir)
+      (copy-file (expand-file-name "testdata/library.h" bazel-test--directory)
+                 library)
+      (make-directory test-dir :parents)
+      (copy-file
+       (expand-file-name "testdata/coverage.dat" bazel-test--directory)
+       coverage)
+      (bazel-test--with-file-buffer library
+        (with-temp-buffer
+          (let ((default-directory dir)
+                (bazel-display-coverage 'local))
+            (insert-file-contents
+             (expand-file-name "testdata/coverage.out" bazel-test--directory))
+            ;; Replace placeholder added by make_coverage_out with fake
+            ;; execution root.
+            (while (search-forward "%EXECROOT%" nil t)
+              (replace-match (file-name-unquote dir) :fixedcase :literal))
+            ;; The coverage overlays don’t logically change the buffer contents.
+            ;; Ensure that the code works even if the buffer is read-only.
+            (setq buffer-read-only t)
+            ;; Simulate successful exit of the Bazel process.
+            (compilation-handle-exit 'exit 0 "finished\n")))
+        (ert-info ("Comment line")
+          ;; Comment line isn’t covered at all.
+          (should (looking-at-p (rx bol "//")))
+          (should-not (face-at-point)))
+        (ert-info ("Covered line")
+          (search-forward "return 137;")
+          (backward-char)  ; overlay doesn’t extend beyond the end of the line
+          (should (eq (face-at-point) 'bazel-covered-line)))
+        (ert-info ("Uncovered line")
+          (search-forward "return 42;")
+          (backward-char)  ; overlay doesn’t extend beyond the end of the line
+          (should (eq (face-at-point) 'bazel-uncovered-line)))
+        (ert-info ("Removing coverage")
+          (bazel-remove-coverage-display)
+          ;; Now there shouldn’t be any faces left in the buffer.
+          (should (eql (next-single-char-property-change (point-min) 'face)
+                       (point-max))))))))
+
 (put #'looking-at-p 'ert-explainer #'bazel-test--explain-looking-at-p)
 
 (defun bazel-test--explain-looking-at-p (regexp)
