@@ -22,7 +22,7 @@ set -eu
 export INSIDE_EMACS='26.1,compile'
 
 workspace="$(bazel info workspace)" || exit
-testdata="${workspace:?}/lisp/testdata"
+testdata="${workspace:?}/testdata"
 
 dir="$(mktemp --directory)" || exit
 trap 'rm --recursive --force -- "${dir}"' EXIT
