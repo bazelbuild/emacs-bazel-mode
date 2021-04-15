@@ -253,6 +253,22 @@ This is the parent mode for the more specific modes
              ;; https://docs.bazel.build/versions/3.0.0/skylark/concepts.html#getting-started
              (cons (rx ?/ (+ nonl) ".bzl" eos) #'bazel-starlark-mode))
 
+;;;; ‘bazelrc-mode’
+
+;;;###autoload
+(define-derived-mode bazelrc-mode conf-space-mode "bazelrc"
+  "Major mode for editing .bazelrc files.")
+
+;;;###autoload
+(add-to-list 'auto-mode-alist
+             ;; https://docs.bazel.build/versions/3.0.0/guide.html#where-are-the-bazelrc-files
+             (cons (rx ?/ (or "bazel.bazelrc" ".bazelrc") eos) #'bazelrc-mode))
+
+(font-lock-add-keywords
+ #'bazelrc-mode
+ ;; https://docs.bazel.build/versions/3.0.0/guide.html#imports
+ (list (rx symbol-start (or "import" "try-import") symbol-end)))
+
 ;;;; Flymake support using Buildifier
 
 (defvar-local bazel--flymake-process nil
@@ -719,22 +735,6 @@ Return nil if no name was found.  This function is useful as
   (speedbar-add-supported-extension (rx "BUILD" (? ".bazel"))))
 
 (declare-function speedbar-add-supported-extension "speedbar" (extension))
-
-;;;; ‘bazelrc-mode’
-
-;;;###autoload
-(define-derived-mode bazelrc-mode conf-space-mode "bazelrc"
-  "Major mode for editing .bazelrc files.")
-
-;;;###autoload
-(add-to-list 'auto-mode-alist
-             ;; https://docs.bazel.build/versions/3.0.0/guide.html#where-are-the-bazelrc-files
-             (cons (rx ?/ (or "bazel.bazelrc" ".bazelrc") eos) #'bazelrc-mode))
-
-(font-lock-add-keywords
- #'bazelrc-mode
- ;; https://docs.bazel.build/versions/3.0.0/guide.html#imports
- (list (rx symbol-start (or "import" "try-import") symbol-end)))
 
 ;;;; Commands to build and run code using Bazel
 
