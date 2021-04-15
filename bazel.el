@@ -748,7 +748,7 @@ Return nil if no name was found.  This function is useful as
 ;; potentially optimized implementations should get a chance to run first.
 (add-hook 'project-find-functions #'bazel-find-project 20)
 
-(cl-defstruct (bazel-workspace (:noinline t))
+(cl-defstruct (bazel-workspace :noinline)
   "Represents a Bazel workspace."
   (root nil
         :read-only t
