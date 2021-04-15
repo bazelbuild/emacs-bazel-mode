@@ -87,6 +87,8 @@
           "https://github.com/bazelbuild/buildtools/tree/master/buildifier")
   :risky t)
 
+;;;; Commands to run Buildifier.
+
 (defvar-local bazel--buildifier-type nil
   "Type of the file that the current buffer visits.
 This must be a symbol and a valid value for the Buildifier -type
@@ -133,6 +135,8 @@ If nil, don’t pass a -type flag to Buildifier.")
   "Run buildifer in `before-save-hook'."
   (when bazel-mode-buildifier-before-save
     (bazel-buildifier)))
+
+;;;; ‘bazel-mode’ and child modes
 
 (defconst bazel--font-lock-keywords
   `(
