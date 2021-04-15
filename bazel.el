@@ -332,11 +332,11 @@ TYPE should be one of the possible values of
 ‘bazel-mode--buildifier-type’.  Use TYPE and FILENAME to derive
 appropriate flags, if possible.  Otherwise, return an empty
 list."
-  (delq nil
-        (list (when-let* (filename
-                          (workspace (bazel--workspace-root filename)))
-                (concat "-path=" (file-relative-name filename workspace)))
-              (and type (concat "-type=" (symbol-name type))))))
+  (append
+   (and filename
+        (when-let ((workspace (bazel--workspace-root filename)))
+          (list (concat "-path=" (file-relative-name filename workspace)))))
+   (and type (list (concat "-type=" (symbol-name type))))))
 
 (defun bazel-mode--make-diagnostics (output-buffer)
   "Return Flymake diagnostics for the Buildifier report in OUTPUT-BUFFER.
