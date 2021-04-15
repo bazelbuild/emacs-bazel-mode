@@ -45,6 +45,7 @@
 (require 'imenu)
 (require 'json)
 (require 'pcase)
+(require 'project)
 (require 'python)
 (require 'rx)
 (require 'subr-x)
@@ -739,6 +740,46 @@ Return nil if no name was found.  This function is useful as
   (speedbar-add-supported-extension (rx "BUILD" (? ".bazel"))))
 
 (declare-function speedbar-add-supported-extension "speedbar" (extension))
+
+;;;; Project integration
+
+;; We add ourselves with relatively low priority because we don’t have an
+;; optimized ‘project-files’ implementation.  Other project functions with
+;; potentially optimized implementations should get a chance to run first.
+(add-hook 'project-find-functions #'bazel-find-project 20)
+
+(cl-defstruct (bazel-workspace (:noinline t))
+  "Represents a Bazel workspace."
+  (root nil
+        :read-only t
+        :type string
+        :documentation "The workspace root directory."))
+
+(defun bazel-find-project (directory)
+  "Find a Bazel workspace for the given DIRECTORY.
+Return nil if outside a Bazel workspace or a project instance for
+the containing workspace.  This function is suitable for
+‘project-find-functions’."
+  (cl-check-type directory string)
+  (when-let ((root (bazel--workspace-root directory)))
+    (make-bazel-workspace :root root)))
+
+(cl-defmethod project-roots ((project bazel-workspace))
+  "Return the primary root directory of the Bazel workspace PROJECT."
+  (list (bazel-workspace-root project)))
+
+(cl-defmethod project-external-roots ((project bazel-workspace))
+  "Return the external workspace roots of the Bazel workspace PROJECT."
+  (let ((main-root (bazel-workspace-root project)))
+    (condition-case nil
+        (directory-files (bazel--external-workspace-dir main-root)
+                         :full
+                         ;; Assume that workspace names follow similar patters
+                         ;; as package names,
+                         ;; https://docs.bazel.build/versions/3.0.0/build-ref.html#package-names-package-name.
+                         (rx bos (+ (any alnum "-._")) eos))
+      ;; If there’s no external workspace directory, don’t signal an error.
+      (file-missing nil))))
 
 ;;;; Commands to build and run code using Bazel
 
