@@ -347,30 +347,18 @@ All filenames in OUTPUT-BUFFER are ignored; all messages are
 attached to the current buffer.  Return a list of Flymake
 diagnostics; see Info node ‘(Flymake) Backend functions’ for
 details."
-  (let ((report (bazel-mode--parse-report output-buffer)))
-    (mapcan #'bazel-mode--diagnostics-for-file (gethash "files" report))))
-
-(defun bazel-mode--parse-report (buffer)
-  "Parse Buildifier JSON report in BUFFER.
-Return the JSON report as a hashtable.  The format of the report
-is described in
-https://github.com/bazelbuild/buildtools/blob/master/buildifier/README.md#file-diagnostics-in-json."
-  (with-current-buffer buffer
-    (save-excursion
-      (save-restriction
-        (widen)
-        (goto-char (point-min))
-        ;; Skip over standard error messages if possible.
-        (when (re-search-forward (rx bol ?{) nil t)
-          (backward-char)
-          (bazel-mode--json-parse-buffer))))))
-
-(defun bazel-mode--diagnostics-for-file (file)
-  "Return list of Flymake diagnostics for FILE.
-FILE should be a hashtable containing diagnostics for a single
-file, as described in
-https://github.com/bazelbuild/buildtools/blob/master/buildifier/README.md#file-diagnostics-in-json."
-  (mapcar #'bazel-mode--diagnostic-for-warning (gethash "warnings" file)))
+  (cl-loop with report = (with-current-buffer output-buffer
+                           (save-excursion
+                             (save-restriction
+                               (widen)
+                               (goto-char (point-min))
+                               ;; Skip over standard error messages if possible.
+                               (when (re-search-forward (rx bol ?{) nil t)
+                                 (backward-char)
+                                 (bazel-mode--json-parse-buffer)))))
+           for file across (gethash "files" report)
+           nconc (cl-loop for warning across (gethash "warnings" file)
+                          collect (bazel-mode--diagnostic-for-warning warning))))
 
 (defun bazel-mode--diagnostic-for-warning (warning)
   "Return a Flymake diagnostic for the Buildifier WARNING.
