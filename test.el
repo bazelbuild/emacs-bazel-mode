@@ -30,6 +30,7 @@
 (require 'ffap)
 (require 'font-lock)
 (require 'imenu)
+(require 'project)
 (require 'rx)
 (require 'speedbar)
 (require 'syntax)
@@ -401,6 +402,28 @@ the rule."
         (should (eq (face-at-point)
                     (and (< (point) (1- (point-max))) 'font-lock-string-face)))
         (forward-char)))))
+
+(ert-deftest bazel/project ()
+  "Test project support for Bazel workspaces."
+  (bazel-test--with-temp-directory dir
+    (copy-file
+     (expand-file-name "testdata/test.WORKSPACE" bazel-test--directory)
+     (expand-file-name "WORKSPACE" dir))
+    (make-directory (expand-file-name "package" dir))
+    (copy-file
+     (expand-file-name "testdata/xref.BUILD" bazel-test--directory)
+     (expand-file-name "package/BUILD" dir))
+    (let ((project (project-current nil dir)))
+      (should project)
+      (should (bazel-workspace-p project))
+      (should (bazel-workspace-root project))
+      (should (directory-name-p (bazel-workspace-root project)))
+      (should (file-directory-p (bazel-workspace-root project)))
+      (should (file-equal-p (bazel-workspace-root project) dir))
+      (should (consp (project-roots project)))
+      (should-not (cdr (project-roots project)))
+      (should (file-equal-p (car (project-roots project)) dir))
+      (should-not (project-external-roots project)))))
 
 (put #'looking-at-p 'ert-explainer #'bazel-test--explain-looking-at-p)
 
