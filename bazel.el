@@ -627,18 +627,7 @@ rule names that start with PREFIX."
   "Attempt to find FILENAME in all workspaces.
 This gets added to ‘ffap-alist’."
   (when-let ((main-root (bazel--workspace-root filename)))
-    (let ((external-roots
-           (condition-case nil
-               (directory-files
-                (bazel--external-workspace-dir main-root)
-                :full
-                ;; Assume that workspace names follow similar patters as
-                ;; package names,
-                ;; https://docs.bazel.build/versions/3.0.0/build-ref.html#package-names-package-name.
-                (rx bos (+ (any alnum "-._")) eos))
-             ;; If there’s no external workspace directory, don’t signal an
-             ;; error.
-             (file-missing nil))))
+    (let ((external-roots (bazel--external-workspace-roots main-root)))
       (locate-file filename (cons main-root external-roots)))))
 
 ;;;; ‘find-file-at-point’ support for ‘bazelrc-mode’
@@ -770,16 +759,7 @@ the containing workspace.  This function is suitable for
 
 (cl-defmethod project-external-roots ((project bazel-workspace))
   "Return the external workspace roots of the Bazel workspace PROJECT."
-  (let ((main-root (bazel-workspace-root project)))
-    (condition-case nil
-        (directory-files (bazel--external-workspace-dir main-root)
-                         :full
-                         ;; Assume that workspace names follow similar patters
-                         ;; as package names,
-                         ;; https://docs.bazel.build/versions/3.0.0/build-ref.html#package-names-package-name.
-                         (rx bos (+ (any alnum "-._")) eos))
-      ;; If there’s no external workspace directory, don’t signal an error.
-      (file-missing nil))))
+  (bazel--external-workspace-roots (bazel-workspace-root project)))
 
 ;;;; Commands to build and run code using Bazel
 
@@ -911,6 +891,20 @@ ROOT should be the main workspace root as returned by
    (concat "bazel-" (file-name-nondirectory (directory-file-name root))
            "/external/" )
    root))
+
+(defun bazel--external-workspace-roots (main-root)
+  "Return the directory names of the external workspace roots.
+MAIN-ROOT should be the main workspace root as returned by
+‘bazel--workspace-root’."
+  (condition-case nil
+      (directory-files (bazel--external-workspace-dir main-root)
+                       :full
+                       ;; Assume that workspace names follow similar patters as
+                       ;; package names,
+                       ;; https://docs.bazel.build/versions/3.0.0/build-ref.html#package-names-package-name.
+                       (rx bos (+ (any alnum "-._")) eos))
+    ;; If there’s no external workspace directory, don’t signal an error.
+    (file-missing nil)))
 
 (defun bazel--parse-label (label)
   "Parse Bazel label LABEL.
