@@ -87,7 +87,7 @@
           "https://github.com/bazelbuild/buildtools/tree/master/buildifier")
   :risky t)
 
-(defvar-local bazel-mode--buildifier-type nil
+(defvar-local bazel--buildifier-type nil
   "Type of the file that the current buffer visits.
 This must be a symbol and a valid value for the Buildifier -type
 flag.  See
@@ -103,7 +103,7 @@ If nil, don’t pass a -type flag to Buildifier.")
         ;; Run buildifier on a file to support remote BUILD files.
         (buildifier-input-file (make-nearby-temp-file "buildifier"))
         (buildifier-error-file (make-nearby-temp-file "buildifier"))
-        (type bazel-mode--buildifier-type))
+        (type bazel--buildifier-type))
     (unwind-protect
       (write-region (point-min) (point-max) buildifier-input-file nil :silent)
       (with-current-buffer buildifier-buffer
@@ -113,7 +113,7 @@ If nil, don’t pass a -type flag to Buildifier.")
                (apply #'process-file
                       bazel-mode-buildifier-command buildifier-input-file
                       `(t ,buildifier-error-file) nil
-                      (bazel-mode--buildifier-file-flags type input-file))))
+                      (bazel--buildifier-file-flags type input-file))))
           (if (eq return-code 0)
               (progn
                 (set-buffer input-buffer)
@@ -129,12 +129,12 @@ If nil, don’t pass a -type flag to Buildifier.")
 (define-obsolete-function-alias 'bazel-mode-buildifier
   #'bazel-buildifier "2021-04-13")
 
-(defun bazel-mode--buildifier-before-save-hook ()
+(defun bazel--buildifier-before-save-hook ()
   "Run buildifer in `before-save-hook'."
   (when bazel-mode-buildifier-before-save
     (bazel-buildifier)))
 
-(defconst bazel-mode--font-lock-keywords
+(defconst bazel--font-lock-keywords
   `(
     ;; Some Starlark functions are exposed to BUILD files as builtins. For
     ;; details see https://github.com/bazelbuild/starlark/blob/master/spec.md.
@@ -160,7 +160,7 @@ If nil, don’t pass a -type flag to Buildifier.")
                   'symbols)
      . 'font-lock-constant-face)
     ;; Magic comments
-    (bazel-mode--find-magic-comment 0 'font-lock-preprocessor-face prepend)))
+    (bazel--find-magic-comment 0 'font-lock-preprocessor-face prepend)))
 
 (defconst bazel-mode-syntax-table
   (let ((table (make-syntax-table)))
@@ -189,7 +189,7 @@ This is the parent mode for the more specific modes
   (setq-local comment-use-syntax t)
   (setq-local parse-sexp-ignore-comments t)
   (setq-local forward-sexp-function #'python-nav-forward-sexp)
-  (setq-local font-lock-defaults (list bazel-mode--font-lock-keywords))
+  (setq-local font-lock-defaults (list bazel--font-lock-keywords))
   (setq-local syntax-propertize-function python-syntax-propertize-function)
   (setq-local indent-line-function #'python-indent-line-function)
   (setq-local indent-region-function #'python-indent-region)
@@ -202,15 +202,14 @@ This is the parent mode for the more specific modes
                          "keep sorted")
                     (regexp ,paragraph-start))
                :no-group))
-  (add-hook 'before-save-hook #'bazel-mode--buildifier-before-save-hook
-            nil :local)
+  (add-hook 'before-save-hook #'bazel--buildifier-before-save-hook nil :local)
   (add-hook 'flymake-diagnostic-functions #'bazel-mode-flymake nil :local)
   (add-hook 'xref-backend-functions #'bazel-mode-xref-backend nil :local))
 
 ;;;###autoload
 (define-derived-mode bazel-build-mode bazel-mode "Bazel BUILD"
   "Major mode for editing Bazel BUILD files."
-  (setq bazel-mode--buildifier-type 'build)
+  (setq bazel--buildifier-type 'build)
   ;; In BUILD files, we don’t have function definitions.  Instead, treat rules
   ;; (= Python statements) as functions.
   (setq-local beginning-of-defun-function #'python-nav-beginning-of-statement)
@@ -225,7 +224,7 @@ This is the parent mode for the more specific modes
 ;;;###autoload
 (define-derived-mode bazel-workspace-mode bazel-mode "Bazel WORKSPACE"
   "Major mode for editing Bazel WORKSPACE files."
-  (setq bazel-mode--buildifier-type 'workspace)
+  (setq bazel--buildifier-type 'workspace)
   ;; In WORKSPACE files, we don’t have function definitions.  Instead, treat
   ;; rules (= Python statements) as functions.
   (setq-local beginning-of-defun-function #'python-nav-beginning-of-statement)
@@ -241,7 +240,7 @@ This is the parent mode for the more specific modes
 ;;;###autoload
 (define-derived-mode bazel-starlark-mode bazel-mode "Starlark"
   "Major mode for editing Bazel Starlark files."
-  (setq bazel-mode--buildifier-type 'bzl)
+  (setq bazel--buildifier-type 'bzl)
   ;; In Starlark files, we do have Python-like function definitions, so use the
   ;; Python commands to navigate.
   (setq-local beginning-of-defun-function #'python-nav-beginning-of-defun)
@@ -256,7 +255,7 @@ This is the parent mode for the more specific modes
 
 ;;;; Flymake support using Buildifier
 
-(defvar-local bazel-mode--flymake-process nil
+(defvar-local bazel--flymake-process nil
   "Current Buildifier process for this buffer.
 ‘bazel-mode-flymake’ sets this variable to the most recent
 Buildifier process for the current buffer.")
@@ -269,17 +268,17 @@ for how to install Buildifier.  The function ‘bazel-mode’ adds
 this function to ‘flymake-diagnostic-functions’.  See Info node
 ‘(Flymake) Backend functions’ for details about Flymake
 backends."
-  (let ((process bazel-mode--flymake-process))
+  (let ((process bazel--flymake-process))
     (when process
       ;; The order here is important: ‘delete-process’ will trigger the
-      ;; sentinel, and then ‘bazel-mode--flymake-process’ already has to be nil
-      ;; to avoid an obsolete report.
-      (setq bazel-mode--flymake-process nil)
+      ;; sentinel, and then ‘bazel--flymake-process’ already has to be nil to
+      ;; avoid an obsolete report.
+      (setq bazel--flymake-process nil)
       (delete-process process)))
   (let* ((non-essential t)
          (command `(,bazel-mode-buildifier-command
-                    ,@(bazel-mode--buildifier-file-flags
-                       bazel-mode--buildifier-type buffer-file-name)
+                    ,@(bazel--buildifier-file-flags bazel--buildifier-type
+                                                    buffer-file-name)
                     "-mode=check" "-format=json" "-lint=warn"))
          (input-buffer (current-buffer))
          (output-buffer (generate-new-buffer
@@ -294,13 +293,13 @@ backends."
                 (with-current-buffer input-buffer
                   ;; Don’t report anything if a new process has already been
                   ;; started.
-                  (when (eq bazel-mode--flymake-process process)
+                  (when (eq bazel--flymake-process process)
                     ;; Report even in case of failure so that Flymake doesn’t
                     ;; treat the backend as continuously running.
                     (funcall report-fn
                              (and success
-                                  (bazel-mode--make-diagnostics output-buffer)))
-                    (setq bazel-mode--flymake-process nil))))
+                                  (bazel--make-diagnostics output-buffer)))
+                    (setq bazel--flymake-process nil))))
               (if success
                   (progn (kill-buffer output-buffer)
                          (kill-buffer error-buffer))
@@ -320,16 +319,16 @@ backends."
                                 :noquery t
                                 :sentinel sentinel
                                 :stderr error-buffer)))
-    (setq bazel-mode--flymake-process process)
+    (setq bazel--flymake-process process)
     (save-restriction
       (widen)
       (process-send-region process (point-min) (point-max)))
     (process-send-eof process)))
 
-(defun bazel-mode--buildifier-file-flags (type filename)
+(defun bazel--buildifier-file-flags (type filename)
   "Return a list of -path and -type flags for Buildifier.
 TYPE should be one of the possible values of
-‘bazel-mode--buildifier-type’.  Use TYPE and FILENAME to derive
+‘bazel--buildifier-type’.  Use TYPE and FILENAME to derive
 appropriate flags, if possible.  Otherwise, return an empty
 list."
   (append
@@ -338,7 +337,7 @@ list."
           (list (concat "-path=" (file-relative-name filename workspace)))))
    (and type (list (concat "-type=" (symbol-name type))))))
 
-(defun bazel-mode--make-diagnostics (output-buffer)
+(defun bazel--make-diagnostics (output-buffer)
   "Return Flymake diagnostics for the Buildifier report in OUTPUT-BUFFER.
 OUTPUT-BUFFER should contain a JSON report for the file visited
 by the current buffer as described in
@@ -355,12 +354,12 @@ details."
                                ;; Skip over standard error messages if possible.
                                (when (re-search-forward (rx bol ?{) nil t)
                                  (backward-char)
-                                 (bazel-mode--json-parse-buffer)))))
+                                 (bazel--json-parse-buffer)))))
            for file across (gethash "files" report)
            nconc (cl-loop for warning across (gethash "warnings" file)
-                          collect (bazel-mode--diagnostic-for-warning warning))))
+                          collect (bazel--diagnostic-for-warning warning))))
 
-(defun bazel-mode--diagnostic-for-warning (warning)
+(defun bazel--diagnostic-for-warning (warning)
   "Return a Flymake diagnostic for the Buildifier WARNING.
 WARNING should be a hashtable containing a single warning, as
 described in
@@ -376,13 +375,13 @@ https://github.com/bazelbuild/buildtools/blob/master/buildifier/README.md#file-d
          (message (gethash "message" warning)))
     (when (and (= start-line end-line) (= start-column 0) (= end-column 1))
       ;; Heuristic: assume this means the entire line.  Buildifier emits this
-      ;; e.g. for the module-docstring warning.  ‘bazel-mode--line-column-pos’
+      ;; e.g. for the module-docstring warning.  ‘bazel--line-column-pos’
       ;; ensures that we don’t cross line boundaries.
       (setq end-column (buffer-size)))
     (flymake-make-diagnostic
      (current-buffer)
-     (bazel-mode--line-column-pos start-line start-column)
-     (bazel-mode--line-column-pos end-line end-column)
+     (bazel--line-column-pos start-line start-column)
+     (bazel--line-column-pos end-line end-column)
      :warning
      (format-message "%s [%s] (%s)"
                      ;; We only take the first line of the message, otherwise
@@ -411,10 +410,10 @@ This gets added to ‘xref-backend-functions’."
 
 (cl-defmethod xref-backend-identifier-at-point ((_backend (eql bazel-mode)))
   ;; This only detects string literals representing labels.
-  (let ((identifier (bazel-mode--string-at-point)))
+  (let ((identifier (bazel--string-at-point)))
     (when identifier
       (cl-destructuring-bind (&whole valid-p &optional workspace package target)
-          (bazel-mode--parse-label identifier)
+          (bazel--parse-label identifier)
         (when valid-p
           ;; Save the current workspace directory as text property in case the
           ;; user switches directories between this call and selecting a
@@ -432,14 +431,14 @@ This gets added to ‘xref-backend-functions’."
                       (and buffer-file-name this-workspace
                            (bazel--package-name buffer-file-name
                                                 this-workspace)))))
-            (propertize (bazel-mode--canonical workspace package target)
+            (propertize (bazel--canonical workspace package target)
                         'bazel-mode-workspace this-workspace)))))))
 
 (cl-defmethod xref-backend-definitions ((_backend (eql bazel-mode)) identifier)
   ;; Reparse the identifier so that users can invoke ‘xref-find-definitions’
   ;; and enter a label directly.
   (cl-destructuring-bind (&whole valid-p &optional workspace package target)
-      (bazel-mode--parse-label identifier)
+      (bazel--parse-label identifier)
     (when valid-p
       (let* ((this-workspace
               (or (get-text-property 0 'bazel-mode-workspace identifier)
@@ -451,18 +450,18 @@ This gets added to ‘xref-backend-functions’."
                        (bazel--package-name buffer-file-name this-workspace)))))
         (when (and this-workspace package)
           (let ((location
-                 (bazel-mode--target-location
-                  (bazel-mode--external-workspace workspace this-workspace)
+                 (bazel--target-location
+                  (bazel--external-workspace workspace this-workspace)
                   package target)))
             (when location
-              (list (xref-make (bazel-mode--canonical workspace package target)
+              (list (xref-make (bazel--canonical workspace package target)
                                location)))))))))
 
 (cl-defmethod xref-backend-identifier-completion-table
   ((_backend (eql bazel-mode)))
-  (completion-table-with-cache #'bazel-mode--completion-table))
+  (completion-table-with-cache #'bazel--completion-table))
 
-(defun bazel-mode--target-location (workspace package target)
+(defun bazel--target-location (workspace package target)
   "Return an ‘xref-location’ for a Bazel target.
 The target is in the workspace with root directory WORKSPACE and
 the package PACKAGE.  Its local name is TARGET.  If no target was
@@ -476,14 +475,14 @@ valid file target is indeed a file target."
          (filename (expand-file-name target directory)))
     (if (file-exists-p filename)
         ;; A label that likely refers to a source file.
-        (bazel-mode--file-location filename)
+        (bazel--file-location filename)
       ;; A label that likely refers to a rule.  Try to find the rule in the
       ;; BUILD file of the package.
       (let ((build-file (locate-file "BUILD" (list directory) '("" ".bazel"))))
         (when build-file
-          (bazel-mode--rule-location build-file target))))))
+          (bazel--rule-location build-file target))))))
 
-(defun bazel-mode--completion-table (prefix)
+(defun bazel--completion-table (prefix)
   "Return target completions for the given PREFIX.
 Right now, only supports targets in the current package."
   (cl-check-type prefix string)
@@ -491,18 +490,18 @@ Right now, only supports targets in the current package."
     (pcase (substring-no-properties prefix)
       ((rx bos (let colon (? ?:)) (let prefix (* (not (any ?: ?/)))) eos)
        (mapcar (lambda (elem) (concat colon elem))
-               (append (bazel-mode--complete-rules prefix)
-                       (bazel-mode--complete-files prefix)))))))
+               (append (bazel--complete-rules prefix)
+                       (bazel--complete-files prefix)))))))
 
-(defun bazel-mode--file-location (filename)
+(defun bazel--file-location (filename)
   "Return an ‘xref-location’ for the source file FILENAME."
   (cl-check-type filename string)
   ;; The location actually refers to the whole file.  Avoid jumping around
   ;; within the already-visited file by pretending the reference isn’t found so
   ;; that we return point.
-  (bazel-mode--xref-location filename (lambda ())))
+  (bazel--xref-location filename (lambda ())))
 
-(defun bazel-mode--complete-files (prefix)
+(defun bazel--complete-files (prefix)
   "Return file names in the current directory starting with PREFIX.
 Exclude files that are normally not Bazel targets, such as
 directories and BUILD files."
@@ -519,7 +518,7 @@ directories and BUILD files."
           (push filename files))))
     (nreverse files)))
 
-(defun bazel-mode--rule-location (build-file name)
+(defun bazel--rule-location (build-file name)
   "Return an ‘xref-location’ for a rule within a BUILD file.
 The name of the BUILD file is BUILD-FILE, and NAME is the local
 name of the rule.  If NAME doesn’t seem to exist in BUILD-FILE,
@@ -527,10 +526,9 @@ return a location referring to an arbitrary position within the
 BUILD file."
   (cl-check-type build-file string)
   (cl-check-type name string)
-  (bazel-mode--xref-location build-file
-                             (lambda () (bazel-mode--find-rule name))))
+  (bazel--xref-location build-file (lambda () (bazel--find-rule name))))
 
-(defun bazel-mode--find-rule (name)
+(defun bazel--find-rule (name)
   "Find the rule with the given NAME within the current buffer.
 The current buffer should visit a BUILD file.  If there’s a rule
 with the given NAME, return the location of the rule.  Otherwise,
@@ -552,7 +550,7 @@ return nil."
                nil t)
           (match-beginning 2))))))
 
-(defun bazel-mode--xref-location (filename find-function)
+(defun bazel--xref-location (filename find-function)
   "Return an ‘xref-location’ for some entity within FILENAME.
 FIND-FUNCTION should be a function taking zero arguments.  This
 function calls FIND-FUNCTION in some buffer containing the
@@ -576,7 +574,7 @@ or change the buffer state permanently."
                                  (line-number-at-pos)
                                  (- (point) (line-beginning-position)))))))
 
-(defun bazel-mode--complete-rules (prefix)
+(defun bazel--complete-rules (prefix)
   "Find all rules starting with the given PREFIX in the current buffer.
 The current buffer should visit a BUILD file.  Return a list of
 rule names that start with PREFIX."
@@ -611,7 +609,7 @@ This gets added to ‘ffap-alist’."
     (let ((external-roots
            (condition-case nil
                (directory-files
-                (bazel-mode--external-workspace-dir main-root)
+                (bazel--external-workspace-dir main-root)
                 :full
                 ;; Assume that workspace names follow similar patters as
                 ;; package names,
@@ -653,7 +651,7 @@ Look for an imported file with the given NAME."
 ;; for spaces here.
 
 (eval-when-compile
-  (defmacro bazel-mode--add-compilation-error-regexp (name prefix type)
+  (defmacro bazel--add-compilation-error-regexp (name prefix type)
     "Add a new entry NAME to ‘compilation-error-regexp-alist’.
 PREFIX is a literal string specifying the line prefix.  TYPE is
 the message type, as in ‘compilation-error-regexp-alist’."
@@ -671,9 +669,9 @@ the message type, as in ‘compilation-error-regexp-alist’."
          (add-to-list 'compilation-error-regexp-alist-alist
                       (list ',name ,regexp 1 2 3 ,type))))))
 
-(bazel-mode--add-compilation-error-regexp bazel-mode-info "INFO" 0)
-(bazel-mode--add-compilation-error-regexp bazel-mode-warning "WARNING" 1)
-(bazel-mode--add-compilation-error-regexp bazel-mode-error "ERROR" 2)
+(bazel--add-compilation-error-regexp bazel-mode-info "INFO" 0)
+(bazel--add-compilation-error-regexp bazel-mode-warning "WARNING" 1)
+(bazel--add-compilation-error-regexp bazel-mode-error "ERROR" 2)
 
 ;;;; Imenu support
 
@@ -742,31 +740,31 @@ Return nil if no name was found.  This function is useful as
 
 (defun bazel-build (target)
   "Build a Bazel TARGET."
-  (interactive (list (bazel-build--read-target "build")))
-  (bazel-build--run-bazel-command "build" target))
+  (interactive (list (bazel--read-target "build")))
+  (bazel--run-bazel-command "build" target))
 
 (defun bazel-run (target)
   "Build and run a Bazel TARGET."
-  (interactive (list (bazel-build--read-target "run")))
-  (bazel-build--run-bazel-command "run" target))
+  (interactive (list (bazel--read-target "run")))
+  (bazel--run-bazel-command "run" target))
 
 (defun bazel-test (target)
   "Build and run a Bazel test TARGET."
-  (interactive (list (bazel-build--read-target "test")))
-  (bazel-build--run-bazel-command "test" target))
+  (interactive (list (bazel--read-target "test")))
+  (bazel--run-bazel-command "test" target))
 
 (defun bazel-coverage (target)
   "Run Bazel test TARGET with coverage instrumentation enabled."
-  (interactive (list (bazel-build--read-target "coverage")))
-  (bazel-build--run-bazel-command "coverage" target))
+  (interactive (list (bazel--read-target "coverage")))
+  (bazel--run-bazel-command "coverage" target))
 
-(defun bazel-build--run-bazel-command (command target)
+(defun bazel--run-bazel-command (command target)
   "Run Bazel tool with given COMMAND, e.g. build or run, on the given TARGET."
   (compile
    (mapconcat #'shell-quote-argument
               (append bazel-build-bazel-command (list command target)) " ")))
 
-(defun bazel-build--read-target (command)
+(defun bazel--read-target (command)
   "Read a Bazel build target from the minibuffer.
 COMMAND is a Bazel command to be included in the minibuffer prompt."
   (let* ((file-name (buffer-file-name))
@@ -833,7 +831,7 @@ If FILE-NAME is not in a Bazel package, return nil."
                   (not (string-prefix-p "." package-name))
                   (directory-file-name package-name)))))))
 
-(defun bazel-mode--external-workspace (workspace-name this-workspace-root)
+(defun bazel--external-workspace (workspace-name this-workspace-root)
   "Return the workspace root of an external workspace.
 WORKSPACE-NAME should be either a string naming an external
 workspace, or nil to refer to the current workspace.
@@ -853,24 +851,23 @@ return value is a directory name."
        ;; might block indefinitely if another Bazel instance holds the lock.
        ;; We don’t check whether the directory exists, because it’s generated
        ;; and cached when needed.
-       (expand-file-name
-        workspace-name
-        (bazel-mode--external-workspace-dir this-workspace-root))
+       (expand-file-name workspace-name
+                         (bazel--external-workspace-dir this-workspace-root))
      this-workspace-root)))
 
-(defun bazel-mode--external-workspace-dir (root)
+(defun bazel--external-workspace-dir (root)
   "Return a directory name for the parent directory of the external workspaces.
 ROOT should be the main workspace root as returned by
 ‘bazel--workspace-root’."
   (cl-check-type root string)
-  ;; See the commentary in ‘bazel-mode--external-workspace’ for how to find
-  ;; external workspaces.
+  ;; See the commentary in ‘bazel--external-workspace’ for how to find external
+  ;; workspaces.
   (expand-file-name
    (concat "bazel-" (file-name-nondirectory (directory-file-name root))
            "/external/" )
    root))
 
-(defun bazel-mode--parse-label (label)
+(defun bazel--parse-label (label)
   "Parse Bazel label LABEL.
 If LABEL isn’t syntactically valid, return nil.  Otherwise,
 return a triple (WORKSPACE PACKAGE TARGET).  WORKSPACE is
@@ -901,7 +898,7 @@ the lexical syntax of labels."
           ;; target
           (seq (let target (not (any ?: ?/ ?@)) (* (not (any ?:))))))
          eos)
-     (unless target (setq target (bazel-mode--default-target package)))
+     (unless target (setq target (bazel--default-target package)))
      (and (or (null workspace)
               (string-match-p (rx bos (+ (any ?- "A-Za-z0-9.")) eos) workspace))
           (or (null package)
@@ -915,7 +912,7 @@ the lexical syntax of labels."
                           target)
           (list workspace package target)))))
 
-(defun bazel-mode--default-target (package)
+(defun bazel--default-target (package)
   "Return the default target name for PACKAGE.
 For a package “foo/bar”, “bar” is the default target."
   (cl-check-type package string)
@@ -925,7 +922,7 @@ For a package “foo/bar”, “bar” is the default target."
     (nreverse (substring-no-properties reversed nil
                                        (string-match-p (rx ?/) reversed)))))
 
-(defun bazel-mode--canonical (workspace package target)
+(defun bazel--canonical (workspace package target)
   "Return a canonical label.
 WORKSPACE is either nil (referring to the current workspace) or
 an external workspace name.  PACKAGE and TARGET should both be
@@ -936,7 +933,7 @@ strings.  Return either @WORKSPACE//PACKAGE:TARGET or
   (cl-check-type target string)
   (concat (and workspace (concat "@" workspace)) "//" package ":" target))
 
-(defun bazel-mode--string-at-point ()
+(defun bazel--string-at-point ()
   "Return the string literal at point, or nil if not inside a string literal."
   (let ((state (syntax-ppss)))
     (when (nth 3 state)  ; in string
@@ -946,14 +943,14 @@ strings.  Return either @WORKSPACE//PACKAGE:TARGET or
           (parse-partial-sexp (point) (point-max) nil nil state 'syntax-table)
           (buffer-substring-no-properties start (1- (point))))))))
 
-(defun bazel-mode--find-magic-comment (bound)
+(defun bazel--find-magic-comment (bound)
   "Search for a magic comment from point to BOUND.
 If a magic comment was found, return non-nil and set the match to
 the comment text."
   (and (search-forward "keep sorted" bound t)
        (nth 4 (syntax-ppss))))
 
-(defun bazel-mode--line-column-pos (line column)
+(defun bazel--line-column-pos (line column)
   "Return buffer position in the current buffer for LINE and COLUMN.
 Restrict LINE to the buffer size and COLUMN to the number of
 characters in LINE.  COLUMN is measured in characters, not visual
@@ -965,7 +962,7 @@ columns."
       (forward-line (1- line))
       (min (line-end-position) (+ (point) column)))))
 
-(defalias 'bazel-mode--json-parse-buffer
+(defalias 'bazel--json-parse-buffer
   (if (fboundp 'json-parse-buffer) #'json-parse-buffer
     (lambda ()
       "Polyfill for ‘json-parse-buffer’."
