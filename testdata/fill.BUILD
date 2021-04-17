@@ -15,7 +15,7 @@
 my_rule(
     name = "lib",
     # The Foobar files.
-    # keep sorted
+    # %MAGIC_COMMENT%
     foobar_files = [
         "bar",
         "foo",

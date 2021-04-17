@@ -88,8 +88,17 @@
           "https://github.com/bazelbuild/buildtools/tree/master/buildifier")
   :risky t)
 
-;;;; Commands to run Buildifier.
+(defvar bazel--magic-comment-rx
+  '(or "@unused"
+       "@unsorted-dict-items"
+       "keep sorted"
+       "do not sort"
+       "buildifier: leave-alone"
+       (seq (or "buildifier" "buildozer") ": "
+             (seq "disable=" (+ (any "A-Za-z-")))))
+  "Regular expression used to identify magic comments known to `buildifier'")
 
+;;;; Commands to run Buildifier.
 (defvar-local bazel--buildifier-type nil
   "Type of the file that the current buffer visits.
 This must be a symbol and a valid value for the Buildifier -type
@@ -199,12 +208,11 @@ This is the parent mode for the more specific modes
   (setq-local indent-line-function #'python-indent-line-function)
   (setq-local indent-region-function #'python-indent-region)
   (setq-local electric-indent-inhibit t)
-  ;; “keep sorted” is a magic comment that tells Buildifier to keep a list
-  ;; sorted.  We treat it as a separate paragraph for filling.
+  ;; Treat magic comments as being separate paragraphs for filling.
   (setq-local paragraph-start
               (rx-to-string
                `(or (seq (* (syntax whitespace)) (regexp ,comment-start-skip)
-                         "keep sorted")
+                         ,bazel--magic-comment-rx)
                     (regexp ,paragraph-start))
                :no-group))
   (add-hook 'before-save-hook #'bazel--buildifier-before-save-hook nil :local)
@@ -992,7 +1000,8 @@ strings.  Return either @WORKSPACE//PACKAGE:TARGET or
   "Search for a magic comment from point to BOUND.
 If a magic comment was found, return non-nil and set the match to
 the comment text."
-  (and (search-forward "keep sorted" bound t)
+  (and (re-search-forward (rx-to-string bazel--magic-comment-rx)
+                          bound t)
        (nth 4 (syntax-ppss))))
 
 (defun bazel--line-column-pos (line column)
