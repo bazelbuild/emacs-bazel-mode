@@ -1,4 +1,4 @@
-;;; bazel.el --- Emacs major mode for editing Bazel BUILD and WORKSPACE files -*- lexical-binding: t; -*-
+;;; bazel.el --- Bazel support for Emacs -*- lexical-binding: t; -*-
 
 ;; URL: https://github.com/bazelbuild/emacs-bazel-mode
 ;; Keywords: build tools, languages
@@ -20,18 +20,30 @@
 
 ;;; Commentary:
 
-;; This package provides Emacs bazel-mode, a major mode for editing Bazel
-;; BUILD and WORKSPACE files.
+;; This package provides support for the Bazel build system.  See
+;; https://bazel.build/ for background on Bazel.
 ;;
-;; This package provides ‘bazelrc-mode’, a major mode to edit .bazelrc files.
-;; See https://docs.bazel.build/versions/3.0.0/guide.html#bazelrc.
+;; The package provides four major modes for editing Bazel-related files:
+;; ‘bazel-build-mode’ for BUILD files, ‘bazel-workspace-mode’ for WORKSPACE
+;; files, ‘bazelrc-mode’ for .bazelrc configuration files, and
+;; ‘bazel-starlark-mode’ for extension files written in the Starlark language.
+;; These modes also extend Imenu and ‘find-file-at-point’ to support
+;; Bazel-specific syntax.
 ;;
-;; This package provides commands to build and run code using Bazel.
-;; It defines interactive commands which perform completion of available Bazel
-;; targets:
-;;   - `bazel-build'
-;;   - `bazel-run'
-;;   - `bazel-test'
+;; If Buildifier is available, the ‘bazel-mode-flymake’ backend for Flymake
+;; provides on-the-fly syntax checking for Bazel files.  You can also run
+;; Buildifier manually using the ‘bazel-buildifier’ command to reformat a Bazel
+;; file buffer.
+;;
+;; The Bazel modes integrate with Xref to provide basic functionality to jump to
+;; the definition of Bazel targets.
+;;
+;; To simplify running Bazel commands, the package provides the commands
+;; ‘bazel-build’, ‘bazel-test’, ‘bazel-coverage’ and ‘bazel-run’, which execute
+;; the corresponding Bazel commands in a compilation mode buffer.
+;;
+;; You can customize some aspects of this package using the ‘bazel’
+;; customization group.
 
 ;;; Code:
 
