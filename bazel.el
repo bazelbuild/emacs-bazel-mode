@@ -688,7 +688,7 @@ the message type, as in ‘compilation-error-regexp-alist’."
       `(progn
          (add-to-list 'compilation-error-regexp-alist ',name)
          (add-to-list 'compilation-error-regexp-alist-alist
-                      (list ',name ,regexp 1 2 3 ,type))))))
+                      '(,name ,regexp 1 2 3 ,type))))))
 
 (bazel--add-compilation-error-regexp bazel-mode-info "INFO" 0)
 (bazel--add-compilation-error-regexp bazel-mode-warning "WARNING" 1)
