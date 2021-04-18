@@ -668,6 +668,42 @@ in ‘bazel-mode’."
           commands
           '("bazel build --compile_one_dependency -- package/test.cc")))))))
 
+(ert-deftest bazel-completion-at-point ()
+  "Test for ‘completion-at-point’ in ‘bazel-mode’."
+  (bazel-test--with-temp-directory dir
+    (bazel-test--tangle dir "completion-at-point.org")
+    (bazel-test--with-file-buffer (expand-file-name "BUILD" dir)
+      (let* ((got-args ())
+             (completion-in-region-function
+              (lambda (start end collection predicate)
+                (push (list start end collection predicate) got-args))))
+        (ert-info ("outside of a label")
+          (goto-char (point-min))
+          (completion-at-point)
+          (should-not got-args))
+        (ert-info ("within a label")
+          (re-search-forward
+           (rx bol (+ blank) "deps = [\"" (group "//:l") (group "i") "\"]"))
+          (let ((want-begin (match-beginning 1))
+                (want-end (match-end 2))
+                (point (match-beginning 2))
+                (string (match-string-no-properties 1))
+                (suffix (match-string-no-properties 2)))
+            (goto-char point)
+            (completion-at-point)
+            (pcase got-args
+              (`((,begin ,end ,collection nil))
+               (should (integer-or-marker-p begin))
+               (should (integer-or-marker-p end))
+               (should (= begin want-begin))
+               (should (= end want-end))
+               (should (equal (try-completion string collection) "//:lib"))
+               (should (equal (all-completions string collection) '("lib")))
+               (should (equal
+                        (completion-boundaries string collection nil suffix)
+                        '(3 . 1))))
+              (_ (ert-fail (format "Unexpected arguments %S" got-args))))))))))
+
 (put #'looking-at-p 'ert-explainer #'bazel-test--explain-looking-at-p)
 
 (defun bazel-test--explain-looking-at-p (regexp)

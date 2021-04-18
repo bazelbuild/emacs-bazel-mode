@@ -64,6 +64,7 @@
 (require 'json)
 (require 'macroexp)
 (require 'menu-bar)
+(require 'minibuffer)
 (require 'pcase)
 (require 'project)
 (require 'python)
@@ -272,7 +273,9 @@ This is the parent mode for the more specific modes
   (setq-local add-log-current-defun-function #'bazel-mode-current-rule-name)
   (add-hook 'before-save-hook #'bazel--buildifier-before-save-hook nil :local)
   (add-hook 'flymake-diagnostic-functions #'bazel-mode-flymake nil :local)
-  (add-hook 'xref-backend-functions #'bazel-mode-xref-backend nil :local))
+  (add-hook 'xref-backend-functions #'bazel-mode-xref-backend nil :local)
+  (add-hook 'completion-at-point-functions #'bazel-completion-at-point
+            nil :local))
 
 ;;;###autoload
 (define-derived-mode bazel-build-mode bazel-mode "Bazel BUILD"
@@ -677,6 +680,38 @@ valid file target is indeed a file target."
       (let ((build-file (locate-file "BUILD" (list directory) '("" ".bazel"))))
         (when build-file
           (bazel--rule-location build-file target))))))
+
+;;;; Completion support
+
+(defun bazel-completion-at-point ()
+  "Provide completion of Bazel target labels at point.
+‘bazel-mode’ adds this function to
+‘completion-at-point-functions’.
+See Info node ‘(elisp) Completion in Buffers’ for context."
+  ;; This function should be fast, so we perform the quick checks (reading
+  ;; variables, syntax tables) first before hitting the filesystem to find the
+  ;; workspace root.
+  (when-let ((file-name buffer-file-name))
+    (when (derived-mode-p 'bazel-mode)
+      ;; We assume for now that labels always appear as strings.  That should
+      ;; cover most cases (e.g. “deps” attributes), but not add large amounts of
+      ;; false positives.
+      (let ((state (syntax-ppss)))
+        (when (nth 3 state)  ; in string
+          (let ((start (1+ (nth 8 state))))  ; first character in string
+            (save-excursion
+              ;; Jump to the closing quotation mark.
+              (parse-partial-sexp (point) (point-max) nil nil state
+                                  'syntax-table)
+              (let ((end (1- (point))))
+                (when (>= end start)
+                  (when-let* ((root (bazel--workspace-root buffer-file-name))
+                              (package (bazel--package-name file-name root)))
+                    ;; It’s not entirely correct to reuse the target pattern
+                    ;; table here since labels in BUILD files normally can’t be
+                    ;; target patterns.  Consider refactoring this later.
+                    (list start end (bazel--target-pattern-completion-table
+                                     root package))))))))))))
 
 (defun bazel--completion-table (prefix)
   "Return target completions for the given PREFIX.
