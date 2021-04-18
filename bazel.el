@@ -88,15 +88,23 @@
           "https://github.com/bazelbuild/buildtools/tree/master/buildifier")
   :risky t)
 
-(defvar bazel--magic-comment-rx
-  '(or "@unused"
-       "@unsorted-dict-items"
-       "keep sorted"
-       "do not sort"
-       "buildifier: leave-alone"
-       (seq (or "buildifier" "buildozer") ": "
-             (seq "disable=" (+ (any "A-Za-z-")))))
-  "Regular expression used to identify magic comments known to `buildifier'")
+(defconst bazel--magic-comment-regexp
+  (rx (or "keep sorted"
+          "do not sort"
+          "@unused"
+          "@unsorted-dict-items"
+          "buildifier: leave-alone"
+          (seq (or "buildifier" "buildozer") ": "
+               (seq "disable=" (+ (any "A-Za-z-"))))))
+  "Regular expression identifying magic comments known to Buildifier.
+
+Many of these are documentedat
+URL `https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md'.
+
+The magic comments \"keep sorted\", \"do not sort\", and
+\"buildifier: leave-alone\" don't look to be documented, but are
+mentioned in the Buildifer source code at URL
+`https://git.io/JOuVL' and have tests.")
 
 ;;;; Commands to run Buildifier.
 (defvar-local bazel--buildifier-type nil
@@ -212,7 +220,7 @@ This is the parent mode for the more specific modes
   (setq-local paragraph-start
               (rx-to-string
                `(or (seq (* (syntax whitespace)) (regexp ,comment-start-skip)
-                         ,bazel--magic-comment-rx)
+                         (regexp ,bazel--magic-comment-regexp))
                     (regexp ,paragraph-start))
                :no-group))
   (add-hook 'before-save-hook #'bazel--buildifier-before-save-hook nil :local)
@@ -1000,9 +1008,10 @@ strings.  Return either @WORKSPACE//PACKAGE:TARGET or
   "Search for a magic comment from point to BOUND.
 If a magic comment was found, return non-nil and set the match to
 the comment text."
-  (and (re-search-forward (rx-to-string bazel--magic-comment-rx)
-                          bound t)
-       (nth 4 (syntax-ppss))))
+  (let ((case-fold-search t))
+    (and (re-search-forward bazel--magic-comment-regexp
+                            bound t)
+         (nth 4 (syntax-ppss)))))
 
 (defun bazel--line-column-pos (line column)
   "Return buffer position in the current buffer for LINE and COLUMN.

@@ -271,38 +271,15 @@ that buffer once BODY finishes."
                 (expand-file-name "root/bazel-root/external/ws/bbb.h" dir)))))))
 
 (ert-deftest bazel-mode/fill ()
-  "Check that “keep sorted” comments are left alone."
+  "Check that magic comments are left alone."
   (with-temp-buffer
     (insert-file-contents
      (expand-file-name "testdata/fill.BUILD" bazel-test--directory))
-    (let ((original-buffer (current-buffer)))
-      (dolist (comment-text
-               '("keep sorted"
-                 "KEEP SORTEd"
-                 "do not sort"
-                 "@unused"
-                 "@unsorted-dict-items"
-                 "buildifier: leave-alone"
-                 "buildifier: disable=foo"
-                 "buildifier: disable=confusing-name"
-                 "BUILDIFIER: DISABLE=CONFUSING-NAME"
-                 "buildozer: disable=git-repository"
-                 ))
-        (ert-info
-            ((format "Magic comment '%s' not kept on its own line" comment-text))
-          (with-temp-buffer
-            (insert-buffer-substring original-buffer)
-            (goto-char (point-min))
-            (bazel-mode)
-
-            (while (search-forward "%MAGIC_COMMENT%" nil t)
-              (replace-match comment-text :fixedcase :literal))
-
-            (goto-char (point-min))
-            (search-forward "# The Foobar files")
-            (let ((before (buffer-string)))
-              (fill-paragraph)
-              (should (equal (buffer-string) before)))))))))
+    (bazel-mode)
+    (let ((before (buffer-string)))
+      (while (search-forward "# Test paragraph" nil t)
+        (fill-paragraph))
+      (should (equal (buffer-string) before)))))
 
 (ert-deftest bazel-build-mode/beginning-of-defun ()
   "Check that ‘beginning-of-defun’ in BUILD buffers moves to the

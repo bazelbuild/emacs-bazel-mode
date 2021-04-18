@@ -14,8 +14,28 @@
 
 my_rule(
     name = "lib",
+    # Test paragraph
+    # Keep sorted
+
+    # Test paragraph
+    # do Not sort
+
+    # Test paragraph
+    # @Unused
+
+    # Test paragraph
+    # @unsorted-dict-items
+
+    # Test paragraph
+    # buildifier: leave-alone
+
+    # Test paragraph
+    # buildifier: disable=git-repository
+
+    # Test paragraph
+    # buildozer: disable=confusing-name
+
     # The Foobar files.
-    # %MAGIC_COMMENT%
     foobar_files = [
         "bar",
         "foo",
