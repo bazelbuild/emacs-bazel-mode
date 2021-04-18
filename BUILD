@@ -29,8 +29,11 @@ elisp_test(
     srcs = [
         # We’d like to name this file “bazel-test.el”, but that’s impossible
         # due to https://github.com/bazelbuild/bazel/issues/10560.
-        "test.el"
+        "test.el",
     ],
-    data = ["BUILD"] + glob(["testdata/*"]),
+    data = [
+        "BUILD",
+        "test.el",
+    ] + glob(["testdata/*"]),
     deps = [":bazel"],
 )

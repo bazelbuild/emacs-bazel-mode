@@ -40,7 +40,9 @@
 ;;
 ;; To simplify running Bazel commands, the package provides the commands
 ;; ‘bazel-build’, ‘bazel-test’, ‘bazel-coverage’ and ‘bazel-run’, which execute
-;; the corresponding Bazel commands in a compilation mode buffer.
+;; the corresponding Bazel commands in a compilation mode buffer.  In a buffer
+;; that visits a test file, you can also have Emacs try to detect and execute
+;; the test at point using ‘bazel-test-at-point’.
 ;;
 ;; You can customize some aspects of this package using the ‘bazel’
 ;; customization group.  If you set the user option ‘bazel-display-coverage’ to
@@ -72,6 +74,7 @@
 (require 'subr-x)
 (require 'syntax)
 (require 'testcover)
+(require 'which-func)
 (require 'xref)
 
 ;;;; Customization options
@@ -111,6 +114,30 @@
   :group 'bazel
   :link '(url-link
           "https://github.com/bazelbuild/buildtools/tree/master/buildifier")
+  :risky t)
+
+(defun bazel--initialize-test-at-point-functions (option value)
+  "Initialize the option ‘bazel-test-at-point-functions’.
+See Info node ‘(elisp) Variable Definitions’ for an explanation
+of the OPTION and VALUE arguments."
+  (cl-check-type option symbol)
+  (dolist (function (eval value t))
+    (add-hook option function 80)))
+
+(defcustom bazel-test-at-point-functions '(which-function)
+  "Abnormal hook to find a test case at point.
+Each function in this hook should check whether it recognizes the
+area around point as a test case, and return a string that can be
+used as value for Bazel’s --test_filter option if so.  The
+default value of this option includes ‘which-function’ at low
+priority."
+  :type 'hook
+  :options '(which-function)
+  :initialize #'bazel--initialize-test-at-point-functions
+  :group 'bazel
+  :link '(url-link
+          "https://docs.bazel.build/user-manual.html#flag--test_filter")
+  :link '(url-link "https://docs.bazel.build/test-encyclopedia.html")
   :risky t)
 
 (defcustom bazel-display-coverage nil
@@ -387,6 +414,7 @@ This is the parent mode for the more specific modes
    ["Build..." bazel-build]
    ["Compile current file" bazel-compile-current-file buffer-file-name]
    ["Test..." bazel-test]
+   ["Test at point" bazel-test-at-point]
    ["Collect code coverage..." bazel-coverage]
    ["Run target..." bazel-run]
    ["Show consuming rule" bazel-show-consuming-rule]
@@ -1238,6 +1266,29 @@ the containing workspace.  This function is suitable for
   (cl-check-type target string)
   (bazel--run-bazel-command "test" target))
 
+(defun bazel-test-at-point ()
+  "Run the test case at point."
+  (interactive)
+  (let* ((source-file (or buffer-file-name
+                          (user-error "Buffer doesn’t visit a file")))
+         (root (or (bazel--workspace-root source-file)
+                   (user-error "File is not in a Bazel workspace")))
+         (package (or (bazel--package-name source-file root)
+                      (user-error "File is not in a Bazel package")))
+         (directory (file-name-as-directory (expand-file-name package root)))
+         (build-file (or (locate-file "BUILD" (list directory) '(".bazel" ""))
+                         (user-error "No BUILD file found")))
+         (relative-file (file-relative-name source-file directory))
+         (case-fold-file (file-name-case-insensitive-p source-file))
+         (rule
+          (or (bazel--consuming-rule build-file relative-file case-fold-file)
+              (user-error "No rule for file %s found" relative-file)))
+         (name
+          (or (run-hook-with-args-until-success 'bazel-test-at-point-functions)
+              (user-error "Point is not on a test case"))))
+    (bazel--compile "test" (concat "--test_filter=" name) "--"
+                    (bazel--canonical nil package rule))))
+
 (defun bazel-coverage (target)
   "Run Bazel test TARGET with coverage instrumentation enabled."
   (interactive (list (bazel--read-target-pattern "coverage")))
@@ -1245,7 +1296,7 @@ the containing workspace.  This function is suitable for
   (bazel--run-bazel-command "coverage" target))
 
 (defun bazel--run-bazel-command (command target-pattern)
-  "Run Bazel tool with given COMMAND on the given TARGET-PATTERN.
+  "Run Bazel tool with given COMMAND on the given TARGET_PATTERN.
 COMMAND is a Bazel command such as \"build\" or \"run\"."
   (cl-check-type command string)
   (cl-check-type target-pattern string)
