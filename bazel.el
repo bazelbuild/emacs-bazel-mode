@@ -98,7 +98,7 @@
                (seq "disable=" (+ (any "A-Za-z-"))))))
   "Regular expression identifying magic comments known to Buildifier.
 
-Many of these are documentedat
+Many of these are documented at
 URL `https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md'.
 
 The magic comments \"keep sorted\", \"do not sort\", and
