@@ -430,7 +430,8 @@ attached to the current buffer.  Return a list of Flymake
 diagnostics; see Info node ‘(Flymake) Backend functions’ for
 details."
   (cl-check-type output-buffer buffer-live)
-  (cl-loop with report = (with-current-buffer output-buffer
+  (cl-loop with case-fold-search = nil
+           with report = (with-current-buffer output-buffer
                            (save-excursion
                              (save-restriction
                                (widen)
@@ -712,12 +713,13 @@ This gets added to ‘ffap-alist’."
 Look for an imported file with the given NAME."
   (cl-check-type name string)
   ;; https://docs.bazel.build/versions/3.0.0/guide.html#imports
-  (pcase name
-    ((rx bos "%workspace%" (+ ?/) (let rest (+ nonl)))
-     (when buffer-file-name
-       (when-let ((workspace (bazel--workspace-root buffer-file-name)))
-         (let ((file-name (expand-file-name rest workspace)))
-           (and (file-exists-p file-name) file-name)))))))
+  (let ((case-fold-search nil))
+    (pcase name
+      ((rx bos "%workspace%" (+ ?/) (let rest (+ nonl)))
+       (when buffer-file-name
+         (when-let ((workspace (bazel--workspace-root buffer-file-name)))
+           (let ((file-name (expand-file-name rest workspace)))
+             (and (file-exists-p file-name) file-name))))))))
 
 ;;;; Compilation support
 
@@ -903,7 +905,8 @@ This function is useful as ‘imenu-create-index-function’ for
     (save-restriction
       (widen)
       (goto-char (point-min))
-      (let ((index ()))
+      (let ((case-fold-search nil)
+            (index ()))
         ;; Heuristic: We search for “name” attributes as they would show in
         ;; typical BUILD files.  That’s not 100% correct, but doesn’t rely on
         ;; external processes and should work fine in common cases.
@@ -929,8 +932,9 @@ This function is useful as ‘imenu-create-index-function’ for
   "Return the name of the Starlark function at point.
 Return nil if no name was found.  This function is useful as
 ‘imenu-extract-index-name-function’ for ‘bazel-starlark-mode’."
-  (and (looking-at python-nav-beginning-of-defun-regexp)
-       (match-string-no-properties 1)))
+  (let ((case-fold-search nil))
+    (and (looking-at python-nav-beginning-of-defun-regexp)
+         (match-string-no-properties 1))))
 
 ;;;; Speedbar
 
@@ -1126,15 +1130,16 @@ ROOT should be the main workspace root as returned by
   "Return the directory names of the external workspace roots.
 MAIN-ROOT should be the main workspace root as returned by
 ‘bazel--workspace-root’."
-  (condition-case nil
-      (directory-files (bazel--external-workspace-dir main-root)
-                       :full
-                       ;; Assume that workspace names follow similar patters as
-                       ;; package names,
-                       ;; https://docs.bazel.build/versions/3.0.0/build-ref.html#package-names-package-name.
-                       (rx bos (+ (any alnum "-._")) eos))
-    ;; If there’s no external workspace directory, don’t signal an error.
-    (file-missing nil)))
+  (let ((case-fold-search nil))
+    (condition-case nil
+        (directory-files (bazel--external-workspace-dir main-root)
+                         :full
+                         ;; Assume that workspace names follow similar patters
+                         ;; as package names,
+                         ;; https://docs.bazel.build/versions/3.0.0/build-ref.html#package-names-package-name.
+                         (rx bos (+ (any alnum "-._")) eos))
+      ;; If there’s no external workspace directory, don’t signal an error.
+      (file-missing nil))))
 
 (defun bazel--parse-label (label)
   "Parse Bazel label LABEL.
@@ -1147,39 +1152,42 @@ name of LABEL.  See
 https://docs.bazel.build/versions/2.0.0/build-ref.html#lexi for
 the lexical syntax of labels."
   (cl-check-type label string)
-  (pcase (substring-no-properties label)
-    ((rx bos
-         (or
-          ;; @workspace//package:target
-          (seq "@" (let workspace (+ (not (any ?: ?/))))
-               "//" (let package (* (not (any ?:))))
-               ?: (let target (+ (not (any ?:)))))
-          ;; @workspace//package
-          (seq "@" (let workspace (+ (not (any ?: ?/))))
-               "//" (let package (+ (not (any ?:)))))
-          ;; //package:target
-          (seq "//" (let package (* (not (any ?:))))
-               ?: (let target (+ (not (any ?:)))))
-          ;; //package
-          (seq "//" (let package (+ (not (any ?:)))))
-          ;; :target
-          (seq ?: (let target (+ (not (any ?:)))))
-          ;; target
-          (seq (let target (not (any ?: ?/ ?@)) (* (not (any ?:))))))
-         eos)
-     (unless target (setq target (bazel--default-target package)))
-     (and (or (null workspace)
-              (string-match-p (rx bos (+ (any ?- "A-Za-z0-9.")) eos) workspace))
-          (or (null package)
-              ;; https://docs.bazel.build/versions/2.0.0/build-ref.html#package-names-package-name
-              (string-match-p (rx bos (* (any ?- "A-Za-z0-9/.")) eos) package))
-          ;; https://docs.bazel.build/versions/2.0.0/build-ref.html#name
-          (string-match-p (rx bos
-                              (+ (any ?- "a-zA-Z0-9!%-@^_` \"#$&'()*+,;<=>"
-                                      "?[]{|}~/."))
-                              eos)
-                          target)
-          (list workspace package target)))))
+  (let ((case-fold-search nil))
+    (pcase (substring-no-properties label)
+      ((rx bos
+           (or
+            ;; @workspace//package:target
+            (seq "@" (let workspace (+ (not (any ?: ?/))))
+                 "//" (let package (* (not (any ?:))))
+                 ?: (let target (+ (not (any ?:)))))
+            ;; @workspace//package
+            (seq "@" (let workspace (+ (not (any ?: ?/))))
+                 "//" (let package (+ (not (any ?:)))))
+            ;; //package:target
+            (seq "//" (let package (* (not (any ?:))))
+                 ?: (let target (+ (not (any ?:)))))
+            ;; //package
+            (seq "//" (let package (+ (not (any ?:)))))
+            ;; :target
+            (seq ?: (let target (+ (not (any ?:)))))
+            ;; target
+            (seq (let target (not (any ?: ?/ ?@)) (* (not (any ?:))))))
+           eos)
+       (unless target (setq target (bazel--default-target package)))
+       (and (or (null workspace)
+                (string-match-p (rx bos (+ (any ?- "A-Za-z0-9.")) eos)
+                                workspace))
+            (or (null package)
+                ;; https://docs.bazel.build/versions/2.0.0/build-ref.html#package-names-package-name
+                (string-match-p (rx bos (* (any ?- "A-Za-z0-9/.")) eos)
+                                package))
+            ;; https://docs.bazel.build/versions/2.0.0/build-ref.html#name
+            (string-match-p (rx bos
+                                (+ (any ?- "a-zA-Z0-9!%-@^_` \"#$&'()*+,;<=>"
+                                        "?[]{|}~/."))
+                                eos)
+                            target)
+            (list workspace package target))))))
 
 (defun bazel--default-target (package)
   "Return the default target name for PACKAGE.
@@ -1187,7 +1195,8 @@ For a package “foo/bar”, “bar” is the default target."
   (cl-check-type package string)
   ;; There’s no function to search backwards within a string, so we reverse the
   ;; string twice.
-  (let ((reversed (reverse package)))
+  (let ((case-fold-search nil)
+        (reversed (reverse package)))
     (nreverse (substring-no-properties reversed nil
                                        (string-match-p (rx ?/) reversed)))))
 
@@ -1217,8 +1226,9 @@ strings.  Return either @WORKSPACE//PACKAGE:TARGET or
 If a magic comment was found, return non-nil and set the match to
 the comment text."
   (cl-check-type bound natnum)
-  (and (search-forward "keep sorted" bound t)
-       (nth 4 (syntax-ppss))))
+  (let ((case-fold-search nil))
+    (and (search-forward "keep sorted" bound t)
+         (nth 4 (syntax-ppss)))))
 
 (defun bazel--line-column-pos (line column)
   "Return buffer position in the current buffer for LINE and COLUMN.
