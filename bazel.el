@@ -97,7 +97,7 @@
           "https://github.com/bazelbuild/buildtools/tree/master/buildifier"))
 
 (define-obsolete-variable-alias 'bazel-mode-buildifier-before-save
-  'bazel-buildififer-before-save "2021-04-13")
+  'bazel-buildifier-before-save "2021-04-13")
 
 (defcustom bazel-buildifier-before-save nil
   "Specifies whether to run buildifer in `before-save-hook'."
