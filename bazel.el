@@ -155,7 +155,7 @@ If nil, don’t pass a -type flag to Buildifier.")
         (erase-buffer)
         (let ((return-code
                (apply #'process-file
-                      bazel-mode-buildifier-command buildifier-input-file
+                      bazel-buildifier-command buildifier-input-file
                       `(t ,buildifier-error-file) nil
                       (bazel--buildifier-file-flags type input-file))))
           (if (eq return-code 0)
@@ -175,7 +175,7 @@ If nil, don’t pass a -type flag to Buildifier.")
 
 (defun bazel--buildifier-before-save-hook ()
   "Run buildifer in `before-save-hook'."
-  (when bazel-mode-buildifier-before-save
+  (when bazel-buildifier-before-save
     (bazel-buildifier)))
 
 ;;;; ‘bazel-mode’ and child modes
@@ -338,7 +338,7 @@ backends."
       (setq bazel--flymake-process nil)
       (delete-process process)))
   (let* ((non-essential t)
-         (command `(,bazel-mode-buildifier-command
+         (command `(,bazel-buildifier-command
                     ,@(bazel--buildifier-file-flags bazel--buildifier-type
                                                     buffer-file-name)
                     "-mode=check" "-format=json" "-lint=warn"))
@@ -970,7 +970,7 @@ the containing workspace.  This function is suitable for
   "Run Bazel tool with given COMMAND, e.g. build or run, on the given TARGET."
   (compile
    (mapconcat #'shell-quote-argument
-              (append bazel-build-bazel-command (list command target)) " ")))
+              (append bazel-command (list command target)) " ")))
 
 (defun bazel--read-target (command)
   "Read a Bazel build target from the minibuffer.
@@ -984,7 +984,7 @@ COMMAND is a Bazel command to be included in the minibuffer prompt."
               (user-error "Not in a Bazel package.  No BUILD file found")))
          (initial-input (concat "//" package-name))
          (prompt (combine-and-quote-strings
-                  (append bazel-build-bazel-command (list command "")))))
+                  (append bazel-command (list command "")))))
     (read-string prompt initial-input)))
 
 ;;;; Utility functions to work with Bazel workspaces
