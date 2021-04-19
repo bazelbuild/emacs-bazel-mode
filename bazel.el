@@ -1028,8 +1028,9 @@ COMMAND is a Bazel command to be included in the minibuffer prompt."
               (user-error "Not in a Bazel package.  No BUILD file found")))
          (initial-input (concat "//" package-name))
          (prompt (combine-and-quote-strings
-                  (append bazel-command (list command "")))))
-    (read-string prompt initial-input)))
+                  (append bazel-command (list command ""))))
+         (candidates (bazel--rules-in-package workspace-root package-name)))
+    (completing-read prompt candidates nil nil initial-input)))
 
 ;;;; Utility functions to work with Bazel workspaces
 
@@ -1135,6 +1136,30 @@ MAIN-ROOT should be the main workspace root as returned by
                        (rx bos (+ (any alnum "-._")) eos))
     ;; If there’s no external workspace directory, don’t signal an error.
     (file-missing nil)))
+
+(defun bazel--rules-in-package (root package)
+  "Return the canonical labels for all rules in PACKAGE.
+ROOT is the workspace root directory returned by
+‘bazel--workspace-root’.  Also return the “//PACKAGE:all” and
+“//PACKAGE/...” pseudo-targets."
+  (cl-check-type root string)
+  (cl-check-type package string)
+  (append
+   (when-let ((filename
+               (locate-file "BUILD" (list (expand-file-name package root))
+                            '(".bazel" ""))))
+     (mapcar
+      (lambda (name) (format "//%s:%s" package name))
+      (if-let ((buffer (find-buffer-visiting filename)))
+          (with-current-buffer buffer
+            (bazel--complete-rules ""))
+        (with-temp-buffer
+          (insert-file-contents filename)
+          (bazel-build-mode)
+          (bazel--complete-rules "")))))
+   (list (format "//%s:all" package)
+         (if (string-empty-p package) "//..."
+           (format "//%s/..." package)))))
 
 (defun bazel--parse-label (label)
   "Parse Bazel label LABEL.
