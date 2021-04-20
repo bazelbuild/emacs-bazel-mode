@@ -52,6 +52,8 @@
 (require 'syntax)
 (require 'xref)
 
+;;;; Customization options
+
 (defgroup bazel nil
   "Package for editing, building, and running code using Bazel."
   :link '(url-link "https://bazel.build")
