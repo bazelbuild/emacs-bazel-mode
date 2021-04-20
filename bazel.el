@@ -43,7 +43,11 @@
 ;; the corresponding Bazel commands in a compilation mode buffer.
 ;;
 ;; You can customize some aspects of this package using the ‘bazel’
-;; customization group.
+;; customization group.  If you set the user option ‘bazel-display-coverage’ to
+;; a non-nil value and then run ‘bazel coverage’ (either using the ‘compile’ or
+;; ‘bazel-coverage’ command), the package will display code coverage status in
+;; buffers that visit instrumented files, using the faces ‘bazel-covered-line’
+;; and ‘bazel-uncovered-line’ for covered and uncovered lines, respectively.
 
 ;;; Code:
 
@@ -62,6 +66,7 @@
 (require 'rx)
 (require 'subr-x)
 (require 'syntax)
+(require 'testcover)
 (require 'xref)
 
 ;;;; Customization options
@@ -101,6 +106,28 @@
   :link '(url-link
           "https://github.com/bazelbuild/buildtools/tree/master/buildifier")
   :risky t)
+
+(defcustom bazel-display-coverage nil
+  "Specifies whether to parse compilation buffers for coverage information.
+If nil, don’t attempt to find coverage information in compilation
+buffers.  If t, always search for coverage information, and
+display the coverage status in buffers that visit covered files.
+If ‘local’, only do so for local files."
+  :type '(radio (const :tag "Never" nil)
+                (const :tag "Always" t)
+                (const :tag "Only for local files" local))
+  :group 'bazel)
+
+(defface bazel-covered-line '((default :extend t)
+                              ;; Various shades of green.
+                              (((background dark)) :background "#3D5C3A")
+                              (t :background "#BEFFB8"))
+  "Face for lines covered by unit tests."
+  :group 'bazel)
+
+(defface bazel-uncovered-line '((t :inherit testcover-nohits :extend t))
+  "Face for lines not covered by unit tests."
+  :group 'bazel)
 
 ;;;; Commands to run Buildifier.
 
@@ -696,6 +723,145 @@ the message type, as in ‘compilation-error-regexp-alist’."
 (bazel--add-compilation-error-regexp bazel-mode-info "INFO" 0)
 (bazel--add-compilation-error-regexp bazel-mode-warning "WARNING" 1)
 (bazel--add-compilation-error-regexp bazel-mode-error "ERROR" 2)
+
+(add-hook 'compilation-finish-functions #'bazel-finish-compilation)
+
+(defun bazel-finish-compilation (buffer message)
+  "Parse Bazel build output in BUFFER.
+If the option ‘bazel-display-coverage’ is non-nil and there are
+references to coverage results in BUFFER, attempt to display the
+line coverage status in buffers that are visiting files with
+coverage information.  MESSAGE is the status message for the
+Bazel process exit; \"finished\\n\" if Bazel completed
+successfully.  This function is suitable for
+‘compilation-finish-functions’."
+  (cl-check-type buffer buffer)
+  (cl-check-type message string)
+  (when (and bazel-display-coverage (buffer-live-p buffer)
+             (string-equal message "finished\n"))
+    (with-current-buffer buffer
+      (let ((remote (file-remote-p default-directory))
+            (files ()))
+        (when (or (not remote) (eq bazel-display-coverage t))
+          ;; First collect potential coverage files.  If there are none (typical
+          ;; case), we don’t have to hit the filesystem.
+          (save-excursion
+            (save-restriction
+              (goto-char (point-min))
+              ;; Parse Bazel output.  It’s supposed to be stable and easy to
+              ;; parse,
+              ;; cf. https://docs.bazel.build/versions/4.0.0/guide.html#parsing-output.
+              ;; We assume that coverage instrumentation files are always called
+              ;; “coverage.dat”.
+              (while (re-search-forward
+                      (rx bol "  " (group ?/ (+ nonl) "/coverage.dat") eol)
+                      nil t)
+                (let ((file (match-string-no-properties 1)))
+                  ;; The coverage files are external filenames, so quote them
+                  ;; (to avoid clashes with filename handlers) and make them
+                  ;; remote if necessary.
+                  (push (concat remote (file-name-quote file)) files))))))
+        (when files
+          ;; Only continue if we’re in a Bazel workspace.
+          (when-let ((root (bazel--workspace-root default-directory)))
+            ;; COVERAGE maps buffers to hashtables that in turn map line numbers
+            ;; to hit counts.  We first collect coverage information into this
+            ;; hashtable to correctly deal with duplicate file sections.
+            (let ((coverage (make-hash-table :test #'eq)))
+              (dolist (file files)
+                (with-temp-buffer
+                  ;; Don’t bail out if the coverage file can’t be read.  Maybe
+                  ;; it has already been garbage-collected.
+                  (when (ignore-error file-missing (insert-file-contents file))
+                    (bazel--parse-coverage root coverage))))
+              (maphash #'bazel--display-coverage coverage))))))))
+
+(defun bazel--parse-coverage (root coverage)
+  "Parse coverage information in the current buffer.
+ROOT is the Bazel workspace root directory.  COVERAGE is a
+hashtable that maps buffers to hashtables that in turn map line
+numbers to hit counts.  The function walks over the coverage
+information in the current buffer and fills in COVERAGE."
+  ;; See the manual page of ‘geninfo’ for a description of the coverage format.
+  (while (re-search-forward (rx bol "SF:" (group (+ nonl)) eol) nil t)
+    (let ((begin (line-beginning-position 2))
+          (file (expand-file-name (match-string-no-properties 1) root)))
+      (when-let ((end (re-search-forward (rx bol "end_of_record" eol) nil t))
+                 ;; Only collect coverage for files that are visited in some
+                 ;; buffer.
+                 (buffer (find-buffer-visiting file)))
+        (goto-char begin)
+        (while (re-search-forward (rx bol "DA:" (group (+ digit)) ?,
+                                      (group (+ digit)) (? ?, (+ nonl)) eol)
+                                  end t)
+          (let ((line (cl-the natnum (string-to-number
+                                      (match-string-no-properties 1))))
+                (hits (cl-the natnum (string-to-number
+                                      (match-string-no-properties 2))))
+                ;; DATA maps line numbers to hit counts for the current file.
+                (data (or (gethash buffer coverage)
+                          (puthash buffer (make-hash-table :test #'eql)
+                                   coverage))))
+            (cl-incf (gethash line data 0) hits)))))))
+
+(defun bazel--display-coverage (buffer coverage)
+  "Add overlays for coverage information in BUFFER.
+COVERAGE is a hashtable mapping line numbers to hit counts.
+Remove existing coverage overlays first."
+  (let ((pairs ())
+        (runs ()))
+    (maphash
+     (lambda (line hits)
+       (let ((face
+              (if (cl-plusp hits) 'bazel-covered-line 'bazel-uncovered-line)))
+         (push (cons line face) pairs)))
+     coverage)
+    (cl-callf sort pairs #'car-less-than-car)
+    ;; The Emacs Lisp manual cautions that overlays don’t scale well; see Info
+    ;; node ‘(elisp) Overlays’.  Therefore, we create as few overlays as
+    ;; possible by grouping consecutive lines with identical coverage status
+    ;; into runs.
+    (while pairs
+      (cl-loop with (i . f) = (car pairs)
+               for tail on (cdr pairs)
+               for (j . g) = (car tail)
+               for k from (1+ i)  ; expected line number for the next element
+               while (and (eq f g) (eql j k))  ; stop as soon as run ends
+               finally (push (list f i (1- k)) runs) (setq pairs tail)))
+    (cl-callf nreverse runs)
+    (with-current-buffer buffer
+      (save-excursion
+        (save-restriction
+          (widen)
+          (goto-char (point-min))
+          ;; See remark at the bottom of Info node ‘(elisp) Managing Overlays’.
+          (overlay-recenter (point-max))
+          ;; We first remove existing coverage overlays because they are likely
+          ;; stale.
+          (bazel-remove-coverage-display)
+          (cl-loop for (face i j) in runs
+                   ;; Choose overlay positions and stickiness so that inserting
+                   ;; text before or after a run doesn’t appear to extend the
+                   ;; covered region.
+                   for o = (make-overlay (line-beginning-position i)
+                                         (line-end-position j)
+                                         buffer :front-advance)
+                   do
+                   ;; Add ‘category’ property to find the overlays later (see
+                   ;; ‘bazel-remove-coverage-display’).
+                   (overlay-put o 'category 'bazel-coverage)
+                   (overlay-put o 'face face)))))))
+
+(defun bazel-remove-coverage-display ()
+  "Remove all Bazel coverage display in the current buffer.
+If the current buffer is narrowed, only act on the accessible
+portion."
+  (interactive)
+  (remove-overlays (point-min) (point-max) 'category 'bazel-coverage))
+
+;; Default overlay properties.
+(put 'bazel-coverage 'priority 10)
+(put 'bazel-coverage 'evaporate t)
 
 ;;;; Imenu support
 
