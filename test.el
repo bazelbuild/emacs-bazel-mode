@@ -419,10 +419,10 @@ the rule."
       (should (bazel-workspace-root project))
       (should (directory-name-p (bazel-workspace-root project)))
       (should (file-directory-p (bazel-workspace-root project)))
-      (should (file-equal-p (bazel-workspace-root project) dir))
+      (should (bazel-tests--file-equal-p (bazel-workspace-root project) dir))
       (should (consp (project-roots project)))
       (should-not (cdr (project-roots project)))
-      (should (file-equal-p (car (project-roots project)) dir))
+      (should (bazel-tests--file-equal-p (car (project-roots project)) dir))
       (should-not (project-external-roots project)))))
 
 (ert-deftest bazel-test/coverage ()
@@ -485,5 +485,12 @@ the expected regular expression."
   (unless (looking-at-p regexp)
     `(rest-of-line ,(buffer-substring-no-properties
                      (point) (line-end-position)))))
+
+;; In Emacs 26, ‘file-equal-p’ is buggy and doesn’t work correctly on quoted
+;; filenames.  We can drop this hack once we stop supporting Emacs 26.
+(defalias 'bazel-tests--file-equal-p
+  (if (>= emacs-major-version 27) #'file-equal-p
+    (lambda (a b)
+      (file-equal-p (file-name-unquote a) (file-name-unquote b)))))
 
 ;;; test.el ends here
