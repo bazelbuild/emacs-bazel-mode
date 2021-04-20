@@ -28,3 +28,23 @@ jobs:
         uses: mishas/setup-bazelisk-action@v1
       - name: Run Bazel tests
         run: bazel test --test_output=all -- //...
+
+  emacs-versions:
+    name: All supported GNU Emacs versions
+    strategy:
+      matrix:
+        version: [26.1, 26.2, 26.3, 27.1, 27.2]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v2
+      - name: Install Bazelisk
+        # TODO: Switch to Bazel-owned action once
+        # https://github.com/bazelbuild/bazelisk/issues/134 is fixed.
+        uses: mishas/setup-bazelisk-action@v1
+      - name: Run Bazel tests
+        run: |
+          bazel test \
+            --test_output=errors \
+            --extra_toolchains=@phst_rules_elisp//elisp:emacs_${{matrix.version}}_toolchain \
+            -- //...
