@@ -1,0 +1,30 @@
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Run Bazel tests
+on: [push, pull_request]
+
+jobs:
+  emacs-stable:
+    name: Run Bazel tests under the latest stable GNU Emacs release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v2
+      - name: Install Bazelisk
+        # TODO: Switch to Bazel-owned action once
+        # https://github.com/bazelbuild/bazelisk/issues/134 is fixed.
+        uses: mishas/setup-bazelisk-action@v1
+      - name: Run Bazel tests
+        run: bazel test --test_output=all -- //...
