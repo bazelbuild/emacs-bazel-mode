@@ -600,17 +600,14 @@ Right now, only supports targets in the current package."
 Exclude files that are normally not Bazel targets, such as
 directories and BUILD files."
   (cl-check-type prefix string)
-  (let ((case-fold-search nil)
-        (files ()))
-    (dolist (data (directory-files-and-attributes
-                   default-directory nil
-                   (rx-to-string `(seq bos ,prefix) :no-group)))
-      (cl-destructuring-bind (filename &rest attributes) data
-        (unless (or (file-attribute-type attributes)  ; not a regular file
-                    (member filename '("BUILD" "BUILD.bazel" "WORKSPACE"))
-                    (equal (file-name-extension filename) "BUILD")
-                    (string-prefix-p "bazel-" filename))
-          (push filename files))))
+  (let ((files ()))
+    (dolist (filename (file-name-all-completions prefix default-directory))
+      (and (not (directory-name-p filename))
+           (not (member filename '("BUILD" "BUILD.bazel" "WORKSPACE")))
+           (not (equal (file-name-extension filename) "BUILD"))
+           (not (string-prefix-p "bazel-" filename))
+           (file-regular-p filename)
+           (push filename files)))
     (nreverse files)))
 
 (defun bazel--rule-location (build-file name)
