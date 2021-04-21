@@ -51,6 +51,7 @@
 
 ;;; Code:
 
+(require 'add-log)
 (require 'cl-lib)
 (require 'compile)
 (require 'conf-mode)
@@ -251,6 +252,7 @@ This is the parent mode for the more specific modes
                          "keep sorted")
                     (regexp ,paragraph-start))
                :no-group))
+  (setq-local add-log-current-defun-function #'bazel-mode-current-rule-name)
   (add-hook 'before-save-hook #'bazel--buildifier-before-save-hook nil :local)
   (add-hook 'flymake-diagnostic-functions #'bazel-mode-flymake nil :local)
   (add-hook 'xref-backend-functions #'bazel-mode-xref-backend nil :local))
@@ -931,6 +933,26 @@ This function is useful as ‘imenu-create-index-function’ for
                        (if imenu-use-markers (point-marker) (point)))))
             (push (cons name pos) index)))
         (nreverse index)))))
+
+(defun bazel-mode-current-rule-name ()
+  "Return the name of the Bazel rule at point.
+Return nil if not inside a Bazel rule."
+  (let ((case-fold-search nil)
+        (bound (save-excursion (python-nav-end-of-statement) (point))))
+    (save-excursion
+      (python-nav-beginning-of-statement)
+      (when (re-search-forward
+             ;; The target pattern isn’t the same as
+             ;; https://docs.bazel.build/versions/3.1.0/build-ref.html#name (we
+             ;; don’t allow quotation marks in target names), but should be good
+             ;; enough here.
+             (rx bol (* blank) "name" (* blank) ?= (* blank)
+                 (group (any ?\" ?'))
+                 (group (+ (any "a-z" "A-Z" "0-9"
+                                ?- "!%@^_` #$&()*+,;<=>?[]{|}~/.")))
+                 (backref 1))
+             bound t)
+        (match-string-no-properties 2)))))
 
 (defun bazel-mode-extract-function-name ()
   "Return the name of the Starlark function at point.

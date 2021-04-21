@@ -22,6 +22,7 @@
 
 (require 'bazel)
 
+(require 'add-log)
 (require 'cl-lib)
 (require 'compile)
 (require 'eieio)
@@ -34,6 +35,7 @@
 (require 'rx)
 (require 'speedbar)
 (require 'syntax)
+(require 'which-func)
 (require 'xref)
 
 (defconst bazel-test--directory
@@ -519,6 +521,31 @@ the rule."
         (should (equal (bazel--read-target "build") "//package:test"))
         (should (equal candidates '(("//package:test" "//package:all"
                                      "//package/..."))))))))
+
+(ert-deftest bazel-mode/which-function ()
+  "Verify that ‘which-function’ and ‘add-log-current-defun’ work
+in ‘bazel-mode’."
+  (bazel-test--with-file-buffer (expand-file-name "testdata/xref.BUILD"
+                                                  bazel-test--directory)
+    (bazel-mode)
+    (dolist (case '(("name = \"lib\"" "lib")
+                    ("aaa.cc" "lib")
+                    ("name = \"bin\"" "bin")
+                    ("//pkg:lib" "bin")))
+      (cl-destructuring-bind (search-string expected-name) case
+        (ert-info ((format "Search string: %s" search-string))
+          (goto-char (point-min))
+          (search-forward search-string)
+          (let ((begin (match-beginning 0))
+                (end (match-end 0)))
+            (dolist (location `((begin ,begin)
+                                (end ,end)
+                                (middle ,(/ (+ begin end) 2))))
+              (cl-destructuring-bind (symbol position) location
+                (ert-info ((format "Location: %s" symbol))
+                  (goto-char position)
+                  (should (equal (add-log-current-defun) expected-name))
+                  (should (equal (which-function) expected-name)))))))))))
 
 (put #'looking-at-p 'ert-explainer #'bazel-test--explain-looking-at-p)
 
