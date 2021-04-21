@@ -17,7 +17,7 @@ on: [push, pull_request]
 
 jobs:
   emacs-stable:
-    name: Run Bazel tests under the latest stable GNU Emacs release
+    name: Latest stable GNU Emacs release
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
