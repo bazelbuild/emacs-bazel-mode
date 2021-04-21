@@ -330,6 +330,7 @@ for how to install Buildifier.  The function ‘bazel-mode’ adds
 this function to ‘flymake-diagnostic-functions’.  See Info node
 ‘(Flymake) Backend functions’ for details about Flymake
 backends."
+  (cl-check-type report-fn function)
   (let ((process bazel--flymake-process))
     (when process
       ;; The order here is important: ‘delete-process’ will trigger the
@@ -393,6 +394,8 @@ TYPE should be one of the possible values of
 ‘bazel--buildifier-type’.  Use TYPE and FILENAME to derive
 appropriate flags, if possible.  Otherwise, return an empty
 list."
+  (cl-check-type type symbol)
+  (cl-check-type filename (or string null))
   (append
    (and filename
         (when-let ((workspace (bazel--workspace-root filename)))
@@ -408,6 +411,7 @@ All filenames in OUTPUT-BUFFER are ignored; all messages are
 attached to the current buffer.  Return a list of Flymake
 diagnostics; see Info node ‘(Flymake) Backend functions’ for
 details."
+  (cl-check-type output-buffer buffer-live)
   (cl-loop with report = (with-current-buffer output-buffer
                            (save-excursion
                              (save-restriction
@@ -426,6 +430,7 @@ details."
 WARNING should be a hashtable containing a single warning, as
 described in
 https://github.com/bazelbuild/buildtools/blob/master/buildifier/README.md#file-diagnostics-in-json."
+  (cl-check-type warning hash-table)
   (let* ((case-fold-search nil)
          (start (gethash "start" warning))
          (end (gethash "end" warning))
@@ -497,6 +502,7 @@ This gets added to ‘xref-backend-functions’."
                         'bazel-mode-workspace this-workspace)))))))
 
 (cl-defmethod xref-backend-definitions ((_backend (eql bazel-mode)) identifier)
+  (cl-check-type identifier string)
   ;; Reparse the identifier so that users can invoke ‘xref-find-definitions’
   ;; and enter a label directly.
   (cl-destructuring-bind (&whole valid-p &optional workspace package target)
@@ -567,6 +573,7 @@ Right now, only supports targets in the current package."
   "Return file names in the current directory starting with PREFIX.
 Exclude files that are normally not Bazel targets, such as
 directories and BUILD files."
+  (cl-check-type prefix string)
   (let ((case-fold-search nil)
         (files ()))
     (dolist (data (directory-files-and-attributes
@@ -667,6 +674,7 @@ rule names that start with PREFIX."
 (defun bazel-mode-ffap (filename)
   "Attempt to find FILENAME in all workspaces.
 This gets added to ‘ffap-alist’."
+  (cl-check-type filename string)
   (when-let ((main-root (bazel--workspace-root filename)))
     (let ((external-roots (bazel--external-workspace-roots main-root)))
       (locate-file filename (cons main-root external-roots)))))
@@ -684,6 +692,7 @@ This gets added to ‘ffap-alist’."
 (defun bazelrc-ffap (name)
   "Function for ‘ffap-alist’ in ‘bazelrc-mode’.
 Look for an imported file with the given NAME."
+  (cl-check-type name string)
   ;; https://docs.bazel.build/versions/3.0.0/guide.html#imports
   (pcase name
     ((rx bos "%workspace%" (+ ?/) (let rest (+ nonl)))
@@ -959,25 +968,31 @@ the containing workspace.  This function is suitable for
 (defun bazel-build (target)
   "Build a Bazel TARGET."
   (interactive (list (bazel--read-target "build")))
+  (cl-check-type target string)
   (bazel--run-bazel-command "build" target))
 
 (defun bazel-run (target)
   "Build and run a Bazel TARGET."
   (interactive (list (bazel--read-target "run")))
+  (cl-check-type target string)
   (bazel--run-bazel-command "run" target))
 
 (defun bazel-test (target)
   "Build and run a Bazel test TARGET."
   (interactive (list (bazel--read-target "test")))
+  (cl-check-type target string)
   (bazel--run-bazel-command "test" target))
 
 (defun bazel-coverage (target)
   "Run Bazel test TARGET with coverage instrumentation enabled."
   (interactive (list (bazel--read-target "coverage")))
+  (cl-check-type target string)
   (bazel--run-bazel-command "coverage" target))
 
 (defun bazel--run-bazel-command (command target)
   "Run Bazel tool with given COMMAND, e.g. build or run, on the given TARGET."
+  (cl-check-type command string)
+  (cl-check-type target string)
   (compile
    (mapconcat #'shell-quote-argument
               (append bazel-command (list command target)) " ")))
@@ -985,6 +1000,7 @@ the containing workspace.  This function is suitable for
 (defun bazel--read-target (command)
   "Read a Bazel build target from the minibuffer.
 COMMAND is a Bazel command to be included in the minibuffer prompt."
+  (cl-check-type command string)
   (let* ((file-name (buffer-file-name))
          (workspace-root
           (or (bazel--workspace-root file-name)
@@ -1005,6 +1021,7 @@ If FILE-NAME is not in a Bazel workspace, return nil.  Otherwise,
 the return value is a directory name."
   (declare (obsolete "don’t use it, as it’s an internal function."
                      "2021-04-13"))
+  (cl-check-type file-name string)
   (bazel--workspace-root file-name))
 
 (defun bazel--workspace-root (file-name)
@@ -1021,6 +1038,8 @@ the return value is a directory name."
 If FILE-NAME is not in a Bazel package, return nil."
   (declare (obsolete "don’t use it, as it’s an internal function."
                      "2021-04-13"))
+  (cl-check-type file-name string)
+  (cl-check-type workspace-root string)
   (bazel--package-name file-name workspace-root))
 
 (defun bazel--package-name (file-name workspace-root)
@@ -1179,6 +1198,7 @@ strings.  Return either @WORKSPACE//PACKAGE:TARGET or
   "Search for a magic comment from point to BOUND.
 If a magic comment was found, return non-nil and set the match to
 the comment text."
+  (cl-check-type bound natnum)
   (and (search-forward "keep sorted" bound t)
        (nth 4 (syntax-ppss))))
 
@@ -1187,6 +1207,8 @@ the comment text."
 Restrict LINE to the buffer size and COLUMN to the number of
 characters in LINE.  COLUMN is measured in characters, not visual
 columns."
+  (cl-check-type line natnum)
+  (cl-check-type column natnum)
   (save-excursion
     (save-restriction
       (widen)
