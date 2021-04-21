@@ -772,7 +772,9 @@ successfully.  This function is suitable for
                 (with-temp-buffer
                   ;; Don’t bail out if the coverage file can’t be read.  Maybe
                   ;; it has already been garbage-collected.
-                  (when (ignore-error file-missing (insert-file-contents file))
+                  (when (condition-case nil
+                            (insert-file-contents file)
+                          (file-missing nil))
                     (bazel--parse-coverage root coverage))))
               (maphash #'bazel--display-coverage coverage))))))))
 
@@ -917,15 +919,23 @@ Return nil if no name was found.  This function is useful as
 ;; potentially optimized implementations should get a chance to run first.
 (add-hook 'project-find-functions #'bazel-find-project 20)
 
-;; This structure is marked ‘:noinline’ because it’s public, and inlining
-;; accessors would break clients that are compiled against a version with an
-;; incompatible layout.
-(cl-defstruct (bazel-workspace :noinline)
+(cl-defstruct bazel-workspace
   "Represents a Bazel workspace."
   (root nil
         :read-only t
         :type string
         :documentation "The workspace root directory."))
+
+;; Inlining accessors would break clients that are compiled against a version
+;; with an incompatible layout.  Normally we’d use the ‘:noinline’ structure
+;; keyword in ‘cl-defstruct’, but we still support Emacs 26, which doesn’t know
+;; about that keyword.  So we remove the compiler macros by hand for now.  Once
+;; we drop support for Emacs 26, we should remove this hack in favor of
+;; ‘:noinline’.
+(put #'make-bazel-workspace 'compiler-macro nil)
+(put #'copy-bazel-workspace 'compiler-macro nil)
+(put #'bazel-workspace-p 'compiler-macro nil)
+(put #'bazel-workspace-root 'compiler-macro nil)
 
 (defun bazel-find-project (directory)
   "Find a Bazel workspace for the given DIRECTORY.
