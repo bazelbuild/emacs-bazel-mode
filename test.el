@@ -476,6 +476,50 @@ the rule."
           (should (eql (next-single-char-property-change (point-min) 'face)
                        (point-max))))))))
 
+(ert-deftest bazel--read-target/root-package ()
+  "Test target completion in the root package."
+  (bazel-test--with-temp-directory dir
+    (copy-file
+     (expand-file-name "testdata/test.WORKSPACE" bazel-test--directory)
+     (expand-file-name "WORKSPACE" dir))
+    (copy-file
+     (expand-file-name "testdata/compile.BUILD" bazel-test--directory)
+     (expand-file-name "BUILD" dir))
+    (copy-file
+     (expand-file-name "testdata/test.cc" bazel-test--directory)
+     (expand-file-name "test.cc" dir))
+    (bazel-test--with-file-buffer (expand-file-name "test.cc" dir)
+      (let* ((candidates ())
+             (completing-read-function
+              (lambda (_prompt collection &rest _args)
+                (push collection candidates)
+                (car collection))))
+        (should (equal (bazel--read-target "build") "//:test"))
+        (should (equal candidates '(("//:test" "//:all" "//..."))))))))
+
+(ert-deftest bazel--read-target/subpackage ()
+  "Test rule completion in a subpackage."
+  (bazel-test--with-temp-directory dir
+    (copy-file
+     (expand-file-name "testdata/test.WORKSPACE" bazel-test--directory)
+     (expand-file-name "WORKSPACE" dir))
+    (make-directory (expand-file-name "package" dir))
+    (copy-file
+     (expand-file-name "testdata/compile.BUILD" bazel-test--directory)
+     (expand-file-name "package/BUILD" dir))
+    (copy-file
+     (expand-file-name "testdata/test.cc" bazel-test--directory)
+     (expand-file-name "package/test.cc" dir))
+    (bazel-test--with-file-buffer (expand-file-name "package/test.cc" dir)
+      (let* ((candidates ())
+             (completing-read-function
+              (lambda (_prompt collection &rest _args)
+                (push collection candidates)
+                (car collection))))
+        (should (equal (bazel--read-target "build") "//package:test"))
+        (should (equal candidates '(("//package:test" "//package:all"
+                                     "//package/..."))))))))
+
 (put #'looking-at-p 'ert-explainer #'bazel-test--explain-looking-at-p)
 
 (defun bazel-test--explain-looking-at-p (regexp)
