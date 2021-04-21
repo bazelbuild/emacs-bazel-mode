@@ -495,6 +495,7 @@ This gets added to ‘xref-backend-functions’."
        'bazel-mode))
 
 (cl-defmethod xref-backend-identifier-at-point ((_backend (eql bazel-mode)))
+  "Return the Bazel label at point as an XRef identifier."
   ;; This only detects string literals representing labels.
   (let ((identifier (bazel--string-at-point)))
     (when identifier
@@ -521,6 +522,9 @@ This gets added to ‘xref-backend-functions’."
                         'bazel-mode-workspace this-workspace)))))))
 
 (cl-defmethod xref-backend-definitions ((_backend (eql bazel-mode)) identifier)
+  "Return locations where the Blaze target IDENTIFIER might be defined.
+IDENTIFIER should be an XRef identifier returned by
+‘xref-backend-identifier-at-point’ with the same backend."
   (cl-check-type identifier string)
   ;; Reparse the identifier so that users can invoke ‘xref-find-definitions’
   ;; and enter a label directly.
@@ -546,6 +550,7 @@ This gets added to ‘xref-backend-functions’."
 
 (cl-defmethod xref-backend-identifier-completion-table
   ((_backend (eql bazel-mode)))
+  "Return a completion table for Bazel targets."
   (completion-table-with-cache #'bazel--completion-table))
 
 (defun bazel--target-location (workspace package target)
