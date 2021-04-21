@@ -92,6 +92,7 @@
 (defcustom bazel-buildifier-command "buildifier"
   "Filename of buildifier executable."
   :type 'file
+  :risky t
   :group 'bazel
   :link '(url-link
           "https://github.com/bazelbuild/buildtools/tree/master/buildifier"))
