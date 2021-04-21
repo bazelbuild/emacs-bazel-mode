@@ -62,6 +62,7 @@
 (require 'font-lock)
 (require 'imenu)
 (require 'json)
+(require 'macroexp)
 (require 'menu-bar)
 (require 'pcase)
 (require 'project)
@@ -645,6 +646,28 @@ return nil."
                nil t)
           (match-beginning 2))))))
 
+(defmacro bazel--with-file-buffer (existing filename &rest body)
+  "Evaluate BODY in some buffer that visits FILENAME.
+If there’s an existing buffer visiting FILENAME, use that and
+bind EXISTING to t.  Otherwise, create a new temporary buffer and
+bind EXISTING to nil.  In any case, return the value of the last
+BODY form."
+  (declare (debug (symbolp form body)) (indent 2))
+  (cl-check-type existing symbol)
+  (macroexp-let2 nil filename filename
+    (let ((function (make-symbol "function"))
+          (buffer (make-symbol "buffer"))
+          (arg (make-symbol "arg")))
+      ;; Bind a temporary function to reduce code duplication in the byte-compiled
+      ;; version.
+      `(cl-flet ((,function (,arg) (let ((,existing ,arg)) ,@body)))
+         (if-let ((,buffer (find-buffer-visiting ,filename)))
+             (with-current-buffer ,buffer
+               (,function t))
+           (with-temp-buffer
+             (insert-file-contents ,filename)
+             (,function nil)))))))
+
 (defun bazel--xref-location (filename find-function)
   "Return an ‘xref-location’ for some entity within FILENAME.
 FIND-FUNCTION should be a function taking zero arguments.  This
@@ -656,17 +679,15 @@ or change the buffer state permanently."
   (cl-check-type filename string)
   (cl-check-type find-function function)
   ;; Prefer a buffer that already visits FILENAME.
-  (if-let ((buffer (find-buffer-visiting filename)))
-      ;; If not found, use point to avoid jumping around in the buffer.
-      (xref-make-buffer-location buffer
-                                 (with-current-buffer buffer
-                                   (or (funcall find-function) (point))))
-    (with-temp-buffer
-      (insert-file-contents filename)
-      (goto-char (or (funcall find-function) (point-min)))
-      (xref-make-file-location filename
-                               (line-number-at-pos)
-                               (- (point) (line-beginning-position))))))
+  (bazel--with-file-buffer existing filename
+    (let ((found (funcall find-function)))
+      (if existing
+          ;; If not found, use point to avoid jumping around in the buffer.
+          (xref-make-buffer-location (current-buffer) (or found (point)))
+        (goto-char (or found (point-min)))
+        (xref-make-file-location filename
+                                 (line-number-at-pos)
+                                 (- (point) (line-beginning-position)))))))
 
 (defun bazel--complete-rules (prefix)
   "Find all rules starting with the given PREFIX in the current buffer.
@@ -1181,13 +1202,10 @@ ROOT is the workspace root directory returned by
                             '(".bazel" ""))))
      (mapcar
       (lambda (name) (format "//%s:%s" package name))
-      (if-let ((buffer (find-buffer-visiting filename)))
-          (with-current-buffer buffer
-            (bazel--complete-rules ""))
-        (with-temp-buffer
-          (insert-file-contents filename)
-          (bazel-build-mode)
-          (bazel--complete-rules "")))))
+      (bazel--with-file-buffer existing filename
+        ;; ‘bazel--complete-rules’ works only in ‘bazel-mode’.
+        (unless existing (bazel-build-mode))
+        (bazel--complete-rules ""))))
    (list (format "//%s:all" package)
          (if (string-empty-p package) "//..."
            (format "//%s/..." package)))))
