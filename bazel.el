@@ -654,18 +654,17 @@ or change the buffer state permanently."
   (cl-check-type filename string)
   (cl-check-type find-function function)
   ;; Prefer a buffer that already visits FILENAME.
-  (let ((buffer (find-buffer-visiting filename)))
-    (if buffer
-        ;; If not found, use point to avoid jumping around in the buffer.
-        (xref-make-buffer-location buffer
-                                   (with-current-buffer buffer
-                                     (or (funcall find-function) (point))))
-      (with-temp-buffer
-        (insert-file-contents filename)
-        (goto-char (or (funcall find-function) (point-min)))
-        (xref-make-file-location filename
-                                 (line-number-at-pos)
-                                 (- (point) (line-beginning-position)))))))
+  (if-let ((buffer (find-buffer-visiting filename)))
+      ;; If not found, use point to avoid jumping around in the buffer.
+      (xref-make-buffer-location buffer
+                                 (with-current-buffer buffer
+                                   (or (funcall find-function) (point))))
+    (with-temp-buffer
+      (insert-file-contents filename)
+      (goto-char (or (funcall find-function) (point-min)))
+      (xref-make-file-location filename
+                               (line-number-at-pos)
+                               (- (point) (line-beginning-position))))))
 
 (defun bazel--complete-rules (prefix)
   "Find all rules starting with the given PREFIX in the current buffer.
