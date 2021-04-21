@@ -55,11 +55,13 @@
 (require 'compile)
 (require 'conf-mode)
 (require 'derived)
+(require 'easymenu)
 (require 'ffap)
 (require 'flymake)
 (require 'font-lock)
 (require 'imenu)
 (require 'json)
+(require 'menu-bar)
 (require 'pcase)
 (require 'project)
 (require 'python)
@@ -315,6 +317,21 @@ This is the parent mode for the more specific modes
  #'bazelrc-mode
  ;; https://docs.bazel.build/versions/3.0.0/guide.html#imports
  (list (rx symbol-start (or "import" "try-import") symbol-end)))
+
+;;;; Menu item
+
+(easy-menu-add-item menu-bar-tools-menu nil
+                    '("Bazel"
+                      ;; We enable the workspace commands unconditionally
+                      ;; because checking whether we’re in a Bazel workspace
+                      ;; hits the filesystem and might be too slow.
+                      ["Build..." bazel-build]
+                      ["Test..." bazel-test]
+                      ["Collect code coverage..." bazel-coverage]
+                      ["Run target..." bazel-run]
+                      ["Format buffer with Buildifier" bazel-buildifier
+                       (derived-mode-p 'bazel-mode)])
+                    "Debugger (GDB)...")
 
 ;;;; Flymake support using Buildifier
 
