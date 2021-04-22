@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2020 Google LLC
+# Copyright 2021 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,12 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Run this script to regenerate compile.out.
+# Run this script to regenerate coverage.out and coverage.dat.
 
 set -eu
 
 # Bazel formats output differently when invoked from Emacs.
-export INSIDE_EMACS='26.1,compile'
+export INSIDE_EMACS='27.2,compile'
 
 workspace="$(bazel info workspace)" || exit
 testdata="${workspace:?}/testdata"
@@ -31,21 +31,27 @@ trap 'rm --recursive --force -- "${dir}"' EXIT
 cp --no-target-directory -- "${testdata:?}/test.WORKSPACE" "${dir:?}/WORKSPACE"
 mkdir -- "${dir:?}/package" || exit
 cp --no-target-directory -- \
-  "${testdata:?}/compile.BUILD" "${dir:?}/package/BUILD"
-cp --target-directory="${dir:?}/package" -- "${testdata:?}/test.cc"
+  "${testdata:?}/coverage.BUILD" "${dir:?}/package/BUILD" || exit
+cp --target-directory="${dir:?}/package" -- \
+  "${testdata:?}/library.h" "${testdata:?}/library_test.cc" || exit
 
 execroot="$(cd "${dir:?}" && bazel --bazelrc=/dev/null info execution_root)"
 
 # We explicitly compile with the current directory set to a subdirectory to
-# ensure that workspace-relative filenames still work as expected.  Invert the
-# exit status of “bazel build” because we expect it to fail.
-out="$(cd "${dir:?}/package" && ! bazel --bazelrc=/dev/null build //... 2>&1)"
+# ensure that workspace-relative filenames still work as expected.
+out="$(cd "${dir:?}/package" && bazel --bazelrc=/dev/null coverage //... 2>&1)"
 
-# Replace the arbitrary temporary directory in the output with placeholders.
-out="${out//${dir}/%WORKSPACE%}"
+# Parse output to find location of coverage.dat.  The output should be
+# relatively stable,
+# cf. https://docs.bazel.build/versions/4.0.0/guide.html#parsing-output.
+pattern=$'\n''  (/.+/coverage\.dat)'$'\n'
+[[ "${out:?}" =~ ${pattern:?} ]] || exit
+dat="${BASH_REMATCH[1]}"
+cp --no-target-directory -- "${dat:?}" "${testdata:?}/coverage.dat" || exit
 
-# The execution root is somewhere else, but since we only access source files,
-# we can virtually merge it with the workspace root.
-out="${out//${execroot}/%WORKSPACE%}"
+# Replace the execution root in the output with a placeholder.
+out="${out//${execroot}/%EXECROOT%}"
 
-echo "${out:?}" > "${testdata:?}/compile.out"
+echo "${out:?}" > "${testdata:?}/coverage.out"
+
+echo 'Successfully generated coverage.out and coverage.dat.'

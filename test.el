@@ -22,6 +22,7 @@
 
 (require 'bazel)
 
+(require 'add-log)
 (require 'cl-lib)
 (require 'compile)
 (require 'eieio)
@@ -34,6 +35,7 @@
 (require 'rx)
 (require 'speedbar)
 (require 'syntax)
+(require 'which-func)
 (require 'xref)
 
 (defconst bazel-test--directory
@@ -419,11 +421,131 @@ the rule."
       (should (bazel-workspace-root project))
       (should (directory-name-p (bazel-workspace-root project)))
       (should (file-directory-p (bazel-workspace-root project)))
-      (should (file-equal-p (bazel-workspace-root project) dir))
+      (should (bazel-tests--file-equal-p (bazel-workspace-root project) dir))
       (should (consp (project-roots project)))
       (should-not (cdr (project-roots project)))
-      (should (file-equal-p (car (project-roots project)) dir))
+      (should (bazel-tests--file-equal-p (car (project-roots project)) dir))
       (should-not (project-external-roots project)))))
+
+(ert-deftest bazel-test/coverage ()
+  "Test coverage parsing and display."
+  (bazel-test--with-temp-directory dir
+    ;; Set up a fake workspace and execution root.  We use DIR for both.
+    (let* ((package-dir (expand-file-name "package" dir))
+           (library (expand-file-name "library.h" package-dir))
+           (test-dir (expand-file-name "bazel-out/k8-fastbuild/testlogs/package/library_test" dir))
+           (coverage (expand-file-name "coverage.dat" test-dir)))
+      (copy-file
+       (expand-file-name "testdata/test.WORKSPACE" bazel-test--directory)
+       (expand-file-name "WORKSPACE" dir))
+      (make-directory package-dir)
+      (copy-file (expand-file-name "testdata/library.h" bazel-test--directory)
+                 library)
+      (make-directory test-dir :parents)
+      (copy-file
+       (expand-file-name "testdata/coverage.dat" bazel-test--directory)
+       coverage)
+      (bazel-test--with-file-buffer library
+        (with-temp-buffer
+          (let ((default-directory dir)
+                (bazel-display-coverage 'local))
+            (insert-file-contents
+             (expand-file-name "testdata/coverage.out" bazel-test--directory))
+            ;; Replace placeholder added by make_coverage_out with fake
+            ;; execution root.
+            (while (search-forward "%EXECROOT%" nil t)
+              (replace-match (file-name-unquote dir) :fixedcase :literal))
+            ;; The coverage overlays don’t logically change the buffer contents.
+            ;; Ensure that the code works even if the buffer is read-only.
+            (setq buffer-read-only t)
+            ;; Simulate successful exit of the Bazel process.
+            (compilation-handle-exit 'exit 0 "finished\n")))
+        (ert-info ("Comment line")
+          ;; Comment line isn’t covered at all.
+          (should (looking-at-p (rx bol "//")))
+          (should-not (face-at-point)))
+        (ert-info ("Covered line")
+          (search-forward "return 137;")
+          (backward-char)  ; overlay doesn’t extend beyond the end of the line
+          (should (eq (face-at-point) 'bazel-covered-line)))
+        (ert-info ("Uncovered line")
+          (search-forward "return 42;")
+          (backward-char)  ; overlay doesn’t extend beyond the end of the line
+          (should (eq (face-at-point) 'bazel-uncovered-line)))
+        (ert-info ("Removing coverage")
+          (bazel-remove-coverage-display)
+          ;; Now there shouldn’t be any faces left in the buffer.
+          (should (eql (next-single-char-property-change (point-min) 'face)
+                       (point-max))))))))
+
+(ert-deftest bazel--read-target/root-package ()
+  "Test target completion in the root package."
+  (bazel-test--with-temp-directory dir
+    (copy-file
+     (expand-file-name "testdata/test.WORKSPACE" bazel-test--directory)
+     (expand-file-name "WORKSPACE" dir))
+    (copy-file
+     (expand-file-name "testdata/compile.BUILD" bazel-test--directory)
+     (expand-file-name "BUILD" dir))
+    (copy-file
+     (expand-file-name "testdata/test.cc" bazel-test--directory)
+     (expand-file-name "test.cc" dir))
+    (bazel-test--with-file-buffer (expand-file-name "test.cc" dir)
+      (let* ((candidates ())
+             (completing-read-function
+              (lambda (_prompt collection &rest _args)
+                (push collection candidates)
+                (car collection))))
+        (should (equal (bazel--read-target "build") "//:test"))
+        (should (equal candidates '(("//:test" "//:all" "//..."))))))))
+
+(ert-deftest bazel--read-target/subpackage ()
+  "Test rule completion in a subpackage."
+  (bazel-test--with-temp-directory dir
+    (copy-file
+     (expand-file-name "testdata/test.WORKSPACE" bazel-test--directory)
+     (expand-file-name "WORKSPACE" dir))
+    (make-directory (expand-file-name "package" dir))
+    (copy-file
+     (expand-file-name "testdata/compile.BUILD" bazel-test--directory)
+     (expand-file-name "package/BUILD" dir))
+    (copy-file
+     (expand-file-name "testdata/test.cc" bazel-test--directory)
+     (expand-file-name "package/test.cc" dir))
+    (bazel-test--with-file-buffer (expand-file-name "package/test.cc" dir)
+      (let* ((candidates ())
+             (completing-read-function
+              (lambda (_prompt collection &rest _args)
+                (push collection candidates)
+                (car collection))))
+        (should (equal (bazel--read-target "build") "//package:test"))
+        (should (equal candidates '(("//package:test" "//package:all"
+                                     "//package/..."))))))))
+
+(ert-deftest bazel-mode/which-function ()
+  "Verify that ‘which-function’ and ‘add-log-current-defun’ work
+in ‘bazel-mode’."
+  (bazel-test--with-file-buffer (expand-file-name "testdata/xref.BUILD"
+                                                  bazel-test--directory)
+    (bazel-mode)
+    (dolist (case '(("name = \"lib\"" "lib")
+                    ("aaa.cc" "lib")
+                    ("name = \"bin\"" "bin")
+                    ("//pkg:lib" "bin")))
+      (cl-destructuring-bind (search-string expected-name) case
+        (ert-info ((format "Search string: %s" search-string))
+          (goto-char (point-min))
+          (search-forward search-string)
+          (let ((begin (match-beginning 0))
+                (end (match-end 0)))
+            (dolist (location `((begin ,begin)
+                                (end ,end)
+                                (middle ,(/ (+ begin end) 2))))
+              (cl-destructuring-bind (symbol position) location
+                (ert-info ((format "Location: %s" symbol))
+                  (goto-char position)
+                  (should (equal (add-log-current-defun) expected-name))
+                  (should (equal (which-function) expected-name)))))))))))
 
 (put #'looking-at-p 'ert-explainer #'bazel-test--explain-looking-at-p)
 
@@ -434,5 +556,12 @@ the expected regular expression."
   (unless (looking-at-p regexp)
     `(rest-of-line ,(buffer-substring-no-properties
                      (point) (line-end-position)))))
+
+;; In Emacs 26, ‘file-equal-p’ is buggy and doesn’t work correctly on quoted
+;; filenames.  We can drop this hack once we stop supporting Emacs 26.
+(defalias 'bazel-tests--file-equal-p
+  (if (>= emacs-major-version 27) #'file-equal-p
+    (lambda (a b)
+      (file-equal-p (file-name-unquote a) (file-name-unquote b)))))
 
 ;;; test.el ends here
