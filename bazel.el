@@ -989,10 +989,13 @@ Return nil if no name was found.  This function is useful as
 ;; about that keyword.  So we remove the compiler macros by hand for now.  Once
 ;; we drop support for Emacs 26, we should remove this hack in favor of
 ;; ‘:noinline’.
-(put #'make-bazel-workspace 'compiler-macro nil)
-(put #'copy-bazel-workspace 'compiler-macro nil)
-(put #'bazel-workspace-p 'compiler-macro nil)
-(put #'bazel-workspace-root 'compiler-macro nil)
+(dolist (symbol '(make-bazel-workspace
+                  copy-bazel-workspace
+                  bazel-workspace-p
+                  bazel-workspace-root))
+  (when-let ((cmacro (get symbol 'compiler-macro)))
+    (put symbol 'compiler-macro nil)
+    (when (symbolp cmacro) (fmakunbound cmacro))))
 
 (defun bazel-find-project (directory)
   "Find a Bazel workspace for the given DIRECTORY.
