@@ -433,8 +433,8 @@ the rule."
           (should (eql (next-single-char-property-change (point-min) 'face)
                        (point-max))))))))
 
-(ert-deftest bazel--read-target/root-package ()
-  "Test target completion in the root package."
+(ert-deftest bazel--read-target-pattern/root-package ()
+  "Test target pattern completion in the root package."
   (bazel-test--with-temp-directory dir
     (bazel-test--tangle dir "read-target-root.org")
     (bazel-test--with-file-buffer (expand-file-name "test.cc" dir)
@@ -443,11 +443,11 @@ the rule."
               (lambda (_prompt collection &rest _args)
                 (push collection candidates)
                 (car collection))))
-        (should (equal (bazel--read-target "build") "//:test"))
+        (should (equal (bazel--read-target-pattern "build") "//:test"))
         (should (equal candidates '(("//:test" "//:all" "//..."))))))))
 
-(ert-deftest bazel--read-target/subpackage ()
-  "Test rule completion in a subpackage."
+(ert-deftest bazel--read-target-pattern/subpackage ()
+  "Test target pattern completion in a subpackage."
   (bazel-test--with-temp-directory dir
     (bazel-test--tangle dir "read-target-package.org")
     (bazel-test--with-file-buffer (expand-file-name "package/test.cc" dir)
@@ -456,7 +456,7 @@ the rule."
               (lambda (_prompt collection &rest _args)
                 (push collection candidates)
                 (car collection))))
-        (should (equal (bazel--read-target "build") "//package:test"))
+        (should (equal (bazel--read-target-pattern "build") "//package:test"))
         (should (equal candidates '(("//package:test" "//package:all"
                                      "//package/..."))))))))
 
