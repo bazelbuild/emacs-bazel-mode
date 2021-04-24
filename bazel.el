@@ -264,6 +264,8 @@ mentioned in the Buildifer source code at URL
                     "package_group" "select" "workspace")
                   'symbols)
      . 'font-lock-builtin-face)
+    ;; Target names
+    (bazel--find-target-name 2 'font-lock-variable-name-face prepend)
     ;; Magic comments
     (bazel--find-magic-comment 0 'font-lock-preprocessor-face prepend))
   "Value of ‘font-lock-keywords’ in ‘bazel-mode’ at font lock level 3.")
@@ -1843,6 +1845,22 @@ strings.  Return either @WORKSPACE//PACKAGE:TARGET or
           ;; Jump to the closing quotation mark.
           (parse-partial-sexp (point) (point-max) nil nil state 'syntax-table)
           (buffer-substring-no-properties start (1- (point))))))))
+
+(defun bazel--find-target-name (bound)
+  "Search for a target name from point to BOUND.
+If a target name was found, return non-nil and set the match to
+the match text.  The second match group matches the name."
+  (cl-check-type bound natnum)
+  (let ((case-fold-search nil))
+    (and (re-search-forward
+          (rx "name" (* blank) ?= (* blank)
+              (group (any ?\" ?'))
+              (group (+ (any "a-z" "A-Z" "0-9" ?-
+                             "!%@^_` #$&()*+,;<=>?[]{|}~/.")))
+              (backref 1))
+          bound t)
+         (let ((syntax (syntax-ppss)))
+           (and (> (nth 0 syntax) 0) (null (nth 8 syntax)))))))
 
 (defun bazel--find-magic-comment (bound)
   "Search for a magic comment from point to BOUND.
