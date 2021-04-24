@@ -27,6 +27,7 @@
 (require 'compile)
 (require 'eieio)
 (require 'ert)
+(require 'ert-x)
 (require 'faces)
 (require 'ffap)
 (require 'font-lock)
@@ -494,6 +495,42 @@ in ‘bazel-mode’."
     (bazel-build "//foo:bar")
     (should (equal commands '("bazel build -- //foo\\:bar")))))
 
+(ert-deftest bazel-build-mode/font-lock ()
+  "Test Font Locking in ‘bazel-build-mode’."
+  (let ((text (ert-propertized-string
+               '(face font-lock-comment-delimiter-face) "# "
+               '(face font-lock-comment-face) "comment\n" nil "\n"
+               '(face font-lock-keyword-face) "load" nil "("
+               '(face font-lock-string-face) "\"foo.bzl\"" nil ", "
+               '(face font-lock-string-face) "\"\"\"foo\"\"\"" nil ")\n\n"
+               nil "cc_library(\n"
+               nil "    name = " '(face font-lock-string-face) "\"foo\""
+               nil ",\n"
+               nil "    "
+               '(face font-lock-comment-delimiter-face) "# "
+               '(face (font-lock-preprocessor-face font-lock-comment-face))
+               "keep sorted" '(face font-lock-comment-face) "\n"
+               nil "    srcs = "
+               '(face font-lock-builtin-face) "glob" nil "(["
+               '(face font-lock-string-face) "\"*.cc\"" nil "]),\n"
+               nil "    alwayslink = "
+               '(face font-lock-constant-face) "True" nil ",\n"
+               nil")\n\n")))
+    (with-temp-buffer
+      (bazel-build-mode)
+      (insert (substring-no-properties text))
+      (font-lock-flush)
+      (font-lock-ensure)
+      ;; Emacs 26 adds a ‘syntax-table’ text property, which we don’t care
+      ;; about.
+      (remove-list-of-text-properties (point-min) (point-max) '(syntax-table))
+      ;; We need to intern all property values using the same hashtable because
+      ;; ‘equal-including-properties’ uses ‘eq’ to compare property values.
+      (let ((table (make-hash-table :test #'equal)))
+        (bazel-test--intern-properties text table)
+        (bazel-test--intern-properties (current-buffer) table))
+      (should (equal-including-properties (buffer-string) text)))))
+
 (put #'looking-at-p 'ert-explainer #'bazel-test--explain-looking-at-p)
 
 (defun bazel-test--explain-looking-at-p (regexp)
@@ -530,6 +567,29 @@ See Info node ‘(org) Extracting Source Code’."
                          :fixedcase :literal)))))))
             (org-babel-tangle)))
       (kill-buffer buffer))))
+
+(defun bazel-test--intern-properties (object table)
+  "Intern all text property values in OBJECT.
+TABLE is a hashtable mapping property values to themselves.
+Replace all text property values across OBJECT by a single
+representation that is determined by the hash test of TABLE.
+Modify TABLE as needed while searching.  This function is useful
+because ‘equal-including-properties’ compares property values
+using ‘eq’ instead of ‘equal’."
+  (cl-check-type object (or buffer string))
+  (cl-check-type table hash-table)
+  (cl-loop
+   with sentinel = (cons nil nil)  ; unique object
+   for (begin . end) being the intervals of object
+   do (cl-loop
+       for (property value) on (text-properties-at begin object) by #'cddr
+       for interned = (gethash value table sentinel)
+       if (eq interned sentinel)
+       ;; First time we see this value, remember it in TABLE.
+       do (puthash value value table)
+       else
+       ;; Replace value with interned representation from TABLE.
+       do (put-text-property begin end property interned object))))
 
 ;; In Emacs 26, ‘file-equal-p’ is buggy and doesn’t work correctly on quoted
 ;; filenames.  We can drop this hack once we stop supporting Emacs 26.
