@@ -118,7 +118,7 @@
           "@unsorted-dict-items"
           "buildifier: leave-alone"
           (seq (or "buildifier" "buildozer") ": "
-               (seq "disable=" (+ (any "A-Za-z-"))))))
+               "disable=" (+ (any "A-Za-z-")))))
   "Regular expression identifying magic comments known to Buildifier.
 
 Many of these are documented at
@@ -1293,6 +1293,8 @@ strings.  Return either @WORKSPACE//PACKAGE:TARGET or
 If a magic comment was found, return non-nil and set the match to
 the comment text."
   (cl-check-type bound natnum)
+  ;; Buildifier's magic comment detection appears to be case-insensitive, but
+  ;; isn't documented as such.  Reference in the source: https://git.io/JO6FG.
   (let ((case-fold-search t))
     (and (re-search-forward bazel--magic-comment-regexp
                             bound t)

@@ -280,8 +280,9 @@ that buffer once BODY finishes."
     (bazel-mode)
     (let ((before (buffer-string)))
       (while (search-forward "# Test paragraph" nil t)
-        (fill-paragraph))
-      (should (equal (buffer-string) before)))))
+        (ert-info ((format "fill-paragraph on line %d" (line-number-at-pos)))
+          (fill-paragraph)
+          (should (equal (buffer-string) before)))))))
 
 (ert-deftest bazel-build-mode/beginning-of-defun ()
   "Check that ‘beginning-of-defun’ in BUILD buffers moves to the
