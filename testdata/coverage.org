@@ -1,0 +1,104 @@
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+Set up a fake workspace and execution root in the current directory.
+
+#+property: header-args :mkdirp yes
+
+#+begin_src bazel-workspace :tangle WORKSPACE
+  workspace(name = "test")
+#+end_src
+
+#+begin_src bazel-build :tangle package/BUILD
+  cc_library(
+      name = "library",
+      hdrs = ["library.h"],
+  )
+
+  cc_test(
+      name = "library_test",
+      srcs = ["library_test.cc"],
+      deps = [":library"],
+  )
+#+end_src
+
+#+begin_src C++ :tangle package/library.h
+  // Comment
+  inline int Function(bool arg) {
+    if (arg) {
+      return 137;
+    } else {
+      return 42;
+    }
+  }
+#+end_src
+
+#+begin_src C++ :tangle package/library_test.cc
+  #include <cstdlib>
+
+  #include "library.h"
+
+  int main() {
+    return Function(true) == 137 ? EXIT_SUCCESS : EXIT_FAILURE;
+  }
+#+end_src
+
+#+begin_src fundamental :tangle bazel-out/k8-fastbuild/testlogs/package/library_test/coverage.dat
+  SF:package/library.h
+  FN:2,_Z8Functionb
+  FNDA:1,_Z8Functionb
+  FNF:1
+  FNH:1
+  DA:2,1
+  DA:3,1
+  DA:4,1
+  DA:6,0
+  LH:3
+  LF:4
+  end_of_record
+#+end_src
+
+Merged standard output and error from Bazel:
+
+#+begin_src fundamental :tangle bazel.out
+  Loading: 
+  Loading: 0 packages loaded
+  INFO: Using default value for --instrumentation_filter: "^//package[/:]".
+  INFO: Override the above default with --instrumentation_filter
+  Analyzing: 2 targets (1 packages loaded, 0 targets configured)
+  Analyzing: 2 targets (12 packages loaded, 18 targets configured)
+  Analyzing: 2 targets (23 packages loaded, 309 targets configured)
+  Analyzing: 2 targets (24 packages loaded, 358 targets configured)
+  Analyzing: 2 targets (24 packages loaded, 358 targets configured)
+  INFO: Analyzed 2 targets (25 packages loaded, 508 targets configured).
+  INFO: Found 1 target and 1 test target...
+  WARNING: failed to create one or more convenience symlinks for prefix 'bazel-':
+    cannot create symbolic link bazel-out -> %ROOTDIR%/bazel-out:  /tmp/tmp.86VdonwqKw/bazel-out (File exists)
+  bazel: Entering directory `%ROOTDIR%/'
+  [0 / 8] [Prepa] BazelWorkspaceStatusAction stable-status.txt ... (4 actions, 0 running)
+  [12 / 16] [Prepa] Action external/bazel_tools/tools/jdk/platformclasspath_classes/DumpPlatformClassPath.class
+  [13 / 16] Action external/bazel_tools/tools/jdk/platformclasspath.jar; 0s linux-sandbox
+  [13 / 16] Action external/bazel_tools/tools/jdk/platformclasspath.jar; 2s linux-sandbox
+  [15 / 16] Testing //package:library_test; 0s linux-sandbox
+  bazel: Leaving directory `%ROOTDIR%/'
+  INFO: Elapsed time: 12.290s, Critical Path: 4.71s
+  INFO: 16 processes: 9 internal, 6 linux-sandbox, 1 worker.
+  INFO: Build completed successfully, 16 total actions
+  //package:library_test                                                   PASSED in 0.6s
+    %ROOTDIR%/bazel-out/k8-fastbuild/testlogs/package/library_test/coverage.dat
+  
+  Executed 1 out of 1 test: 1 test passes.
+  There were tests whose specified size is too big. Use the --test_verbose_timeout_warnings command line option to see which ones these are.
+  INFO: Build completed successfully, 16 total actions
+#+end_src

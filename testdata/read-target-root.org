@@ -12,13 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cc_library(
-    name = "library",
-    hdrs = ["library.h"],
-)
+#+begin_src bazel-workspace :tangle WORKSPACE
+  workspace(name = "test")
+#+end_src
 
-cc_test(
-    name = "library_test",
-    srcs = ["library_test.cc"],
-    deps = [":library"],
-)
+#+begin_src bazel-build :tangle BUILD
+  cc_library(
+      name = "test",
+      srcs = ["test.cc"],
+      deprecation = "Deprecated!",
+  )
+#+end_src
+
+#+begin_src C++ :tangle test.cc
+  UnknownType foo;
+#+end_src

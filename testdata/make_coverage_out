@@ -14,7 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Run this script to regenerate coverage.out and coverage.dat.
+# Run this script to regenerate the Bazel output and coverage file in
+# coverage.org.
 
 set -eu
 
@@ -23,17 +24,14 @@ export INSIDE_EMACS='27.2,compile'
 
 workspace="$(bazel info workspace)" || exit
 testdata="${workspace:?}/testdata"
+org="${testdata:?}/coverage.org"
 
 dir="$(mktemp --directory)" || exit
 trap 'rm --recursive --force -- "${dir}"' EXIT
 
 # Set up a basic workspace layout in the temporary directory.
-cp --no-target-directory -- "${testdata:?}/test.WORKSPACE" "${dir:?}/WORKSPACE"
-mkdir -- "${dir:?}/package" || exit
-cp --no-target-directory -- \
-  "${testdata:?}/coverage.BUILD" "${dir:?}/package/BUILD" || exit
-cp --target-directory="${dir:?}/package" -- \
-  "${testdata:?}/library.h" "${testdata:?}/library_test.cc" || exit
+emacs --quick --batch --visit="${org:?}" \
+  --eval="(let ((default-directory \"${dir:?}/\")) (org-babel-tangle))" || exit
 
 execroot="$(cd "${dir:?}" && bazel --bazelrc=/dev/null info execution_root)"
 
@@ -47,11 +45,21 @@ out="$(cd "${dir:?}/package" && bazel --bazelrc=/dev/null coverage //... 2>&1)"
 pattern=$'\n''  (/.+/coverage\.dat)'$'\n'
 [[ "${out:?}" =~ ${pattern:?} ]] || exit
 dat="${BASH_REMATCH[1]}"
-cp --no-target-directory -- "${dat:?}" "${testdata:?}/coverage.dat" || exit
 
 # Replace the execution root in the output with a placeholder.
-out="${out//${execroot}/%EXECROOT%}"
+out="${out//${execroot}/%ROOTDIR%}"
 
-echo "${out:?}" > "${testdata:?}/coverage.out"
+# We can’t use ‘org-babel-detangle’ because there are no links in the tangled
+# files.
+awk --lint=fatal \
+  --assign out=bazel.out --assign src=<(echo "${out:?}") \
+  --file "${testdata:?}/detangle.awk" \
+  -- "${org:?}" > "${dir:?}/org.tmp" || exit
 
-echo 'Successfully generated coverage.out and coverage.dat.'
+awk --lint=fatal \
+  --assign out=bazel-out/k8-fastbuild/testlogs/package/library_test/coverage.dat \
+  --assign src="${dat:?}" \
+  --file "${testdata:?}/detangle.awk" \
+  -- "${dir:?}/org.tmp" > "${org:?}" || exit
+
+echo 'Successfully refreshed coverage.org.'
