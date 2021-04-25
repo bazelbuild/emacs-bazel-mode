@@ -1083,7 +1083,8 @@ COMMAND is a Bazel command to be included in the minibuffer prompt."
                         (user-error "Buffer doesn’t visit a file")))
          (workspace-root
           (or (bazel--workspace-root file-name)
-              (user-error "Not in a Bazel workspace.  No WORKSPACE file found")))
+              (user-error
+               "Not in a Bazel workspace.  No WORKSPACE file found")))
          (package-name
           (or (bazel--package-name file-name workspace-root)
               (user-error "Not in a Bazel package.  No BUILD file found")))
