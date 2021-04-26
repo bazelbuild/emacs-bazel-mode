@@ -111,6 +111,24 @@
           "https://github.com/bazelbuild/buildtools/tree/master/buildifier")
   :risky t)
 
+(defconst bazel--magic-comment-regexp
+  (rx (or "keep sorted"
+          "do not sort"
+          "@unused"
+          "@unsorted-dict-items"
+          "buildifier: leave-alone"
+          (seq (or "buildifier" "buildozer") ": "
+               "disable=" (+ (any "A-Za-z-")))))
+  "Regular expression identifying magic comments known to Buildifier.
+
+Many of these are documented at
+URL `https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md'.
+
+The magic comments \"keep sorted\", \"do not sort\", and
+\"buildifier: leave-alone\" don't look to be documented, but are
+mentioned in the Buildifer source code at URL
+`https://git.io/JOuVL' and have tests.")
+
 (defcustom bazel-display-coverage nil
   "Specifies whether to parse compilation buffers for coverage information.
 If nil, don’t attempt to find coverage information in compilation
@@ -134,7 +152,6 @@ If ‘local’, only do so for local files."
   :group 'bazel)
 
 ;;;; Commands to run Buildifier.
-
 (defvar-local bazel--buildifier-type nil
   "Type of the file that the current buffer visits.
 This must be a symbol and a valid value for the Buildifier -type
@@ -244,12 +261,11 @@ This is the parent mode for the more specific modes
   (setq-local indent-line-function #'python-indent-line-function)
   (setq-local indent-region-function #'python-indent-region)
   (setq-local electric-indent-inhibit t)
-  ;; “keep sorted” is a magic comment that tells Buildifier to keep a list
-  ;; sorted.  We treat it as a separate paragraph for filling.
+  ;; Treat magic comments as being separate paragraphs for filling.
   (setq-local paragraph-start
               (rx-to-string
                `(or (seq (* (syntax whitespace)) (regexp ,comment-start-skip)
-                         "keep sorted")
+                         (regexp ,bazel--magic-comment-regexp))
                     (regexp ,paragraph-start))
                :no-group))
   (setq-local add-log-current-defun-function #'bazel-mode-current-rule-name)
@@ -1277,8 +1293,11 @@ strings.  Return either @WORKSPACE//PACKAGE:TARGET or
 If a magic comment was found, return non-nil and set the match to
 the comment text."
   (cl-check-type bound natnum)
-  (let ((case-fold-search nil))
-    (and (search-forward "keep sorted" bound t)
+  ;; Buildifier's magic comment detection appears to be case-insensitive, but
+  ;; isn't documented as such.  Reference in the source: https://git.io/JO6FG.
+  (let ((case-fold-search t))
+    (and (re-search-forward bazel--magic-comment-regexp
+                            bound t)
          (nth 4 (syntax-ppss)))))
 
 (defun bazel--line-column-pos (line column)

@@ -273,15 +273,16 @@ that buffer once BODY finishes."
                 (expand-file-name "root/bazel-root/external/ws/bbb.h" dir)))))))
 
 (ert-deftest bazel-mode/fill ()
-  "Check that “keep sorted” comments are left alone."
+  "Check that magic comments are left alone."
   (with-temp-buffer
     (insert-file-contents
      (expand-file-name "testdata/fill.BUILD" bazel-test--directory))
     (bazel-mode)
-    (search-forward "# The Foobar files")
     (let ((before (buffer-string)))
-      (fill-paragraph)
-      (should (equal (buffer-string) before)))))
+      (while (search-forward "# Test paragraph" nil t)
+        (ert-info ((format "fill-paragraph on line %d" (line-number-at-pos)))
+          (fill-paragraph)
+          (should (equal (buffer-string) before)))))))
 
 (ert-deftest bazel-build-mode/beginning-of-defun ()
   "Check that ‘beginning-of-defun’ in BUILD buffers moves to the
