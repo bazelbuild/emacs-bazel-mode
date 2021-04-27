@@ -1059,7 +1059,7 @@ the containing workspace.  This function is suitable for
   (cl-check-type target string)
   (compile
    (mapconcat #'shell-quote-argument
-              (append bazel-command (list command target)) " ")))
+              `(,@bazel-command ,command "--" ,target) " ")))
 
 (defun bazel--read-target (command)
   "Read a Bazel build target from the minibuffer.
