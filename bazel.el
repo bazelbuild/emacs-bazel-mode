@@ -111,24 +111,6 @@
           "https://github.com/bazelbuild/buildtools/tree/master/buildifier")
   :risky t)
 
-(defconst bazel--magic-comment-regexp
-  (rx (or "keep sorted"
-          "do not sort"
-          "@unused"
-          "@unsorted-dict-items"
-          "buildifier: leave-alone"
-          (seq (or "buildifier" "buildozer") ": "
-               "disable=" (+ (any "A-Za-z-")))))
-  "Regular expression identifying magic comments known to Buildifier.
-
-Many of these are documented at
-URL `https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md'.
-
-The magic comments \"keep sorted\", \"do not sort\", and
-\"buildifier: leave-alone\" don't look to be documented, but are
-mentioned in the Buildifer source code at URL
-`https://git.io/JOuVL' and have tests.")
-
 (defcustom bazel-display-coverage nil
   "Specifies whether to parse compilation buffers for coverage information.
 If nil, don’t attempt to find coverage information in compilation
@@ -200,6 +182,24 @@ If nil, don’t pass a -type flag to Buildifier.")
     (bazel-buildifier)))
 
 ;;;; ‘bazel-mode’ and child modes
+
+(defconst bazel--magic-comment-regexp
+  (rx (or "keep sorted"
+          "do not sort"
+          "@unused"
+          "@unsorted-dict-items"
+          "buildifier: leave-alone"
+          (seq (or "buildifier" "buildozer") ": "
+               "disable=" (+ (any "A-Za-z-")))))
+  "Regular expression identifying magic comments known to Buildifier.
+
+Many of these are documented at
+URL `https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md'.
+
+The magic comments \"keep sorted\", \"do not sort\", and
+\"buildifier: leave-alone\" don't look to be documented, but are
+mentioned in the Buildifer source code at URL
+`https://git.io/JOuVL' and have tests.")
 
 (defconst bazel--font-lock-keywords
   `(
