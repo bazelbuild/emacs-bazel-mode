@@ -640,6 +640,25 @@ in ‘bazel-mode’."
         (bazel-test--intern-properties (current-buffer) table))
       (should (equal-including-properties (buffer-string) text)))))
 
+(ert-deftest bazel-compile-current-file ()
+  "Test for ‘bazel-compile-current-file’."
+  (bazel-test--with-temp-directory dir
+    (write-region "" nil (expand-file-name "WORKSPACE" dir))
+    (write-region "" nil (expand-file-name "BUILD" dir))
+    (make-directory (expand-file-name "package" dir))
+    (write-region "" nil (expand-file-name "package/BUILD" dir))
+    (write-region "" nil (expand-file-name "package/test.cc" dir))
+    (bazel-test--with-file-buffer (expand-file-name "package/test.cc" dir)
+      (cl-letf* ((commands nil)
+                 ((symbol-function #'compile)
+                  (lambda (command &optional _comint)
+                    (push command commands))))
+        (bazel-compile-current-file)
+        (should
+         (equal
+          commands
+          '("bazel build --compile_one_dependency -- package/test.cc")))))))
+
 (put #'looking-at-p 'ert-explainer #'bazel-test--explain-looking-at-p)
 
 (defun bazel-test--explain-looking-at-p (regexp)
