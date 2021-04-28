@@ -540,7 +540,7 @@ This gets added to ‘xref-backend-functions’."
                         'bazel-mode-workspace this-workspace)))))))
 
 (cl-defmethod xref-backend-definitions ((_backend (eql bazel-mode)) identifier)
-  "Return locations where the Blaze target IDENTIFIER might be defined.
+  "Return locations where the Bazel target IDENTIFIER might be defined.
 IDENTIFIER should be an XRef identifier returned by
 ‘xref-backend-identifier-at-point’ with the same backend."
   (cl-check-type identifier string)
