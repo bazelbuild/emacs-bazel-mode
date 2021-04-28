@@ -345,6 +345,8 @@ This is the parent mode for the more specific modes
                       ;; because checking whether we’re in a Bazel workspace
                       ;; hits the filesystem and might be too slow.
                       ["Build..." bazel-build]
+                      ["Compile current file" bazel-compile-current-file
+                       buffer-file-name]
                       ["Test..." bazel-test]
                       ["Collect code coverage..." bazel-coverage]
                       ["Run target..." bazel-run]
@@ -1049,6 +1051,18 @@ the containing workspace.  This function is suitable for
   (cl-check-type target string)
   (bazel--run-bazel-command "build" target))
 
+(defun bazel-compile-current-file ()
+  "Compile the file that the current buffer visits with Bazel."
+  (interactive)
+  (let* ((file-name (or buffer-file-name
+                        (user-error "Buffer doesn’t visit a file")))
+         ;; “bazel build --compile_one_dependency” wants file names relative to
+         ;; the workspace root.
+         (workspace-root (or (bazel--workspace-root file-name)
+                             (user-error "File is not in a Bazel workspace")))
+         (relative-name (file-relative-name file-name workspace-root)))
+    (bazel--compile "build" "--compile_one_dependency" "--" relative-name)))
+
 (defun bazel-run (target)
   "Build and run a Bazel TARGET."
   (interactive (list (bazel--read-target-pattern "run")))
@@ -1075,6 +1089,10 @@ COMMAND is a Bazel command such as \"build\" or \"run\"."
   (compile
    (mapconcat #'shell-quote-argument
               `(,@bazel-command ,command "--" ,target-pattern) " ")))
+
+(defun bazel--compile (&rest args)
+  "Run Bazel in a Compilation buffer with the given ARGS."
+  (compile (mapconcat #'shell-quote-argument (append bazel-command args) " ")))
 
 (defun bazel--read-target-pattern (command)
   "Read a Bazel build target pattern from the minibuffer.
