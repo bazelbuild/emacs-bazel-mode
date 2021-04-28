@@ -1061,7 +1061,8 @@ the containing workspace.  This function is suitable for
   "Read a Bazel build target from the minibuffer.
 COMMAND is a Bazel command to be included in the minibuffer prompt."
   (cl-check-type command string)
-  (let* ((file-name (buffer-file-name))
+  (let* ((file-name (or buffer-file-name
+                        (user-error "Buffer doesn’t visit a file")))
          (workspace-root
           (or (bazel--workspace-root file-name)
               (user-error "Not in a Bazel workspace.  No WORKSPACE file found")))
