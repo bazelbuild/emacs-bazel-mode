@@ -1045,38 +1045,39 @@ the containing workspace.  This function is suitable for
 
 (defun bazel-build (target)
   "Build a Bazel TARGET."
-  (interactive (list (bazel--read-target "build")))
+  (interactive (list (bazel--read-target-pattern "build")))
   (cl-check-type target string)
   (bazel--run-bazel-command "build" target))
 
 (defun bazel-run (target)
   "Build and run a Bazel TARGET."
-  (interactive (list (bazel--read-target "run")))
+  (interactive (list (bazel--read-target-pattern "run")))
   (cl-check-type target string)
   (bazel--run-bazel-command "run" target))
 
 (defun bazel-test (target)
   "Build and run a Bazel test TARGET."
-  (interactive (list (bazel--read-target "test")))
+  (interactive (list (bazel--read-target-pattern "test")))
   (cl-check-type target string)
   (bazel--run-bazel-command "test" target))
 
 (defun bazel-coverage (target)
   "Run Bazel test TARGET with coverage instrumentation enabled."
-  (interactive (list (bazel--read-target "coverage")))
+  (interactive (list (bazel--read-target-pattern "coverage")))
   (cl-check-type target string)
   (bazel--run-bazel-command "coverage" target))
 
-(defun bazel--run-bazel-command (command target)
-  "Run Bazel tool with given COMMAND, e.g. build or run, on the given TARGET."
+(defun bazel--run-bazel-command (command target-pattern)
+  "Run Bazel tool with given COMMAND on the given TARGET-PATTERN.
+COMMAND is a Bazel command such as \"build\" or \"run\"."
   (cl-check-type command string)
-  (cl-check-type target string)
+  (cl-check-type target-pattern string)
   (compile
    (mapconcat #'shell-quote-argument
-              `(,@bazel-command ,command "--" ,target) " ")))
+              `(,@bazel-command ,command "--" ,target-pattern) " ")))
 
-(defun bazel--read-target (command)
-  "Read a Bazel build target from the minibuffer.
+(defun bazel--read-target-pattern (command)
+  "Read a Bazel build target pattern from the minibuffer.
 COMMAND is a Bazel command to be included in the minibuffer prompt."
   (cl-check-type command string)
   (let* ((file-name (or buffer-file-name
