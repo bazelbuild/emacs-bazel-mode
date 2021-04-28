@@ -750,30 +750,23 @@ Look for an imported file with the given NAME."
 ;; most common characters to avoid matching too much.  In particular, Bazel
 ;; doesn’t allow spaces in filenames
 ;; (https://github.com/bazelbuild/bazel/issues/167), so we don’t have to look
-;; for spaces here.
-
-(eval-when-compile
-  (defmacro bazel--add-compilation-error-regexp (name prefix type)
-    "Add a new entry NAME to ‘compilation-error-regexp-alist’.
-PREFIX is a literal string specifying the line prefix.  TYPE is
-the message type, as in ‘compilation-error-regexp-alist’."
-    (declare (debug nil) (indent 0))
-    (cl-check-type name symbol)
-    (cl-check-type prefix string)
-    (cl-check-type type natnum)
-    (let ((regexp (rx-to-string
-                   `(seq bol ,prefix ": "
-                         (group (+ (any "/._-" alnum)) "/BUILD" (? ".bazel")) ?:
-                         (group (+ digit)) ?: (group (+ digit)) ": ")
-                   :no-group)))
-      `(progn
-         (add-to-list 'compilation-error-regexp-alist ',name)
-         (add-to-list 'compilation-error-regexp-alist-alist
-                      '(,name ,regexp 1 2 3 ,type))))))
-
-(bazel--add-compilation-error-regexp bazel-mode-info "INFO" 0)
-(bazel--add-compilation-error-regexp bazel-mode-warning "WARNING" 1)
-(bazel--add-compilation-error-regexp bazel-mode-error "ERROR" 2)
+;; for spaces here.  We generate the constant entries at compile time to make
+;; loading a bit faster.
+(let ((entries
+       (eval-when-compile
+         (cl-loop
+          for (name prefix type) in '((bazel-mode-info "INFO" 0)
+                                      (bazel-mode-warning "WARNING" 1)
+                                      (bazel-mode-error "ERROR" 2))
+          for rx = (rx-to-string
+                    `(seq bol ,prefix ": "
+                          (group (+ (any "/._-" alnum)) "/BUILD" (? ".bazel"))
+                          ?: (group (+ digit)) ?: (group (+ digit)) ": ")
+                    :no-group)
+          collect (list name rx 1 2 3 type)))))
+  (dolist (entry entries)
+    (add-to-list 'compilation-error-regexp-alist (car entry))
+    (add-to-list 'compilation-error-regexp-alist-alist entry)))
 
 (add-hook 'compilation-finish-functions #'bazel-finish-compilation)
 
