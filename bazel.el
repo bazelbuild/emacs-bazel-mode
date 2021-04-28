@@ -350,6 +350,7 @@ This is the parent mode for the more specific modes
                       ["Test..." bazel-test]
                       ["Collect code coverage..." bazel-coverage]
                       ["Run target..." bazel-run]
+                      ["Show consuming rule" bazel-show-consuming-rule]
                       ["Format buffer with Buildifier" bazel-buildifier
                        (derived-mode-p 'bazel-mode)])
                     "Debugger (GDB)...")
@@ -573,6 +574,88 @@ IDENTIFIER should be an XRef identifier returned by
   ((_backend (eql bazel-mode)))
   "Return a completion table for Bazel targets."
   (completion-table-with-cache #'bazel--completion-table))
+
+(defun bazel-show-consuming-rule ()
+  "Find the definition of the rule consuming the current file.
+The current buffer must visit a file, and the file must be in a
+Bazel workspace.  Use ‘xref-show-definitions-function’ to display
+the rule definition.  Right now, perform a best-effort attempt
+for finding the consuming rule by a textual search in the BUILD
+file."
+  (interactive)
+  (let* ((source-file (or buffer-file-name
+                          (user-error "Buffer doesn’t visit a file")))
+         (root (or (bazel--workspace-root source-file)
+                   (user-error "File is not in a Bazel workspace")))
+         (package (or (bazel--package-name source-file root)
+                      (user-error "File is not in a Bazel package")))
+         (directory (file-name-as-directory (expand-file-name package root)))
+         (build-file (or (locate-file "BUILD" (list directory) '(".bazel" ""))
+                         (user-error "No BUILD file found")))
+         (relative-file (file-relative-name source-file directory))
+         (case-fold-file (file-name-case-insensitive-p source-file))
+         (rule
+          (or (bazel--consuming-rule build-file relative-file case-fold-file)
+              (user-error "No rule for file %s found" relative-file)))
+         ;; We press ‘xref-find-definitions’ into service for finding and
+         ;; showing the rule.  For that to work, our Xref backend must be found
+         ;; unconditionally.
+         (xref-backend-functions (list (lambda () 'bazel-mode))))
+    (xref-find-definitions
+     ;; Create a target identifier similar to what
+     ;; ‘xref-backend-identifier-at-point’ returns.
+     (propertize (bazel--canonical nil package rule)
+                 'bazel-mode-workspace root))))
+
+(defun bazel--consuming-rule (build-file source-file case-fold-file)
+  "Return the name of the rule in BUILD-FILE that consumes SOURCE-FILE.
+If CASE-FOLD-FILE is non-nil, ignore filename case when
+searching."
+  (cl-check-type build-file string)
+  (cl-check-type source-file string)
+  (cl-check-type case-fold-file boolean)
+  ;; Prefer a buffer that’s already visiting BUILD-FILE.
+  (if-let ((buffer (find-buffer-visiting build-file)))
+      (with-current-buffer buffer
+        (bazel--consuming-rule-1 source-file case-fold-file))
+    (with-temp-buffer
+      (insert-file-contents build-file)
+      (bazel-build-mode)  ; for correct syntax tables
+      (bazel--consuming-rule-1 source-file case-fold-file))))
+
+(defun bazel--consuming-rule-1 (source-file case-fold-file)
+  "Return the name of the rule that consumes SOURCE-FILE.
+Search the current buffer for candidates.  If CASE-FOLD-FILE is
+non-nil, ignore filename case when searching.  This is a helper
+function for ‘bazel--consuming-rule’."
+  (cl-check-type source-file string)
+  (cl-check-type case-fold-file boolean)
+  (let ((case-fold-search nil))
+    (save-excursion
+      ;; Don’t widen; if the rule isn’t found within the accessible portion of
+      ;; the current buffer, that’s probably what the user wants.
+      (goto-char (point-min))
+      ;; We perform a simple textual search for rules with “srcs” attributes
+      ;; that contain references to SOURCE-FILE.  That’s in no way exact, but
+      ;; faster than invoking “bazel query”, and most BUILD files are regular
+      ;; enough for this approach to give acceptable results.
+      (cl-block nil
+        (while (let ((case-fold-search case-fold-file))
+                 (re-search-forward (rx-to-string `(seq (group (any ?\" ?\'))
+                                                        (? ?:) ,source-file
+                                                        (backref 1)))
+                                    nil t))
+          (let ((begin (match-beginning 0))
+                (end (match-end 0)))
+            (goto-char begin)
+            (python-nav-up-list -1)
+            (when (looking-back
+                   (rx symbol-start "srcs" (* blank) ?= (* blank))
+                   (line-beginning-position))
+              (when-let ((rule-name (bazel-mode-current-rule-name)))
+                (cl-return rule-name)))
+            ;; Ensure we don’t loop forever if we ended up in a weird place.
+            (goto-char end)))))))
 
 (defun bazel--target-location (workspace package target)
   "Return an ‘xref-location’ for a Bazel target.

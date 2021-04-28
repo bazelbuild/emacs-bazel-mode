@@ -221,7 +221,16 @@ that buffer once BODY finishes."
         (should
          (equal (all-completions
                  ":" (xref-backend-identifier-completion-table 'bazel-mode))
-                '(":lib" ":bin" ":aaa.cc")))))
+                '(":lib" ":bin" ":aaa.cc")))
+        ;; Test ‘bazel-show-consuming-rule’.
+        (let* ((build-buffer (current-buffer))
+               (jumps 0)
+               (xref-after-jump-hook (list (lambda () (cl-incf jumps)))))
+          (bazel-test--with-file-buffer (expand-file-name "root/aaa.cc" dir)
+            (bazel-show-consuming-rule))
+          (should (eql jumps 1))
+          (should (eq (current-buffer) build-buffer))
+          (should (looking-at-p (rx "lib"))))))
     (should (equal (nreverse definitions)
                    '(("//:aaa.cc" "aaa.cc")
                      ("//:dir/bbb.cc" "dir/bbb.cc")
