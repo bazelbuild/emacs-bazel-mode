@@ -1,4 +1,4 @@
-# Copyright 2020 Google LLC
+# Copyright 2021 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,24 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cc_library(
-    name = "lib",
-    srcs = [
-        "aaa.cc",
-        "dir/bbb.cc",
-        ":aaa.cc",
-        "//:aaa.cc",
-        "//pkg:ccc.cc",
-        "@ws//pkg:ddd.cc",
-    ],
-)
+# Replace an Org Babel code block with new code.  Requires the variables ‘out’
+# and ‘src’ to be set.
 
-cc_binary(
-    name = "bin",
-    deps = [
-        ":lib",
-        "//:lib",
-        "//pkg",
-        "//pkg:lib",
-    ],
-)
+BEGIN {
+  in_block = 0
+}
+
+/^#\+begin_src .+ :tangle / && $4 == out {
+  print
+  while ((getline < src) == 1) print "  " $0
+  close(src)
+  in_block = 1
+  next
+}
+
+/^#\+end_src$/ {
+  print
+  in_block = 0
+  next
+}
+
+in_block == 0 {
+  print
+}
