@@ -863,7 +863,16 @@ Look for an imported file with the given NAME."
                                       (bazel-mode-error "ERROR" 2))
           for rx = (rx-to-string
                     `(seq bol ,prefix ": "
-                          (group (+ (any "/._-" alnum)) "/BUILD" (? ".bazel"))
+                          ;; This needs to at least match package names
+                          ;; (https://docs.bazel.build/versions/4.0.0/build-ref.html#package-names-package-name).
+                          ;; Bazel currently doesn’t allow spaces in filenames
+                          ;; (https://github.com/bazelbuild/bazel/issues/167 and
+                          ;; https://github.com/bazelbuild/bazel/issues/374), so
+                          ;; we don’t include spaces here either.  We do allow
+                          ;; non-ASCII alphanumeric characters, because they
+                          ;; could be part of the workspace directory name.
+                          (group (+ (any alnum ?/ ?- ?. ?_))
+                                 "/BUILD" (? ".bazel"))
                           ?: (group (+ digit)) ?: (group (+ digit)) ": ")
                     :no-group)
           collect (list name rx 1 2 3 type)))))
@@ -1294,12 +1303,15 @@ MAIN-ROOT should be the main workspace root as returned by
 ‘bazel--workspace-root’."
   (let ((case-fold-search nil))
     (condition-case nil
-        (directory-files (bazel--external-workspace-dir main-root)
-                         :full
-                         ;; Assume that workspace names follow similar patters
-                         ;; as package names,
-                         ;; https://docs.bazel.build/versions/3.0.0/build-ref.html#package-names-package-name.
-                         (rx bos (+ (any alnum "-._")) eos))
+        (directory-files
+         (bazel--external-workspace-dir main-root)
+         :full
+         ;; https://docs.bazel.build/versions/4.0.0/skylark/lib/globals.html#parameters-36
+         ;; claims that workspace names may only contain letters, numbers, and
+         ;; underscores, but that’s wrong, since hyphens and dots are also
+         ;; allowed.  See
+         ;; https://github.com/bazelbuild/bazel/blob/bc9fc6144818528898336c0fbe4fe8b30ac25abb/src/main/java/com/google/devtools/build/lib/packages/WorkspaceGlobals.java#L52.
+         (rx bos (any "A-Z" "a-z") (* (any ?- ?. ?_ "A-Z" "a-z")) eos))
       ;; If there’s no external workspace directory, don’t signal an error.
       (file-missing nil))))
 
@@ -1627,16 +1639,25 @@ the lexical syntax of labels."
            eos)
        (unless target (setq target (bazel--default-target package)))
        (and (or (null workspace)
-                (string-match-p (rx bos (+ (any ?- "A-Za-z0-9.")) eos)
-                                workspace))
-            (or (null package)
+                ;; https://docs.bazel.build/versions/4.0.0/skylark/lib/globals.html#parameters-36
+                ;; claims that workspace names may only contain letters,
+                ;; numbers, and underscores, but that’s wrong, since hyphens and
+                ;; dots are also allowed.  See
+                ;; https://github.com/bazelbuild/bazel/blob/bc9fc6144818528898336c0fbe4fe8b30ac25abb/src/main/java/com/google/devtools/build/lib/packages/WorkspaceGlobals.java#L52.
+                (string-match-p
+                 (rx bos (any "A-Z" "a-z") (* (any ?- ?. ?_ "A-Z" "a-z")) eos)
+                 workspace))
+            (or (null package) (string-empty-p package)
                 ;; https://docs.bazel.build/versions/2.0.0/build-ref.html#package-names-package-name
-                (string-match-p (rx bos (* (any ?- "A-Za-z0-9/.")) eos)
+                (string-match-p (rx bos
+                                    (any "A-Z" "a-z" "0-9" ?- ?. ?_)
+                                    (* (any "A-Z" "a-z" "0-9" ?/ ?- ?. ?_))
+                                    eos)
                                 package))
             ;; https://docs.bazel.build/versions/2.0.0/build-ref.html#name
             (string-match-p (rx bos
-                                (+ (any ?- "a-zA-Z0-9!%-@^_` \"#$&'()*+,;<=>"
-                                        "?[]{|}~/."))
+                                (+ (any "a-z" "A-Z" "0-9" ?-
+                                        "!%@^_` \"#$&'()*+,;<=>?[]{|}~/."))
                                 eos)
                             target)
             (list workspace package target))))))
