@@ -1092,8 +1092,9 @@ COMMAND is a Bazel command to be included in the minibuffer prompt."
          (initial-input (concat "//" package-name))
          (prompt (combine-and-quote-strings
                   (append bazel-command (list command ""))))
-         (candidates (bazel--rules-in-package workspace-root package-name)))
-    (completing-read prompt candidates nil nil initial-input)))
+         (table
+          (bazel--target-pattern-completion-table workspace-root package-name)))
+    (completing-read prompt table nil nil initial-input)))
 
 ;;;; Utility functions to work with Bazel workspaces
 
@@ -1201,26 +1202,295 @@ MAIN-ROOT should be the main workspace root as returned by
       ;; If there’s no external workspace directory, don’t signal an error.
       (file-missing nil))))
 
-(defun bazel--rules-in-package (root package)
-  "Return the canonical labels for all rules in PACKAGE.
-ROOT is the workspace root directory returned by
-‘bazel--workspace-root’.  Also return the “//PACKAGE:all” and
-“//PACKAGE/...” pseudo-targets."
+(defun bazel--target-pattern-completion-table (root package)
+  "Return a completion table for Bazel target patterns.
+See URL
+‘https://docs.bazel.build/versions/4.0.0/guide.html#specifying-targets-to-build’
+for a description of target patterns.  ROOT is the workspace root
+directory, and PACKAGE is the current package name.  Return a
+completion table that can be passed to ‘completing-read’.  See
+Info node ‘(elisp) Basic Completion’ for more information about
+completion tables.  The completion is not exact and only includes
+potential packages, rules, and wildcards."
   (cl-check-type root string)
   (cl-check-type package string)
-  (append
-   (when-let ((filename
-               (locate-file "BUILD" (list (expand-file-name package root))
-                            '(".bazel" ""))))
-     (mapcar
-      (lambda (name) (format "//%s:%s" package name))
-      (bazel--with-file-buffer existing filename
-        ;; ‘bazel--complete-rules’ works only in ‘bazel-mode’.
-        (unless existing (bazel-build-mode))
-        (bazel--complete-rules ""))))
-   (list (format "//%s:all" package)
-         (if (string-empty-p package) "//..."
-           (format "//%s/..." package)))))
+  ;; We return a completion function so that we don’t have to find all targets
+  ;; eagerly.  See Info node ‘(elisp) Programmed Completion’.
+  (lambda (string predicate action)
+    (cl-check-type string string)
+    (cl-check-type predicate (or function null))
+    (let ((case-fold-search completion-ignore-case))
+      ;; We dynamically generate and use a helper completion table based on the
+      ;; provided prefix pattern.
+      (complete-with-action
+       action
+       (bazel--target-pattern-completion-table-1 root package string)
+       string predicate))))
+
+(defun bazel--target-pattern-completion-table-1 (root package string)
+  "Return a completion table completing STRING to a Bazel target pattern.
+ROOT is the workspace root directory, and PACKAGE is the current
+package name.  This is a helper function for
+‘bazel--target-pattern-completion-table’."
+  (cl-check-type root string)
+  (cl-check-type package string)
+  (cl-check-type string string)
+  (pcase string
+    ;; The following patterns should cover all potential target patterns from
+    ;; https://docs.bazel.build/versions/4.0.0/guide.html#specifying-targets-to-build
+    ;; as well as their prefixes.  We are a bit more lenient than necessary to
+    ;; avoid convoluted regular expressions.
+    (""
+     ;; By default, offer rules and subpackages of the current package, as well
+     ;; as “//” to anchor the pattern at the root of the current workspace,
+     ;; since these are the most common patterns.  Also offer “@” to select
+     ;; external workspaces.
+     (completion-table-merge
+      (bazel--target-pattern-rule-completion-table root nil package :colon)
+      (bazel--target-pattern-package-completion-table root nil package)
+      '("//" "@")))
+    ((rx bos (let prefix ?@) (* (not (any ?: ?/))) eos)
+     ;; Completion for external workspace names.
+     (let ((root (bazel--external-workspace-dir root)))
+       (bazel--completion-table-with-prefix prefix
+         (bazel--target-pattern-workspace-completion-table
+          (bazel--external-workspace-dir root)))))
+    ((rx bos (let prefix (* (not (any ?:))) "/...:"))
+     ;; Combination of package wildcard and target wildcard.
+     (bazel--completion-table-with-prefix prefix
+       '("all" "all-targets" "*")))
+    ((rx bos (let prefix (? ?@ (+ (not (any ?: ?/))))) ?/ eos)
+     ;; A single slash, optionally preceded by a workspace reference, can only
+     ;; be completed to “//”.
+     (bazel--completion-table-with-prefix prefix '("//")))
+    ((rx bos
+         ;; Can’t use ‘(? … (let …))’ due to Bug#44532.
+         (opt ?@ (let workspace (+ (not (any ?: ?/))))) "//"
+         eos)
+     ;; In the workspace root, offer “:” to start completing rules, as well as
+     ;; subpackages.
+     (bazel--completion-table-with-prefix string
+       (completion-table-merge
+        '(":")
+        (bazel--target-pattern-package-completion-table root workspace ""))))
+    ((rx bos (let prefix (* (not (any ?:))) ?/) "..." eos)
+     ;; A package wildcard may optionally be followed by a target wildcard.
+     (bazel--completion-table-with-prefix prefix '("..." "...:")))
+    ((rx bos (let prefix (* (not (any ?:))) ?/) (** 1 2 ?.) eos)
+     ;; “/.” in a package name can only be completed to a package wildcard.
+     (bazel--completion-table-with-prefix prefix '("...")))
+    ((rx bos
+         ;; Can’t use ‘(? … (let …))’ due to Bug#44532.
+         (opt ?@ (let workspace (+ (not (any ?: ?/))))) "//"
+         (let package (+ (not (any ?:)))) ?/
+         eos)
+     ;; A full package name followed by a slash must be followed by a package
+     ;; name or wildcard.
+     (bazel--completion-table-with-prefix string
+       (bazel--target-pattern-package-completion-table root workspace package)))
+    ((rx bos
+         (let prefix
+           ;; Can’t use ‘(? … (let …))’ due to Bug#44532.
+           (opt ?@ (let workspace (+ (not (any ?: ?/))))) "//"
+           (let package (* (not (any ?:))))
+           ?:)
+         (* (not (any ?:)))
+         eos)
+     ;; Absolute target label prefix, including the colon.  Must complete to a
+     ;; target label.
+     (bazel--completion-table-with-prefix prefix
+       (bazel--target-pattern-rule-completion-table
+        root workspace package)))
+    ((rx bos
+         ;; Can’t use ‘(? … (let …))’ due to Bug#44532.
+         (let prefix (opt ?@ (let workspace (+ (not (any ?: ?/))))) "//")
+         (+ (not (any ?:)))
+         eos)
+     ;; Absolute package prefix, without colon.  Must complete to a package
+     ;; name.
+     (bazel--completion-table-with-prefix prefix
+       (bazel--target-pattern-package-completion-table root workspace "")))
+    ((rx bos (let prefix ?:) (* (not (any ?:))) eos)
+     ;; Target pattern relative to the current package.
+     (bazel--completion-table-with-prefix prefix
+       (bazel--target-pattern-rule-completion-table root nil package)))
+    ((rx bos (+ (not (any ?:))) ?/ eos)
+     ;; Subpackage of the current package followed by a slash.  Must be followed
+     ;; by another package name or wildcard.
+     (bazel--target-pattern-package-completion-table root nil package))
+    ((rx bos
+         (let prefix (let subpackage (+ (not (any ?:)))) ?:)
+         (* (not (any ?:)))
+         eos)
+     ;; Target pattern in a subpackage of the current package.  Must be followed
+     ;; by a target name or wildcard.
+     (let ((package (if (string-empty-p package)
+                        subpackage
+                      (concat package "/" subpackage))))
+       (bazel--completion-table-with-prefix prefix
+         (bazel--target-pattern-rule-completion-table root nil package))))
+    ((rx bos (+ (not (any ?:))) eos)
+     ;; Something else, could be either a target or a subpackage of the current
+     ;; package.  Prefer rule targets.
+     (completion-table-merge
+      (bazel--target-pattern-rule-completion-table root nil package :colon)
+      (bazel--target-pattern-package-completion-table root nil package)))))
+
+(defun bazel--target-pattern-workspace-completion-table (root)
+  "Return a target pattern completion table for external workspace names.
+ROOT is the parent directory of the external workspaces as
+returned by ‘bazel--external-workspace-dir’.  This is a helper
+function for ‘bazel--target-pattern-completion-table’."
+  (bazel--completion-table-with-terminator "/"
+    (lambda (string predicate action)
+      ;; Restrict completions to valid workspace names.
+      (let ((completion-regexp-list
+             (cons (rx bos (+ (any "A-Z" "a-z" "0-9" ?_ ?- ?.)) eos)
+                   completion-regexp-list))
+            (predicate
+             (bazel--target-pattern-completion-directory-predicate predicate)))
+        (condition-case nil
+            (pcase action
+              ('nil
+               (file-name-completion string root predicate))
+              ('t
+               (cl-remove-if-not predicate
+                                 (file-name-all-completions string root)))
+              ;; We always return nil for the ‘lambda’ action because a
+              ;; workspace prefix is never a complete target pattern.
+              (`(boundaries . ,suffix)
+               `(boundaries 0 . ,(string-match-p (rx (any ?/ ?:)) suffix))))
+          (file-error nil))))))
+
+(defun bazel--target-pattern-package-completion-table (root workspace package)
+  "Return a completion table for package patterns.
+ROOT is the main workspace root, WORKSPACE is the external
+workspace name or nil for the main workspace, and PACKAGE is the
+current package.  This is a helper function for
+‘bazel--target-pattern-completion-table’."
+  (cl-check-type root string)
+  (cl-check-type workspace (or null string))
+  (cl-check-type package string)
+  (let* ((root (bazel--external-workspace workspace root))
+         (directory (file-name-as-directory (expand-file-name package root))))
+    (lambda (string predicate action)
+      (let* ((slash (string-match-p (rx ?/ (* (not (any ?/))) eos) string))
+             (parent (substring-no-properties string 0 (or slash 0)))
+             (prefix (if slash (concat parent "/") ""))
+             ;; Merge actual package names and the “...” wildcard.
+             (table (bazel--completion-table-with-prefix prefix
+                      (completion-table-merge
+                       (bazel--target-pattern-package-completion-table-1
+                        (file-name-as-directory
+                         (expand-file-name parent directory)))
+                       '("...")))))
+        (complete-with-action action table string predicate)))))
+
+(defun bazel--target-pattern-package-completion-table-1 (directory)
+  "Return a completion table for Bazel packages found in
+DIRECTORY.  This is a helper function for
+‘bazel--target-pattern-package-completion-table’."
+  (cl-check-type directory string)
+  (lambda (string predicate action)
+    (let ((completion-regexp-list
+           ;; Restrict completions to valid package names.
+           (cons (rx bos (+ (any "A-Z" "a-z" "0-9" ?_ ?- ?.)) eos)
+                 completion-regexp-list))
+          (predicate
+           (bazel--target-pattern-completion-directory-predicate predicate)))
+      ;; ‘file-name-completion’ and ‘file-name-all-completions’ always return
+      ;; directories as directory names.  Since a directory name isn’t a valid
+      ;; package name, and we don’t want to give the user the impression that
+      ;; they can’t enter a colon, strip the trailing slash.
+      (pcase action
+        ('nil
+         (when-let ((result (file-name-completion string directory predicate)))
+           (bazel--remove-slash result)))
+        ('t
+         (cl-loop for candidate in (file-name-all-completions string directory)
+                  when (funcall predicate candidate)
+                  collect (bazel--remove-slash candidate)))
+        ('lambda
+          ;; We complete target patterns, not packages!  In particular, a valid
+          ;; target pattern can’t end in a slash.
+          (and (not (string-empty-p string))
+               (not (directory-name-p string))
+               (file-accessible-directory-p
+                (expand-file-name string directory))
+               (funcall predicate directory)))
+        (`(boundaries . ,suffix)
+         `(boundaries 0 . ,(string-match-p (rx (any ?/ ?:)) suffix)))))))
+
+(defun bazel--target-pattern-rule-completion-table
+    (root workspace package &optional colon)
+  "Return a completion table for Bazel rule targets and target wildcards.
+ROOT is the main workspace root, WORKSPACE is the external
+workspace name or nil for the main workspace, and PACKAGE is the
+package name within the workspace.  Also return target wildcards
+like “:all”.  If COLON is non-nil, prefix the wildcards with a
+colon.  This is a helper function for
+‘bazel--target-pattern-completion-table’."
+  (cl-check-type root string)
+  (cl-check-type workspace (or null string))
+  (cl-check-type package string)
+  (when-let ((build-file
+              (bazel--locate-build-file
+               (expand-file-name package
+                                 (bazel--external-workspace workspace root)))))
+    (let ((completion-regexp-list
+           (cons (rx bos (+ (any "a-z" "A-Z" "0-9" ?-
+                                 "!%@^_` \"#$&'()*-+,;<=>?[]{|}~/.")
+                            eos))
+                 completion-regexp-list)))
+      (completion-table-merge
+       (completion-table-with-cache
+        (lambda (prefix)
+          (cl-check-type prefix string)
+          (if-let ((buffer (find-buffer-visiting build-file)))
+              (with-current-buffer buffer
+                (bazel--complete-rules prefix))
+            (with-temp-buffer
+              (insert-file-contents build-file)
+              ;; ‘bazel--complete-rules’ only works in ‘bazel-mode’.
+              (bazel-build-mode)
+              (bazel--complete-rules prefix))))
+        completion-ignore-case)
+       ;; We only want to add the wildcards if this is indeed a package.  Do
+       ;; this here so that we don’t have to check twice.
+       (if colon '(":all" ":all-targets" ":*") '("all" "all-targets" "*"))))))
+
+(defun bazel--target-pattern-completion-directory-predicate (predicate)
+  "Return a completion predicate useful for workspace and package completion.
+Combine PREDICATE with a predicate that checks for valid
+workspace and package names.  This is a helper function for
+‘bazel--target-pattern-completion-table’."
+  (cl-check-type predicate (or function null))
+  (if predicate
+      (lambda (candidate)
+        (and (bazel--target-pattern-completion-directory-p candidate)
+             (funcall predicate candidate)))
+    #'bazel--target-pattern-completion-directory-p))
+
+(defun bazel--target-pattern-completion-directory-p (string)
+  "Return whether STRING is a valid workspace or package name.
+Assume that STRING comes from ‘file-name-completion’ or
+‘file-name-all-completions’.  This is a helper function for
+‘bazel--target-pattern-completion-table’."
+  ;; No thorough check here, since this is only used for completion.  Filename
+  ;; completion always returns directory names for directories, so this
+  ;; syntactic check suffices.  See the code for ‘completion-file-name-table’
+  ;; for prior art.
+  (and (directory-name-p string)
+       (not (string-prefix-p "." string))))
+
+(defun bazel--locate-build-file (directory)
+  "Return the file name of the Bazel BUILD file in DIRECTORY.
+Return nil if DIRECTORY is not a Bazel package (i.e., doesn’t
+contain a BUILD file).  Assume that DIRECTORY is within a Bazel
+workspace.  DIRECTORY can be a directory name or directory file
+name."
+  (cl-check-type directory string)
+  (locate-file "BUILD" (list directory) '(".bazel" "")))
 
 (defun bazel--parse-label (label)
   "Parse Bazel label LABEL.
@@ -1291,6 +1561,17 @@ strings.  Return either @WORKSPACE//PACKAGE:TARGET or
   (cl-check-type target string)
   (concat (and workspace (concat "@" workspace)) "//" package ":" target))
 
+(defun bazel--remove-slash (string)
+  "Remove a final slash from STRING."
+  (declare (side-effect-free t))
+  (cl-check-type string string)
+  ;; Don’t call ‘directory-file-name’ because that tries to invoke filename
+  ;; handlers.
+  (let ((i (1- (length string))))
+    (if (and (natnump i) (eql (aref string i) ?/))
+        (substring-no-properties string 0 i)
+      string)))
+
 (defun bazel--string-at-point ()
   "Return the string literal at point, or nil if not inside a string literal."
   (let ((state (syntax-ppss)))
@@ -1326,6 +1607,37 @@ columns."
       (goto-char (point-min))
       (forward-line (1- line))
       (min (line-end-position) (+ (point) column)))))
+
+(defun bazel--completion-table-with-prefix (prefix table)
+  "Return a completion table based on TABLE with the given PREFIX.
+The returned completion table completes strings of the form
+\(concat PREFIX STRING), if TABLE completes STRING."
+  (declare (indent 1))  ; reduces horizontal whitespace
+  (cl-check-type prefix string)
+  (if (string-empty-p prefix)
+      table  ; small optimization
+    (completion-table-subvert
+     ;; We’d like to pass TABLE here directly, but before Emacs 28,
+     ;; ‘completion-table-subvert’ reports incorrect completion boundaries in
+     ;; case TABLE has trivial boundaries, so we ensure that its underlying
+     ;; table has nontrivial ones.
+     (lambda (string predicate action)
+       (pcase action
+         (`(boundaries . ,suffix)
+          `(boundaries . ,(completion-boundaries string table predicate
+                                                 suffix)))
+         (_ (complete-with-action action table string predicate))))
+     prefix "")))
+
+(defun bazel--completion-table-with-terminator (terminator table)
+  "Return a completion table based on TABLE that appends TERMINATOR.
+This is the same as ‘completion-table-with-terminator’, but
+doesn’t require partial application."
+  (declare (indent 1))  ; reduces horizontal whitespace
+  (cl-check-type terminator string)
+  (lambda (string predicate action)
+    (completion-table-with-terminator terminator table
+                                      string predicate action)))
 
 (defalias 'bazel--json-parse-buffer
   (if (fboundp 'json-parse-buffer) #'json-parse-buffer
