@@ -548,6 +548,14 @@ in ‘bazel-mode’."
                   (should (equal (add-log-current-defun) expected-name))
                   (should (equal (which-function) expected-name)))))))))))
 
+(ert-deftest bazel-build ()
+  (cl-letf* ((commands ())
+             ((symbol-function #'compile)
+              (lambda (command &optional _comint)
+                (push command commands))))
+    (bazel-build "//foo:bar")
+    (should (equal commands '("bazel build -- //foo\\:bar")))))
+
 (put #'looking-at-p 'ert-explainer #'bazel-test--explain-looking-at-p)
 
 (defun bazel-test--explain-looking-at-p (regexp)
