@@ -1260,12 +1260,10 @@ the lexical syntax of labels."
   "Return the default target name for PACKAGE.
 For a package “foo/bar”, “bar” is the default target."
   (cl-check-type package string)
-  ;; There’s no function to search backwards within a string, so we reverse the
-  ;; string twice.
-  (let ((case-fold-search nil)
-        (reversed (reverse package)))
-    (nreverse (substring-no-properties reversed nil
-                                       (string-match-p (rx ?/) reversed)))))
+  (let ((case-fold-search nil))
+    (pcase-exhaustive package
+      ((rx (or bos ?/) (let target (* (not (any ?/)))) eos)
+       target))))
 
 (defun bazel--canonical (workspace package target)
   "Return a canonical label.
