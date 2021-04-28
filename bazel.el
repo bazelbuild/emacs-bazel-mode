@@ -1268,6 +1268,7 @@ WORKSPACE is either nil (referring to the current workspace) or
 an external workspace name.  PACKAGE and TARGET should both be
 strings.  Return either @WORKSPACE//PACKAGE:TARGET or
 //PACKAGE:TARGET."
+  (declare (side-effect-free t))
   (cl-check-type workspace (or null string))
   (cl-check-type package string)
   (cl-check-type target string)
