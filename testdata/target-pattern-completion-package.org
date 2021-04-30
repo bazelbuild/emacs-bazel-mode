@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#+property: header-args :mkdirp yes
+#+property: header-args :mkdirp yes :main no
 
 #+begin_src bazel-workspace :tangle WORKSPACE
   workspace(name = "test")
