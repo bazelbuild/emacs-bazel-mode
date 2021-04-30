@@ -858,7 +858,8 @@ Look for an imported file with the given NAME."
 (let ((entries
        (eval-when-compile
          (cl-loop
-          for (name prefix type) in '((bazel-mode-info "INFO" 0)
+          for (name prefix type) in '((bazel-mode-debug "DEBUG" 0)
+                                      (bazel-mode-info "INFO" 0)
                                       (bazel-mode-warning "WARNING" 1)
                                       (bazel-mode-error "ERROR" 2))
           for rx = (rx-to-string
@@ -872,7 +873,8 @@ Look for an imported file with the given NAME."
                           ;; non-ASCII alphanumeric characters, because they
                           ;; could be part of the workspace directory name.
                           (group (+ (any alnum ?/ ?- ?. ?_))
-                                 "/BUILD" (? ".bazel"))
+                                 (or (seq "/BUILD" (? ".bazel"))
+                                     (seq (+ (any alnum ?- ?. ?_)) ".bzl")))
                           ?: (group (+ digit)) ?: (group (+ digit)) ": ")
                     :no-group)
           collect (list name rx 1 2 3 type)))))
