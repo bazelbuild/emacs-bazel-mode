@@ -642,12 +642,7 @@ in ‘bazel-mode’."
       ;; Emacs 26 adds a ‘syntax-table’ text property, which we don’t care
       ;; about.
       (remove-list-of-text-properties (point-min) (point-max) '(syntax-table))
-      ;; We need to intern all property values using the same hashtable because
-      ;; ‘equal-including-properties’ uses ‘eq’ to compare property values.
-      (let ((table (make-hash-table :test #'equal)))
-        (bazel-test--intern-properties text table)
-        (bazel-test--intern-properties (current-buffer) table))
-      (should (equal-including-properties (buffer-string) text)))))
+      (should (ert-equal-including-properties (buffer-string) text)))))
 
 (ert-deftest bazel-compile-current-file ()
   "Test for ‘bazel-compile-current-file’."
@@ -704,29 +699,6 @@ See Info node ‘(org) Extracting Source Code’."
                          :fixedcase :literal)))))))
             (org-babel-tangle)))
       (kill-buffer buffer))))
-
-(defun bazel-test--intern-properties (object table)
-  "Intern all text property values in OBJECT.
-TABLE is a hashtable mapping property values to themselves.
-Replace all text property values across OBJECT by a single
-representation that is determined by the hash test of TABLE.
-Modify TABLE as needed while searching.  This function is useful
-because ‘equal-including-properties’ compares property values
-using ‘eq’ instead of ‘equal’."
-  (cl-check-type object (or buffer string))
-  (cl-check-type table hash-table)
-  (cl-loop
-   with sentinel = (cons nil nil)  ; unique object
-   for (begin . end) being the intervals of object
-   do (cl-loop
-       for (property value) on (text-properties-at begin object) by #'cddr
-       for interned = (gethash value table sentinel)
-       if (eq interned sentinel)
-       ;; First time we see this value, remember it in TABLE.
-       do (puthash value value table)
-       else
-       ;; Replace value with interned representation from TABLE.
-       do (put-text-property begin end property interned object))))
 
 ;; In Emacs 26, ‘file-equal-p’ is buggy and doesn’t work correctly on quoted
 ;; filenames.  We can drop this hack once we stop supporting Emacs 26.
