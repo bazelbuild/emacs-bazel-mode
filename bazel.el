@@ -1180,9 +1180,7 @@ the containing workspace.  This function is suitable for
 COMMAND is a Bazel command such as \"build\" or \"run\"."
   (cl-check-type command string)
   (cl-check-type target-pattern string)
-  (compile
-   (mapconcat #'shell-quote-argument
-              `(,@bazel-command ,command "--" ,target-pattern) " ")))
+  (bazel--compile command "--" target-pattern))
 
 (defun bazel--compile (&rest args)
   "Run Bazel in a Compilation buffer with the given ARGS."
