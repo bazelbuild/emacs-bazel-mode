@@ -874,7 +874,7 @@ Look for an imported file with the given NAME."
                           ;; could be part of the workspace directory name.
                           (group (+ (any alnum ?/ ?- ?. ?_))
                                  (or (seq "/BUILD" (? ".bazel"))
-                                     (seq (+ (any alnum ?- ?. ?_ )) ".bzl")))
+                                     (seq (+ (any alnum ?- ?. ?_)) ".bzl")))
                           ?: (group (+ digit)) ?: (group (+ digit)) ": ")
                     :no-group)
           collect (list name rx 1 2 3 type)))))
