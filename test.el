@@ -146,30 +146,31 @@ we don’t have to start or mock a process."
                                  "[integer-division] "
                                  "(https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md#integer-division)"))))))))
 
-(defmacro bazel-test--with-temp-directory (name &rest body)
-  "Create a new temporary directory.
+(eval-when-compile
+  (defmacro bazel-test--with-temp-directory (name &rest body)
+    "Create a new temporary directory.
 Bind the name of the directory to NAME and execute BODY while the
 directory exists.  Remove the directory and all its contents once
 BODY finishes.  NAME will be a directory name, not a directory
 file name; see Info node ‘(elisp) Directory Names’."
-  (declare (indent 1) (debug (sexp body)))
-  (cl-check-type name symbol)
-  `(let ((,name (file-name-as-directory
-                 (make-temp-file "bazel-mode-test-" :dir-flag))))
-     (unwind-protect
-         ,(macroexp-progn body)
-       (delete-directory ,name :recursive))))
+    (declare (indent 1) (debug (sexp body)))
+    (cl-check-type name symbol)
+    `(let ((,name (file-name-as-directory
+                   (make-temp-file "bazel-mode-test-" :dir-flag))))
+       (unwind-protect
+           ,(macroexp-progn body)
+         (delete-directory ,name :recursive))))
 
-(defmacro bazel-test--with-file-buffer (filename &rest body)
-  "Visit FILENAME in a temporary buffer.
+  (defmacro bazel-test--with-file-buffer (filename &rest body)
+    "Visit FILENAME in a temporary buffer.
 Execute BODY with the buffer that visits FILENAME current.  Kill
 that buffer once BODY finishes."
-  (declare (indent 1) (debug t))
-  (let ((buffer (make-symbol "buffer")))
-    `(let ((,buffer (find-file-noselect ,filename)))
-       (unwind-protect
-           (with-current-buffer ,buffer ,@body)
-         (kill-buffer ,buffer)))))
+    (declare (indent 1) (debug t))
+    (let ((buffer (make-symbol "buffer")))
+      `(let ((,buffer (find-file-noselect ,filename)))
+         (unwind-protect
+             (with-current-buffer ,buffer ,@body)
+           (kill-buffer ,buffer))))))
 
 (ert-deftest bazel-mode/xref ()
   "Unit test for XRef support."
