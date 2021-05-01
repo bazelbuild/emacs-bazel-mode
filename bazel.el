@@ -290,9 +290,9 @@ mentioned in the Buildifier source code at URL
                   'symbols)
      . 'font-lock-builtin-face)
     ;; Target names
-    (bazel--find-target-name 2 'font-lock-variable-name-face prepend)
+    (,#'bazel--find-target-name 2 'font-lock-variable-name-face prepend)
     ;; Magic comments
-    (bazel--find-magic-comment 0 'font-lock-preprocessor-face prepend))
+    (,#'bazel--find-magic-comment 0 'font-lock-preprocessor-face prepend))
   "Value of ‘font-lock-keywords’ in ‘bazel-mode’ at font lock level 3.")
 
 (defconst bazel-font-lock-keywords bazel-font-lock-keywords-1
