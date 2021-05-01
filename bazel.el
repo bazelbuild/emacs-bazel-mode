@@ -1150,11 +1150,9 @@ the containing workspace.  This function is suitable for
   (interactive)
   (let* ((file-name (or buffer-file-name
                         (user-error "Buffer doesn’t visit a file")))
-         ;; “bazel build --compile_one_dependency” wants file names relative to
-         ;; the workspace root.
-         (workspace-root (or (bazel--workspace-root file-name)
-                             (user-error "File is not in a Bazel workspace")))
-         (relative-name (file-relative-name file-name workspace-root)))
+         ;; “bazel build --compile_one_dependency” accepts file names relative
+         ;; to the current directory.
+         (relative-name (file-relative-name file-name)))
     (bazel--compile "build" "--compile_one_dependency" "--" relative-name)))
 
 (defun bazel-run (target)
