@@ -30,6 +30,7 @@
 (require 'ert-x)
 (require 'faces)
 (require 'ffap)
+(require 'flymake)
 (require 'font-lock)
 (require 'imenu)
 (require 'org)
@@ -37,6 +38,7 @@
 (require 'rx)
 (require 'speedbar)
 (require 'syntax)
+(require 'warnings)
 (require 'which-func)
 (require 'xref)
 
