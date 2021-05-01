@@ -188,6 +188,16 @@ that buffer once BODY finishes."
                  (unless (memq ,buffer ,previous-buffers)
                    (kill-buffer ,buffer))))))))))
 
+(defmacro bazel-test--with-buffers (&rest body)
+  "Evaluate BODY and kill all buffers that it created."
+  (declare (indent 0) (debug t))
+  (let ((buffers (make-symbol "buffers")))
+    `(let ((,buffers (buffer-list)))
+       (unwind-protect
+           ,(macroexp-progn body)
+         (dolist (buffer (buffer-list))
+           (unless (memq buffer ,buffers) (kill-buffer buffer)))))))
+
 (ert-deftest bazel-mode/xref ()
   "Unit test for XRef support."
   (let ((definitions ()))
@@ -967,6 +977,81 @@ in ‘bazel-mode’."
         (should (stringp file-at-point))
         (should (bazel-test--file-equal-p
                  file-at-point (expand-file-name "other.bazelrc" dir)))))))
+
+(ert-deftest bazel-find-build-file ()
+  (bazel-test--with-temp-directory dir
+    (dolist (file '("WORKSPACE"
+                    "BUILD"
+                    "a/WORKSPACE"
+                    "a/b/BUILD.bazel"
+                    "a/b/BUILD"
+                    "a/b/c/BUILD"
+                    "a/b/c/d/BUILD.bazel"
+                    "a/b/c/d/e/BUILD"))
+      (cl-callf expand-file-name file dir)
+      (make-directory (file-name-directory file) :parents)
+      (write-region "" nil file nil nil nil 'excl))
+    ;; CASE is a pair (FILE EXPECTED), where FILE is the current file and
+    ;; EXPECTED is either the name of the BUILD file to find or a symbol
+    ;; denoting an expected error.
+    (dolist (case '(("" "BUILD")
+                    ("a" user-error)
+                    ("a/b" "a/b/BUILD.bazel")
+                    ("a/b/c" "a/b/c/BUILD")
+                    ("a/b/c/d" "a/b/c/d/BUILD.bazel")
+                    ("a/b/c/d/e" "a/b/c/d/e/BUILD")
+                    ("a/b/c/d/e/f" "a/b/c/d/e/BUILD")
+                    ("z" "BUILD")
+                    ("a/b/z" "a/b/BUILD.bazel")))
+      (cl-destructuring-bind (parent expected) case
+        (ert-info (parent :prefix "Parent directory: ")
+          (with-temp-buffer
+            (let ((buffer-file-name
+                   (expand-file-name "test.cc" (expand-file-name parent dir))))
+              (bazel-test--with-buffers
+                (cl-etypecase expected
+                  (string
+                   (bazel-find-build-file)
+                   (should buffer-file-name)
+                   (should (bazel-test--file-equal-p
+                            buffer-file-name (expand-file-name expected dir))))
+                  (symbol
+                   (should-error (bazel-find-build-file)
+                                 :type expected)))))))))))
+
+(ert-deftest bazel-find-workspace-file ()
+  (bazel-test--with-temp-directory dir
+    (dolist (file '("WORKSPACE"
+                    "a/b/WORKSPACE.bazel"
+                    "a/b/WORKSPACE"
+                    "a/b/c/WORKSPACE"
+                    "a/b/c/d/WORKSPACE.bazel"
+                    "a/b/c/d/e/WORKSPACE"))
+      (cl-callf expand-file-name file dir)
+      (make-directory (file-name-directory file) :parents)
+      (write-region "" nil file nil nil nil 'excl))
+    ;; CASE is a pair (FILE EXPECTED), where FILE is the current file and
+    ;; EXPECTED is the name of the WORKSPACE file to find.
+    (dolist (case '(("" "WORKSPACE")
+                    ("a" "WORKSPACE")
+                    ("a/b" "a/b/WORKSPACE.bazel")
+                    ("a/b/c" "a/b/c/WORKSPACE")
+                    ("a/b/c/d" "a/b/c/d/WORKSPACE.bazel")
+                    ("a/b/c/d/e" "a/b/c/d/e/WORKSPACE")
+                    ("a/b/c/d/e/f" "a/b/c/d/e/WORKSPACE")
+                    ("z" "WORKSPACE")
+                    ("a/b/z" "a/b/WORKSPACE.bazel")))
+      (cl-destructuring-bind (parent expected) case
+        (ert-info (parent :prefix "Parent directory: ")
+          (with-temp-buffer
+            (let ((buffer-file-name
+                   (expand-file-name "test.cc" (expand-file-name parent dir))))
+              (bazel-test--with-buffers
+                (bazel-find-workspace-file)
+                (should buffer-file-name)
+                (should (bazel-test--file-equal-p
+                         buffer-file-name
+                         (expand-file-name expected dir)))))))))))
 
 (put #'looking-at-p 'ert-explainer #'bazel-test--explain-looking-at-p)
 

@@ -556,6 +556,8 @@ return its name.  See URL
    ["Collect code coverage..." bazel-coverage]
    ["Run target..." bazel-run]
    ["Show consuming rule" bazel-show-consuming-rule]
+   ["Find BUILD file" bazel-find-build-file]
+   ["Find WORKSPACE file" bazel-find-workspace-file]
    ["Format buffer with Buildifier" bazel-buildifier
     (derived-mode-p 'bazel-mode)]
    ["Insert http_archive statement..." bazel-insert-http-archive
@@ -1028,6 +1030,36 @@ rule names that start with PREFIX."
                 nil t)
           (push (match-string-no-properties 2) rules)))
       (nreverse rules))))
+
+;;;; Finding BUILD and WORKSPACE files
+
+(defun bazel-find-build-file ()
+  "Find the BUILD file for the current package."
+  (interactive)
+  (let* ((source-file
+          (or buffer-file-name default-directory
+              (user-error "Buffer doesn’t visit a file or directory")))
+         (root (or (bazel--workspace-root source-file)
+                   (user-error "File is not in a Bazel workspace")))
+         (package (or (bazel--package-name source-file root)
+                      (user-error "File is not in a Bazel package")))
+         (directory (file-name-as-directory (expand-file-name package root)))
+         (build-file (or (locate-file "BUILD" (list directory) '(".bazel" ""))
+                         (user-error "No BUILD file found"))))
+    (find-file build-file)))
+
+(defun bazel-find-workspace-file ()
+  "Find the WORKSPACE file for the current Bazel workspace."
+  (interactive)
+  (let* ((source-file
+          (or buffer-file-name default-directory
+              (user-error "Buffer doesn’t visit a file or directory")))
+         (root (or (bazel--workspace-root source-file)
+                   (user-error "File is not in a Bazel workspace")))
+         (workspace-file
+          (or (locate-file "WORKSPACE" (list root) '(".bazel" ""))
+              (user-error "No WORKSPACE file found"))))
+    (find-file workspace-file)))
 
 ;;;; ‘find-file-at-point’ support for ‘bazel-mode’
 
