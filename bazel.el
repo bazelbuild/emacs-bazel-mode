@@ -1225,9 +1225,13 @@ the return value is a directory name."
 If FILE-NAME is not in a Bazel workspace, return nil.  Otherwise,
 the return value is a directory name."
   (cl-check-type file-name string)
-  (let ((result (or (locate-dominating-file file-name "WORKSPACE")
-                    (locate-dominating-file file-name "WORKSPACE.bazel"))))
+  (let ((result (locate-dominating-file file-name #'bazel--workspace-root-p)))
     (and result (file-name-as-directory result))))
+
+(defun bazel--workspace-root-p (directory)
+  "Return non-nil if DIRECTORY is a Bazel workspace root directory."
+  (and (file-directory-p directory)
+       (locate-file "WORKSPACE" (list directory) '(".bazel" ""))))
 
 (defun bazel-util-package-name (file-name workspace-root)
   "Return the nearest Bazel package for FILE-NAME under WORKSPACE-ROOT.
@@ -1247,10 +1251,16 @@ If FILE-NAME is not in a Bazel package, return nil."
     ;; Work around https://debbugs.gnu.org/cgi/bugreport.cgi?bug=29579.
     (cl-callf file-name-unquote file-name)
     (cl-callf file-name-unquote workspace-root))
-  (let ((build-file-directory
-         (cl-some (lambda (build-name)
-                    (locate-dominating-file file-name build-name))
-                  '("BUILD.bazel" "BUILD"))))
+  (let* ((parent (file-name-directory (directory-file-name workspace-root)))
+         ;; Don’t search beyond workspace root.
+         (locate-dominating-stop-dir-regexp
+          (if parent
+              (rx-to-string `(or (seq bos ,parent eos)
+                                 (regexp ,locate-dominating-stop-dir-regexp))
+                            :no-group)
+            locate-dominating-stop-dir-regexp))
+         (build-file-directory
+          (locate-dominating-file file-name #'bazel--package-directory-p)))
     (cond ((not build-file-directory) nil)
           ((file-equal-p workspace-root build-file-directory) "")
           ((file-in-directory-p build-file-directory workspace-root)
@@ -1263,6 +1273,12 @@ If FILE-NAME is not in a Bazel package, return nil."
                   (not (file-name-absolute-p package-name))
                   (not (string-prefix-p "." package-name))
                   (directory-file-name package-name)))))))
+
+(defun bazel--package-directory-p (directory)
+  "Return non-nil if DIRECTORY is a Bazel package directory.
+This doesn’t check whether DIRECTORY is within a Bazel workspace."
+  (and (file-directory-p directory)
+       (locate-file "BUILD" (list directory) '(".bazel" ""))))
 
 (defun bazel--external-workspace (workspace-name this-workspace-root)
   "Return the workspace root of an external workspace.
