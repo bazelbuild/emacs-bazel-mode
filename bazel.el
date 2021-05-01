@@ -608,22 +608,21 @@ IDENTIFIER should be an XRef identifier returned by
   ;; and enter a label directly.
   (when-let ((parsed-label (bazel--parse-label identifier)))
     (cl-destructuring-bind (workspace package target) parsed-label
-      (let* ((this-workspace
-              (or (get-text-property 0 'bazel-mode-workspace identifier)
-                  (and buffer-file-name
-                       (bazel--workspace-root buffer-file-name))))
-             (package
-              (or package
-                  (and buffer-file-name this-workspace
-                       (bazel--package-name buffer-file-name this-workspace)))))
-        (when (and this-workspace package)
-          (let ((location
-                 (bazel--target-location
-                  (bazel--external-workspace workspace this-workspace)
-                  package target)))
-            (when location
-              (list (xref-make (bazel--canonical workspace package target)
-                               location)))))))))
+      (when-let* ((this-workspace
+                   (or (get-text-property 0 'bazel-mode-workspace identifier)
+                       (and buffer-file-name
+                            (bazel--workspace-root buffer-file-name))))
+                  (package
+                   (or package
+                       (and buffer-file-name
+                            (bazel--package-name buffer-file-name
+                                                 this-workspace))))
+                  (location
+                   (bazel--target-location
+                    (bazel--external-workspace workspace this-workspace)
+                    package target)))
+        (list (xref-make (bazel--canonical workspace package target)
+                         location))))))
 
 (cl-defmethod xref-backend-identifier-completion-table
   ((_backend (eql bazel-mode)))
