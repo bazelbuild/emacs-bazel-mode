@@ -38,6 +38,7 @@
 (require 'rx)
 (require 'speedbar)
 (require 'syntax)
+(require 'url)
 (require 'warnings)
 (require 'which-func)
 (require 'xref)
@@ -822,6 +823,53 @@ in ‘bazel-mode’."
       (with-current-buffer (car temp-buffers)
         (ert-info ("Error buffer")
           (should (equal (buffer-string) "error\n")))))))
+
+(ert-deftest bazel-insert-http-archive ()
+  (bazel-test--with-temp-directory dir
+    (bazel-test--tangle dir "http-archive.org")
+    (should (set-file-times (expand-file-name "prefix" dir)
+                            (encode-time 0 0 0 2 5 2019 t)))
+    (let* ((archive (file-name-unquote
+                     (expand-file-name "archive.tar.gz" dir)))
+           (url-unreserved-chars (cons ?/ url-unreserved-chars))
+           (url (concat "file://" (url-hexify-string archive)))
+           (tar (executable-find "tar"))
+           (sha256sum (executable-find "sha256sum"))
+           (default-directory dir))
+      (skip-unless tar)
+      (skip-unless sha256sum)
+      (process-lines tar "-c" "-z" "-f" archive "--" "prefix")
+      (let ((actual
+             (with-temp-buffer
+               (bazel-workspace-mode)
+               (when (version< emacs-version "26.2")
+                 ;; Work around Bug#31950.
+                 (set-window-buffer nil (current-buffer)))
+               (bazel-insert-http-archive url)
+               (buffer-substring-no-properties (point-min) (point-max))))
+            (expected
+             (with-temp-buffer
+               (insert-file-contents
+                (expand-file-name "WORKSPACE.expected" dir))
+               (pcase (process-lines sha256sum "-b" "--" archive)
+                 ;; “sha256sum” should print exactly one line, the hash followed
+                 ;; by a space and the filename.  See Info node ‘(coreutils)
+                 ;; sha2 utilities’ and Info node ‘(coreutils) md5sum
+                 ;; invocation’.
+                 (`(,(rx bos (let hash (+ xdigit)) ?\s))
+                  ;; Replace variables in expected snippet with their values.
+                  (dolist (pair `(("%sha256%" . ,hash)
+                                  ("%url%" . ,url)))
+                    (cl-destructuring-bind (variable . value) pair
+                      (goto-char (point-min))
+                      (while (search-forward variable nil t)
+                        (replace-match value :fixedcase :literal)))))
+                 (o (ert-fail (format "Invalid sha256sum output: %S" o))))
+               ;; We don’t expect a trailing newline.
+               (goto-char (point-max))
+               (skip-chars-backward "\n")
+               (buffer-substring-no-properties (point-min) (point)))))
+        (should (equal actual expected))))))
 
 (put #'looking-at-p 'ert-explainer #'bazel-test--explain-looking-at-p)
 
