@@ -159,6 +159,23 @@ flag.  See
 https://github.com/bazelbuild/buildtools/blob/2.2.0/buildifier/utils/flags.go#L11.
 If nil, don’t pass a -type flag to Buildifier.")
 
+(eval-when-compile
+  (defmacro bazel--with-temp-files (bindings &rest body)
+    "Evaluate BINDINGS as in ‘let*’ and evaluate BODY.
+Assume that each of the binding forms returns the name of a
+temporary file.  After BODY finishes, delete the temporary files."
+    (declare (debug let*) (indent 1))
+    (if bindings
+        (cl-destructuring-bind ((var val) . rest) bindings
+          (cl-check-type var symbol)
+          (let ((file (make-symbol "file")))
+            `(let ((,file ,val))
+               (unwind-protect
+                   (let ((,var ,file))
+                     (bazel--with-temp-files ,rest ,@body))
+                 (delete-file ,file)))))
+      (macroexp-progn body))))
+
 (defun bazel-buildifier (&optional type)
   "Format current buffer using Buildifier.
 If TYPE is nil, detect the file type from the current major mode
@@ -172,39 +189,36 @@ the file types documented at URL
         (directory default-directory)
         (input-file buffer-file-name)
         (buildifier-buffer (get-buffer-create "*buildifier*"))
-        ;; Run buildifier on a file to support remote BUILD files.
-        (buildifier-input-file (make-nearby-temp-file "buildifier"))
-        (buildifier-error-file (make-nearby-temp-file "buildifier"))
         (type (or type bazel--buildifier-type)))
-    (unwind-protect
-        (progn
-          (write-region (point-min) (point-max) buildifier-input-file nil
-                        :silent)
-          (with-current-buffer buildifier-buffer
-            (setq-local inhibit-read-only t)
-            (erase-buffer)
-            (cl-flet ((maybe-unquote (if (< emacs-major-version 28)
-                                         #'file-name-unquote  ; Bug#48177
-                                       #'identity)))
-              (let* ((default-directory directory)
-                     (temporary-file-directory
-                      (maybe-unquote temporary-file-directory))
-                     (return-code
-                      (apply #'process-file
-                             bazel-buildifier-command
-                             (maybe-unquote buildifier-input-file)
-                             `(t ,buildifier-error-file) nil
-                             (bazel--buildifier-file-flags type input-file))))
-                (if (eq return-code 0)
-                    (progn
-                      (set-buffer input-buffer)
-                      (replace-buffer-contents buildifier-buffer)
-                      (kill-buffer buildifier-buffer))
-                  (with-temp-buffer-window buildifier-buffer nil nil
-                    (insert-file-contents buildifier-error-file)
-                    (compilation-minor-mode)))))))
-      (delete-file buildifier-input-file)
-      (delete-file buildifier-error-file))))
+    ;; Run Buildifier on a file to support remote BUILD files.
+    (bazel--with-temp-files ((buildifier-input-file
+                              (make-nearby-temp-file "buildifier-input-"))
+                             (buildifier-error-file
+                              (make-nearby-temp-file "buildifier-error-")))
+      (write-region (point-min) (point-max) buildifier-input-file nil :silent)
+      (with-current-buffer buildifier-buffer
+        (setq-local inhibit-read-only t)
+        (erase-buffer)
+        (cl-flet ((maybe-unquote (if (< emacs-major-version 28)
+                                     #'file-name-unquote  ; Bug#48177
+                                   #'identity)))
+          (let* ((default-directory directory)
+                 (temporary-file-directory
+                  (maybe-unquote temporary-file-directory))
+                 (return-code
+                  (apply #'process-file
+                         bazel-buildifier-command
+                         (maybe-unquote buildifier-input-file)
+                         `(t ,buildifier-error-file) nil
+                         (bazel--buildifier-file-flags type input-file))))
+            (if (eq return-code 0)
+                (progn
+                  (set-buffer input-buffer)
+                  (replace-buffer-contents buildifier-buffer)
+                  (kill-buffer buildifier-buffer))
+              (with-temp-buffer-window buildifier-buffer nil nil
+                (insert-file-contents buildifier-error-file)
+                (compilation-minor-mode)))))))))
 
 (define-obsolete-function-alias 'bazel-mode-buildifier
   #'bazel-buildifier "2021-04-13")
