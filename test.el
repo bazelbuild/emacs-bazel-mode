@@ -749,6 +749,63 @@ in ‘bazel-mode’."
              (run-hook-with-args-until-success 'bazel-test-at-point-functions)
              "foobar"))))
 
+(ert-deftest bazel-buildifier/success ()
+  (bazel-test--with-temp-directory dir
+    (let ((bash (executable-find "bash"))
+          (bazel-buildifier-command (expand-file-name "buildifier" dir)))
+      (skip-unless bash)
+      (with-temp-file bazel-buildifier-command
+        (insert "#!" (file-name-unquote bash) ?\n
+                "set -Cefu\n"
+                "cd " (shell-quote-argument (file-name-unquote dir)) ?\n
+                "cat > input\n"
+                "echo \"$*\" > args\n"
+                "echo output\n"
+                "echo error >&2\n"))
+      (set-file-modes bazel-buildifier-command #o0500)
+      (with-temp-buffer
+        (insert "input")
+        (bazel-starlark-mode)
+        (bazel-buildifier)
+        (should (equal (buffer-string) "output\n")))
+      (dolist (elem '(("input" "input")
+                      ("args" "-type=bzl\n")))
+        (cl-destructuring-bind (file expected) elem
+          (ert-info (file :prefix "File: ")
+            (with-temp-buffer
+              (insert-file-contents (expand-file-name file dir))
+              (should (equal (buffer-string) expected)))))))))
+
+(ert-deftest bazel-buildifier/failure ()
+  (bazel-test--with-temp-directory dir
+    (let* ((bash (executable-find "bash"))
+           (bazel-buildifier-command (expand-file-name "buildifier" dir))
+           (temp-buffers nil))
+      (skip-unless bash)
+      (with-temp-file bazel-buildifier-command
+        (insert "#!" (file-name-unquote bash) ?\n
+                "set -Cefu\n"
+                "cat > /dev/null\n"  ; don’t exit before reading input
+                "echo output\n"
+                "echo error >&2\n"
+                "exit 1\n"))
+      (set-file-modes bazel-buildifier-command #o0500)
+      (with-temp-buffer
+        (insert "input")
+        (bazel-starlark-mode)
+        (add-hook 'temp-buffer-window-show-hook
+                   nil :local)
+        (let ((tick-before (buffer-modified-tick))
+              (temp-buffer-window-show-hook
+               (list (lambda () (push (current-buffer) temp-buffers)))))
+          (bazel-buildifier)
+          (should (equal (buffer-string) "input"))  ; no change
+          (should (eql (buffer-modified-tick) tick-before))))
+      (should (eql (length temp-buffers) 1))
+      (with-current-buffer (car temp-buffers)
+        (ert-info ("Error buffer")
+          (should (equal (buffer-string) "error\n")))))))
+
 (put #'looking-at-p 'ert-explainer #'bazel-test--explain-looking-at-p)
 
 (defun bazel-test--explain-looking-at-p (regexp)

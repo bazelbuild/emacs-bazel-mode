@@ -177,25 +177,32 @@ the file types documented at URL
         (buildifier-error-file (make-nearby-temp-file "buildifier"))
         (type (or type bazel--buildifier-type)))
     (unwind-protect
-      (write-region (point-min) (point-max) buildifier-input-file nil :silent)
-      (with-current-buffer buildifier-buffer
-        (setq-local inhibit-read-only t)
-        (erase-buffer)
-        (let* ((default-directory directory)
-               (return-code
-                (apply #'process-file
-                       bazel-buildifier-command buildifier-input-file
-                       `(t ,buildifier-error-file) nil
-                       (bazel--buildifier-file-flags type input-file))))
-          (if (eq return-code 0)
-              (progn
-                (set-buffer input-buffer)
-                (replace-buffer-contents buildifier-buffer)
-                (kill-buffer buildifier-buffer))
-            (with-temp-buffer-window
-             buildifier-buffer nil nil
-             (insert-file-contents buildifier-error-file)
-             (compilation-minor-mode)))))
+        (progn
+          (write-region (point-min) (point-max) buildifier-input-file nil
+                        :silent)
+          (with-current-buffer buildifier-buffer
+            (setq-local inhibit-read-only t)
+            (erase-buffer)
+            (cl-flet ((maybe-unquote (if (< emacs-major-version 28)
+                                         #'file-name-unquote  ; Bug#48177
+                                       #'identity)))
+              (let* ((default-directory directory)
+                     (temporary-file-directory
+                      (maybe-unquote temporary-file-directory))
+                     (return-code
+                      (apply #'process-file
+                             bazel-buildifier-command
+                             (maybe-unquote buildifier-input-file)
+                             `(t ,buildifier-error-file) nil
+                             (bazel--buildifier-file-flags type input-file))))
+                (if (eq return-code 0)
+                    (progn
+                      (set-buffer input-buffer)
+                      (replace-buffer-contents buildifier-buffer)
+                      (kill-buffer buildifier-buffer))
+                  (with-temp-buffer-window buildifier-buffer nil nil
+                    (insert-file-contents buildifier-error-file)
+                    (compilation-minor-mode)))))))
       (delete-file buildifier-input-file)
       (delete-file buildifier-error-file))))
 
