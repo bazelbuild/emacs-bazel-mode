@@ -98,7 +98,7 @@
   'bazel-buildifier-before-save "2021-04-13")
 
 (defcustom bazel-buildifier-before-save nil
-  "Specifies whether to run buildifer in `before-save-hook'."
+  "Specifies whether to run Buildifier in `before-save-hook'."
   :type 'boolean
   :group 'bazel
   :link '(url-link
@@ -160,7 +160,7 @@ https://github.com/bazelbuild/buildtools/blob/2.2.0/buildifier/utils/flags.go#L1
 If nil, don’t pass a -type flag to Buildifier.")
 
 (defun bazel-buildifier (&optional type)
-  "Format current buffer using buildifier.
+  "Format current buffer using Buildifier.
 If TYPE is nil, detect the file type from the current major mode
 and visited filename, if available.  Otherwise, TYPE must be one
 of the symbols ‘build’, ‘bzl’, or ‘workspace’, corresponding to
@@ -224,7 +224,7 @@ URL `https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md'.
 
 The magic comments \"keep sorted\", \"do not sort\", and
 \"buildifier: leave-alone\" don't look to be documented, but are
-mentioned in the Buildifer source code at URL
+mentioned in the Buildifier source code at URL
 `https://git.io/JOuVL' and have tests.")
 
 (defconst bazel-font-lock-keywords-1
