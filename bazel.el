@@ -142,16 +142,22 @@ flag.  See
 https://github.com/bazelbuild/buildtools/blob/2.2.0/buildifier/utils/flags.go#L11.
 If nil, don’t pass a -type flag to Buildifier.")
 
-(defun bazel-buildifier ()
-  "Format current buffer using buildifier."
+(defun bazel-buildifier (&optional type)
+  "Format current buffer using buildifier.
+If TYPE is nil, detect the file type from the current major mode
+and visited filename, if available.  Otherwise, TYPE must be one
+of the symbols ‘build’, ‘bzl’, or ‘workspace’, corresponding to
+the file types documented at URL
+‘https://github.com/bazelbuild/buildtools/tree/master/buildifier#usage’."
   (interactive "*")
+  (cl-check-type type (member nil build bzl workspace))
   (let ((input-buffer (current-buffer))
         (input-file buffer-file-name)
         (buildifier-buffer (get-buffer-create "*buildifier*"))
         ;; Run buildifier on a file to support remote BUILD files.
         (buildifier-input-file (make-nearby-temp-file "buildifier"))
         (buildifier-error-file (make-nearby-temp-file "buildifier"))
-        (type bazel--buildifier-type))
+        (type (or type bazel--buildifier-type)))
     (unwind-protect
       (write-region (point-min) (point-max) buildifier-input-file nil :silent)
       (with-current-buffer buildifier-buffer
