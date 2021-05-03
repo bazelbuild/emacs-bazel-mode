@@ -339,21 +339,20 @@ This is the parent mode for the more specific modes
 
 ;;;; Menu item
 
-(easy-menu-add-item menu-bar-tools-menu nil
-                    '("Bazel"
-                      ;; We enable the workspace commands unconditionally
-                      ;; because checking whether we’re in a Bazel workspace
-                      ;; hits the filesystem and might be too slow.
-                      ["Build..." bazel-build]
-                      ["Compile current file" bazel-compile-current-file
-                       buffer-file-name]
-                      ["Test..." bazel-test]
-                      ["Collect code coverage..." bazel-coverage]
-                      ["Run target..." bazel-run]
-                      ["Show consuming rule" bazel-show-consuming-rule]
-                      ["Format buffer with Buildifier" bazel-buildifier
-                       (derived-mode-p 'bazel-mode)])
-                    "Debugger (GDB)...")
+(easy-menu-add-item
+ menu-bar-tools-menu nil
+ '("Bazel"
+   ;; We enable the workspace commands unconditionally because checking whether
+   ;; we’re in a Bazel workspace hits the filesystem and might be too slow.
+   ["Build..." bazel-build]
+   ["Compile current file" bazel-compile-current-file buffer-file-name]
+   ["Test..." bazel-test]
+   ["Collect code coverage..." bazel-coverage]
+   ["Run target..." bazel-run]
+   ["Show consuming rule" bazel-show-consuming-rule]
+   ["Format buffer with Buildifier" bazel-buildifier
+    (derived-mode-p 'bazel-mode)])
+ "Debugger (GDB)...")
 
 ;;;; Flymake support using Buildifier
 
