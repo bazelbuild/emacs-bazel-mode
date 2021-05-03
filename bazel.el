@@ -94,8 +94,8 @@
   'bazel-buildifier-command "2021-04-13")
 
 (defcustom bazel-buildifier-command "buildifier"
-  "Filename of buildifier executable."
-  :type 'file
+  "Command to run Buildifier."
+  :type 'string
   :risky t
   :group 'bazel
   :link '(url-link
