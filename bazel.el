@@ -1765,7 +1765,12 @@ doesn’t require partial application."
                                       string predicate action)))
 
 (defalias 'bazel--json-parse-buffer
-  (if (fboundp 'json-parse-buffer) #'json-parse-buffer
+  (if (and (fboundp 'json-parse-buffer)
+           ;; Work around Bug#48228.
+           (or (not (eq system-type 'windows-nt))
+               (and (fboundp 'json-serialize)
+                    (stringp (ignore-errors (json-serialize nil))))))
+      #'json-parse-buffer
     (lambda ()
       "Polyfill for ‘json-parse-buffer’."
       (let ((json-object-type 'hash-table)
