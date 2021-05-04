@@ -440,6 +440,21 @@ the rule."
             ;; Package declaration isn’t covered at all.
             (should (looking-at-p (rx bol "package ")))
             (should-not (face-at-point)))
+          (ert-info ("Line with branching statement")
+            (search-forward "if (arg)")
+            (should (eq (face-at-point) 'bazel-covered-line))
+            (should (> left-margin-width 0))
+            (let ((before-string (get-char-property (point) 'before-string)))
+              (should (stringp before-string))
+              (pcase (get-text-property 0 'display before-string)
+                (`((margin left-margin) ,(and (pred stringp) margin-string))
+                 (should (ert-equal-including-properties
+                          margin-string
+                          (ert-propertized-string
+                           '(face bazel-covered-line) "+"
+                           '(face bazel-uncovered-line) "−"))))
+                (otherwise
+                 (ert-fail (list "Unexpected ‘display’ property" otherwise))))))
           (ert-info ("Covered line")
             (search-forward "return 137;")
             (backward-char)  ; overlay doesn’t extend beyond the end of the line
