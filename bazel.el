@@ -202,17 +202,18 @@ The magic comments \"keep sorted\", \"do not sort\", and
 mentioned in the Buildifer source code at URL
 `https://git.io/JOuVL' and have tests.")
 
-(defconst bazel--font-lock-keywords
-  `(
-    ;; Some Starlark functions are exposed to BUILD files as builtins. For
-    ;; details see https://github.com/bazelbuild/starlark/blob/master/spec.md.
-    (,(regexp-opt '("exports_files" "glob" "licenses" "package"
-                    "package_group" "select" "workspace")
-                  'symbols)
-     . 'font-lock-builtin-face)
-    ;; Keywords for BUILD files are the same as bzl files. Even if some of them
-    ;; are forbidden in BUILD files, they should be highlighted.
-    ;; See spec link above.
+(defconst bazel-font-lock-keywords-1
+  ;; Only include file directives.  See Info node ‘(elisp) Levels of Font Lock’.
+  `((,(regexp-opt '("workspace") 'symbols) . 'font-lock-builtin-face)
+    (,(regexp-opt '("load") 'symbols) . 'font-lock-keyword-face))
+  "Value of ‘font-lock-keywords’ in ‘bazel-mode’ at font lock level 1.")
+
+(defconst bazel-font-lock-keywords-2
+  `(,@bazel-font-lock-keywords-1
+    ;; Include keywords and constants.  Keywords for BUILD files are the same as
+    ;; Starlark files.  Even if some of them are forbidden in BUILD files, they
+    ;; should be highlighted.  See
+    ;; https://github.com/bazelbuild/starlark/blob/master/spec.md.
     (,(regexp-opt '("and" "else" "for" "if" "in" "not" "or" "load"
                     "break" "continue" "def" "pass" "elif" "return")
                   'symbols)
@@ -226,9 +227,24 @@ mentioned in the Buildifer source code at URL
     ;; Constants
     (,(regexp-opt '("True" "False" "None")
                   'symbols)
-     . 'font-lock-constant-face)
+     . 'font-lock-constant-face))
+  "Value of ‘font-lock-keywords’ in ‘bazel-mode’ at font lock level 2.")
+
+(defconst bazel-font-lock-keywords-3
+  `(,@bazel-font-lock-keywords-2
+    ;; Include builtin functions.  Some Starlark functions are exposed to BUILD
+    ;; files as builtins.  For details see
+    ;; https://github.com/bazelbuild/starlark/blob/master/spec.md.
+    (,(regexp-opt '("exports_files" "glob" "licenses" "package"
+                    "package_group" "select" "workspace")
+                  'symbols)
+     . 'font-lock-builtin-face)
     ;; Magic comments
-    (bazel--find-magic-comment 0 'font-lock-preprocessor-face prepend)))
+    (bazel--find-magic-comment 0 'font-lock-preprocessor-face prepend))
+  "Value of ‘font-lock-keywords’ in ‘bazel-mode’ at font lock level 3.")
+
+(defconst bazel-font-lock-keywords bazel-font-lock-keywords-1
+  "Default value of ‘font-lock-keywords’ in ‘bazel-mode’.")
 
 (defconst bazel-mode-syntax-table
   (let ((table (make-syntax-table)))
@@ -257,7 +273,10 @@ This is the parent mode for the more specific modes
   (setq-local comment-use-syntax t)
   (setq-local parse-sexp-ignore-comments t)
   (setq-local forward-sexp-function #'python-nav-forward-sexp)
-  (setq-local font-lock-defaults (list bazel--font-lock-keywords))
+  (setq-local font-lock-defaults '((bazel-font-lock-keywords
+                                    bazel-font-lock-keywords-1
+                                    bazel-font-lock-keywords-2
+                                    bazel-font-lock-keywords-3)))
   (setq-local syntax-propertize-function python-syntax-propertize-function)
   (setq-local indent-line-function #'python-indent-line-function)
   (setq-local indent-region-function #'python-indent-region)
