@@ -1715,9 +1715,9 @@ the comment text."
   ;; Buildifier's magic comment detection appears to be case-insensitive, but
   ;; isn't documented as such.  Reference in the source: https://git.io/JO6FG.
   (let ((case-fold-search t))
-    (and (re-search-forward bazel--magic-comment-regexp
-                            bound t)
-         (nth 4 (syntax-ppss)))))
+    (with-case-table ascii-case-table
+      (and (re-search-forward bazel--magic-comment-regexp bound t)
+           (nth 4 (syntax-ppss))))))
 
 (defun bazel--line-column-pos (line column)
   "Return buffer position in the current buffer for LINE and COLUMN.
