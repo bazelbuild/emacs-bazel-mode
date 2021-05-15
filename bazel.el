@@ -550,9 +550,8 @@ IDENTIFIER should be an XRef identifier returned by
   (cl-check-type identifier string)
   ;; Reparse the identifier so that users can invoke ‘xref-find-definitions’
   ;; and enter a label directly.
-  (cl-destructuring-bind (&whole valid-p &optional workspace package target)
-      (bazel--parse-label identifier)
-    (when valid-p
+  (when-let ((parsed-label (bazel--parse-label identifier)))
+    (cl-destructuring-bind (workspace package target) parsed-label
       (let* ((this-workspace
               (or (get-text-property 0 'bazel-mode-workspace identifier)
                   (and buffer-file-name
