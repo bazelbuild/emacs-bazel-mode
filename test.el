@@ -246,21 +246,7 @@ that buffer once BODY finishes."
 (ert-deftest bazel-mode/ffap ()
   "Unit test for ‘find-file-at-point’ support."
   (bazel-test--with-temp-directory dir
-    (make-directory (expand-file-name "root" dir))
-    (write-region "" nil (expand-file-name "root/WORKSPACE" dir)
-                  nil nil nil 'excl)
-    (write-region "" nil (expand-file-name "root/aaa.h" dir) nil nil nil 'excl)
-    (make-directory (expand-file-name "root/pkg" dir))
-    (write-region "#include \"aaa.h\"\n#include \"bbb.h\"\n" nil
-                  (expand-file-name "root/pkg/aaa.c" dir) nil nil nil 'excl)
-    (make-directory (expand-file-name "root/bazel-root/external/ws" dir)
-                    :parents)
-    (write-region "" nil
-                  (expand-file-name "root/bazel-root/external/ws/WORKSPACE" dir)
-                  nil nil nil 'excl)
-    (write-region "" nil
-                  (expand-file-name "root/bazel-root/external/ws/bbb.h" dir)
-                  nil nil nil 'excl)
+    (bazel-test--tangle dir "find-file-at-point.org")
     (bazel-test--with-file-buffer (expand-file-name "root/pkg/aaa.c" dir)
       (search-forward "\"" (line-end-position))
       (should (equal (ffap-file-at-point)

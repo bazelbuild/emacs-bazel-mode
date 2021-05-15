@@ -1,0 +1,40 @@
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+#+property: header-args :mkdirp yes
+
+* Test data for the ~bazel-mode/ffap~ test
+
+#+begin_src bazel-workspace :tangle root/WORKSPACE
+  workspace(name = "root")
+#+end_src
+
+#+begin_src C :tangle root/aaa.h
+  // Dummy file
+#+end_src
+
+#+begin_src C :tangle root/pkg/aaa.c
+  #include "aaa.h"
+  #include "bbb.h"
+#+end_src
+
+Files in an external workspace:
+
+#+begin_src bazel-workspace :tangle root/bazel-root/external/ws/WORKSPACE
+  workspace(name = "ws")
+#+end_src
+
+#+begin_src C :tangle root/bazel-root/external/ws/bbb.h
+  // Dummy file
+#+end_src
