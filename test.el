@@ -692,6 +692,34 @@ in ‘bazel-mode’."
                         '(3 . 1))))
               (_ (ert-fail (format "Unexpected arguments %S" got-args))))))))))
 
+(ert-deftest bazel-test-at-point ()
+  (cl-letf* ((case-fold-search nil)
+             (test-file (expand-file-name "test.el" bazel-test--directory))
+             (commands ())
+             ((symbol-function #'compile)
+              (lambda (command &optional _comint)
+                (push command commands))))
+    (bazel-test--with-file-buffer test-file
+      (emacs-lisp-mode)
+      (should-error (bazel-test-at-point) :type 'user-error)
+      (re-search-forward (rx bol "(ert-deftest bazel/project ()"))
+      (bazel-test-at-point))
+    (should
+     (equal commands
+            '("bazel test --test_filter\\=bazel/project -- //\\:bazel_test")))))
+
+(ert-deftest bazel-test-at-point-functions ()
+  "Test that ‘which-function’ is at the end of
+‘bazel-test-at-point-functions’."
+  (skip-unless (>= emacs-major-version 27))  ; older versions lack hook depths
+  (let ((bazel-test-at-point-functions bazel-test-at-point-functions)
+        (which-func-functions
+         (list (lambda () (ert-fail "‘which-function’ has been called")))))
+    (add-hook 'bazel-test-at-point-functions (lambda () "foobar") 50)
+    (should (equal
+             (run-hook-with-args-until-success 'bazel-test-at-point-functions)
+             "foobar"))))
+
 (put #'looking-at-p 'ert-explainer #'bazel-test--explain-looking-at-p)
 
 (defun bazel-test--explain-looking-at-p (regexp)
