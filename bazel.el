@@ -44,6 +44,9 @@
 ;; that visits a test file, you can also have Emacs try to detect and execute
 ;; the test at point using ‘bazel-test-at-point’.
 ;;
+;; When editing a WORKSPACE file, you can use the command
+;; ‘bazel-insert-http-archive’ to quickly insert an http_archive rule.
+;;
 ;; You can customize some aspects of this package using the ‘bazel’
 ;; customization group.  If you set the user option ‘bazel-display-coverage’ to
 ;; a non-nil value and then run ‘bazel coverage’ (either using the ‘compile’ or
@@ -400,6 +403,120 @@ This is the parent mode for the more specific modes
              ;; https://docs.bazel.build/versions/3.0.0/skylark/concepts.html#getting-started
              (cons (rx ?/ (+ nonl) ".bzl" eos) #'bazel-starlark-mode))
 
+(define-skeleton bazel-insert-http-archive
+  "Insert an “http_archive” statement at point.
+See URL
+‘https://docs.bazel.build/versions/master/repo/http.html#http_archive’
+for a description of “http_archive”.  Interactively, prompt for
+an archive URL.  Attempt to detect workspace name and prefix.
+Also add the date when the archive was likely last modified as a
+comment."
+  "Archive download URL: "
+  '(eval str t)  ; force prompt now
+  '(setq v1 (bazel--download-http-archive str))  ; (name hash prefix time)
+  "http_archive(" \n
+  "name = \"" (or (nth 0 v1) '_) "\"," \n
+  "sha256 = \"" (nth 1 v1) "\"," \n
+  "strip_prefix = \"" (nth 2 v1) "\"," \n
+  "urls = [" \n
+  ?\" str "\",  # " (format-time-string "%F" (nth 3 v1) t) \n
+  "]," > \n
+  ?\) >)
+
+(defun bazel--download-http-archive (url)
+  "Download and interpret HTTP archive at URL.
+Return a list (NAME SHA-256 PREFIX TIME) for
+‘bazel-insert-http-archive’."
+  (cl-check-type url string)
+  (let* ((temp-dir (make-temp-file "bazel-http-archive-" :directory))
+         (archive-file (expand-file-name (url-file-nondirectory url) temp-dir))
+         (reporter (make-progress-reporter
+                    (format-message "Downloading %s into %s..." url temp-dir)))
+         (coding-system-for-read 'no-conversion)
+         (coding-system-for-write 'no-conversion))
+    (url-copy-file url archive-file)
+    (progress-reporter-update reporter)
+    (let* ((archive-dir
+            ;; Prefer TRAMP’s archive support if available.
+            (if (bound-and-true-p tramp-archive-enabled)
+                (file-name-as-directory (file-name-unquote archive-file))
+              ;; Fall back to extracting the archive locally.
+              (let ((dir (expand-file-name "extract/" temp-dir)))
+                (make-directory dir)
+                (bazel--extract-archive archive-file dir)
+                (progress-reporter-update reporter)
+                dir)))
+           (prefix-and-time
+            ;; A prefix must be unique.
+            (pcase (directory-files-and-attributes
+                    archive-dir nil directory-files-no-dot-files-regexp)
+              (`((,name t ,_ ,_ ,_ ,_ ,time . ,_))
+               (progress-reporter-update reporter)
+               (cons (file-name-as-directory name) time))
+              ('nil (user-error "Empty archive"))
+              (`(,_ . ,_) (user-error "No unique prefix in archive"))))
+           (prefix (car prefix-and-time))
+           (time (cdr prefix-and-time))
+           (root-dir (expand-file-name prefix archive-dir))
+           (name (when-let ((workspace (locate-file "WORKSPACE" (list root-dir)
+                                                    '(".bazel" ""))))
+                   (with-temp-buffer
+                     (insert-file-contents workspace)
+                     (bazel-workspace-mode)
+                     (progress-reporter-update reporter)
+                     (bazel--workspace-name))))
+           (sha256 (with-temp-buffer
+                     (insert-file-contents-literally archive-file)
+                     (progress-reporter-update reporter)
+                     (secure-hash 'sha256 (current-buffer)))))
+      ;; We delete the temporary directory only when successful to make
+      ;; debugging easier.
+      (delete-directory temp-dir :recursive)
+      (progress-reporter-done reporter)
+      (list name sha256 prefix time))))
+
+(defun bazel--extract-archive (file directory)
+  ;; Prefer BSD tar if installed, as it supports more archive types.
+  (let ((program (cl-some #'executable-find '("bsdtar" "tar"))))
+    (unless program
+      (user-error "Don’t know how to extract %s" file))
+    (with-temp-buffer
+      (let ((status (call-process program nil t nil
+                                  "-x"
+                                  "-f" (file-name-unquote file)
+                                  "-C" (file-name-unquote directory))))
+        (unless (eql status 0)
+          (error "Program %s failed with status %s, output %s"
+                 program status (buffer-string)))))))
+
+(defun bazel--workspace-name ()
+  "Return the name of the workspace.
+The current buffer should contain the contents of a Bazel
+WORKSPACE file.  Look around for a “workspace” statement and
+return its name.  See URL
+‘https://docs.bazel.build/versions/4.0.0/skylark/lib/globals.html#workspace’."
+  (save-excursion
+    (goto-char (point-min))
+    (cl-block nil
+      (while (progn (forward-comment (buffer-size))
+                    (re-search-forward (rx symbol-start "workspace(") nil t))
+        (forward-comment (buffer-size))
+        (unless (or (eobp) (python-syntax-comment-or-string-p))
+          (let ((begin (point))
+                (end (progn (python-nav-end-of-statement) (point))))
+            (goto-char begin)
+            (while (progn (forward-comment (buffer-size))
+                          (re-search-forward
+                           (rx symbol-start "name" (* blank) ?= (* blank)
+                               (group (any ?\" ?\'))
+                               (group (+ (any "a-z" "A-Z" "0-9" ?_ ?- ?.)))
+                               (backref 1))
+                           end t))
+              (let ((name (match-string-no-properties 2)))
+                (unless (python-syntax-comment-or-string-p)
+                  (cl-return name))))
+            (goto-char end)))))))
+
 ;;;; ‘bazelrc-mode’
 
 ;;;###autoload
@@ -431,7 +548,9 @@ This is the parent mode for the more specific modes
    ["Run target..." bazel-run]
    ["Show consuming rule" bazel-show-consuming-rule]
    ["Format buffer with Buildifier" bazel-buildifier
-    (derived-mode-p 'bazel-mode)])
+    (derived-mode-p 'bazel-mode)]
+   ["Insert http_archive statement..." bazel-insert-http-archive
+    (derived-mode-p 'bazel-workspace-mode 'bazel-starlark-mode)])
  "Debugger (GDB)...")
 
 ;;;; Flymake support using Buildifier
