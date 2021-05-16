@@ -1416,7 +1416,7 @@ the containing workspace.  This function is suitable for
   (bazel--run-bazel-command "coverage" target))
 
 (defun bazel--run-bazel-command (command target-pattern)
-  "Run Bazel tool with given COMMAND on the given TARGET_PATTERN.
+  "Run Bazel tool with given COMMAND on the given TARGET-PATTERN.
 COMMAND is a Bazel command such as \"build\" or \"run\"."
   (cl-check-type command string)
   (cl-check-type target-pattern string)
