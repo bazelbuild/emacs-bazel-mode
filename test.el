@@ -168,11 +168,20 @@ file name; see Info node ‘(elisp) Directory Names’."
 Execute BODY with the buffer that visits FILENAME current.  Kill
 that buffer once BODY finishes."
     (declare (indent 1) (debug t))
-    (let ((buffer (make-symbol "buffer")))
-      `(let ((,buffer (find-file-noselect ,filename)))
-         (unwind-protect
-             (with-current-buffer ,buffer ,@body)
-           (kill-buffer ,buffer))))))
+    (let ((previous-buffers (make-symbol "previous-buffers"))
+          (buffer (make-symbol "buffer")))
+      (macroexp-let2 nil filename filename
+        `(let ((,previous-buffers (buffer-list)))
+           (access-file ,filename "Visiting test file")
+           (save-current-buffer
+             (find-file-existing ,filename)
+             (let ((,buffer (current-buffer)))
+               (unwind-protect
+                   ,(macroexp-progn body)
+                 ;; Kill the buffer only if ‘find-file-existing’ has generated a
+                 ;; new one.
+                 (unless (memq ,buffer ,previous-buffers)
+                   (kill-buffer ,buffer))))))))))
 
 (ert-deftest bazel-mode/xref ()
   "Unit test for XRef support."
