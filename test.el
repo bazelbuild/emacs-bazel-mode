@@ -153,15 +153,21 @@ we don’t have to start or mock a process."
     "Create a new temporary directory.
 Bind the name of the directory to NAME and execute BODY while the
 directory exists.  Remove the directory and all its contents once
-BODY finishes.  NAME will be a directory name, not a directory
-file name; see Info node ‘(elisp) Directory Names’."
+BODY finishes successfully.  NAME will be a directory name, not a
+directory file name; see Info node ‘(elisp) Directory Names’."
     (declare (indent 1) (debug (sexp body)))
     (cl-check-type name symbol)
-    `(let ((,name (file-name-as-directory
-                   (make-temp-file "bazel-mode-test-" :dir-flag))))
-       (unwind-protect
-           ,(macroexp-progn body)
-         (delete-directory ,name :recursive))))
+    (let ((directory (make-symbol "directory"))
+          (success (make-symbol "success")))
+      `(let ((,directory (make-temp-file "bazel-mode-test-" :dir-flag))
+             (,success nil))
+         (unwind-protect
+             (prog1 (let ((,name (file-name-as-directory ,directory)))
+                      ,@body)
+               (setq ,success t))
+           (if ,success
+               (delete-directory ,directory :recursive)
+             (message "Temporary directory: %s" ,directory))))))
 
   (defmacro bazel-test--with-file-buffer (filename &rest body)
     "Visit FILENAME in a temporary buffer.
