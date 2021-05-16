@@ -1227,12 +1227,11 @@ COMMAND is a Bazel command to be included in the minibuffer prompt."
          (package-name
           (or (bazel--package-name file-name workspace-root)
               (user-error "Not in a Bazel package.  No BUILD file found")))
-         (initial-input (concat "//" package-name))
          (prompt (combine-and-quote-strings
                   `(,@bazel-command "--" ,command "")))
          (table
           (bazel--target-pattern-completion-table workspace-root package-name)))
-    (completing-read prompt table nil nil initial-input)))
+    (completing-read prompt table)))
 
 ;;;; Utility functions to work with Bazel workspaces
 
