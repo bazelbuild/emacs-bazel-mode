@@ -150,10 +150,12 @@ we don’t have to start or mock a process."
   "Create a new temporary directory.
 Bind the name of the directory to NAME and execute BODY while the
 directory exists.  Remove the directory and all its contents once
-BODY finishes."
+BODY finishes.  NAME will be a directory name, not a directory
+file name; see Info node ‘(elisp) Directory Names’."
   (declare (indent 1) (debug (sexp body)))
   (cl-check-type name symbol)
-  `(let ((,name (make-temp-file "bazel-mode-test-" :dir-flag)))
+  `(let ((,name (file-name-as-directory
+                 (make-temp-file "bazel-mode-test-" :dir-flag))))
      (unwind-protect
          ,(macroexp-progn body)
        (delete-directory ,name :recursive))))
