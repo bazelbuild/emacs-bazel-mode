@@ -1575,13 +1575,15 @@ current package.  This is a helper function for
       (let* ((slash (string-match-p (rx ?/ (* (not (any ?/))) eos) string))
              (parent (substring-no-properties string 0 (or slash 0)))
              (prefix (if slash (concat parent "/") ""))
-             ;; Merge actual package names and the “...” wildcard.
-             (table (bazel--completion-table-with-prefix prefix
-                      (completion-table-merge
-                       (bazel--target-pattern-package-completion-table-1
-                        (file-name-as-directory
-                         (expand-file-name parent directory)))
-                       '("...")))))
+             (parent-directory (file-name-as-directory
+                                (expand-file-name parent directory)))
+             (table (when (file-accessible-directory-p parent-directory)
+                      ;; Merge actual package names and the “...” wildcard.
+                      (bazel--completion-table-with-prefix prefix
+                        (completion-table-merge
+                         (bazel--target-pattern-package-completion-table-1
+                          parent-directory)
+                         '("..."))))))
         (complete-with-action action table string predicate)))))
 
 (defun bazel--target-pattern-package-completion-table-1 (directory)
@@ -1596,28 +1598,30 @@ DIRECTORY.  This is a helper function for
                  completion-regexp-list))
           (predicate
            (bazel--target-pattern-completion-directory-predicate predicate)))
-      ;; ‘file-name-completion’ and ‘file-name-all-completions’ always return
-      ;; directories as directory names.  Since a directory name isn’t a valid
-      ;; package name, and we don’t want to give the user the impression that
-      ;; they can’t enter a colon, strip the trailing slash.
-      (pcase action
-        ('nil
-         (when-let ((result (file-name-completion string directory predicate)))
-           (bazel--remove-slash result)))
-        ('t
-         (cl-loop for candidate in (file-name-all-completions string directory)
-                  when (funcall predicate candidate)
-                  collect (bazel--remove-slash candidate)))
-        ('lambda
-          ;; We complete target patterns, not packages!  In particular, a valid
-          ;; target pattern can’t end in a slash.
-          (and (not (string-empty-p string))
-               (not (directory-name-p string))
-               (file-accessible-directory-p
-                (expand-file-name string directory))
-               (funcall predicate directory)))
-        (`(boundaries . ,suffix)
-         `(boundaries 0 . ,(string-match-p (rx (any ?/ ?:)) suffix)))))))
+      (condition-case nil
+          ;; ‘file-name-completion’ and ‘file-name-all-completions’ always
+          ;; return directories as directory names.  Since a directory name
+          ;; isn’t a valid package name, and we don’t want to give the user the
+          ;; impression that they can’t enter a colon, strip the trailing slash.
+          (pcase action
+            ('nil
+             (when-let ((res (file-name-completion string directory predicate)))
+               (bazel--remove-slash res)))
+            ('t
+             (cl-loop for cand in (file-name-all-completions string directory)
+                      when (funcall predicate cand)
+                      collect (bazel--remove-slash cand)))
+            ('lambda
+              ;; We complete target patterns, not packages!  In particular, a
+              ;; valid target pattern can’t end in a slash.
+              (and (not (string-empty-p string))
+                   (not (directory-name-p string))
+                   (file-accessible-directory-p
+                    (expand-file-name string directory))
+                   (funcall predicate directory)))
+            (`(boundaries . ,suffix)
+             `(boundaries 0 . ,(string-match-p (rx (any ?/ ?:)) suffix))))
+        (file-error nil)))))
 
 (defun bazel--target-pattern-rule-completion-table
     (root workspace package &optional colon)
