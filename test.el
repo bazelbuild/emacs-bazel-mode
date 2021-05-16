@@ -646,15 +646,17 @@ in ‘bazel-mode’."
     (write-region "" nil (expand-file-name "package/BUILD" dir))
     (write-region "" nil (expand-file-name "package/test.cc" dir))
     (bazel-test--with-file-buffer (expand-file-name "package/test.cc" dir)
-      (cl-letf* ((commands nil)
-                 ((symbol-function #'compile)
-                  (lambda (command &optional _comint)
-                    (push command commands))))
-        (bazel-compile-current-file)
-        (should
-         (equal
-          commands
-          '("bazel build --compile_one_dependency -- package/test.cc")))))))
+      (dolist (case `((,dir (,(concat "bazel build --compile_one_dependency "
+                                      "-- package/test.cc")))
+                      (,(expand-file-name "package" dir)
+                       ("bazel build --compile_one_dependency -- test.cc"))))
+        (cl-destructuring-bind (default-directory want-commands) case
+          (cl-letf* ((got-commands ())
+                     ((symbol-function #'compile)
+                      (lambda (command &optional _comint)
+                        (push command got-commands))))
+            (bazel-compile-current-file)
+            (should (equal got-commands want-commands))))))))
 
 (put #'looking-at-p 'ert-explainer #'bazel-test--explain-looking-at-p)
 
