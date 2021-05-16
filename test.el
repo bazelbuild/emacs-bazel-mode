@@ -221,10 +221,10 @@ that buffer once BODY finishes."
                                 (file-relative-name ref-file root))
                           definitions)))))))
         ;; Test completions.
-        (should
-         (equal (all-completions
-                 ":" (xref-backend-identifier-completion-table 'bazel-mode))
-                '(":lib" ":bin" ":aaa.cc")))
+        (let ((table (xref-backend-identifier-completion-table 'bazel-mode)))
+          (should (equal (try-completion ":" table) ":"))
+          (should (equal (all-completions ":" table) '("lib" "bin" "aaa.cc")))
+          (should (equal (completion-boundaries ":" table nil "") '(1 . 0))))
         ;; Test ‘bazel-show-consuming-rule’.
         (let* ((build-buffer (current-buffer))
                (jumps 0)
@@ -432,57 +432,83 @@ the rule."
           (should (eql (next-single-char-property-change (point-min) 'face)
                        (point-max))))))))
 
-(ert-deftest bazel--target-pattern-completion-table/root-package ()
-  "Test target pattern completion in the root package."
+(ert-deftest bazel--target-completion-table/root-package ()
+  "Test target completion in the root package."
   (bazel-test--with-temp-directory dir
-    (bazel-test--tangle dir "target-pattern-completion-root.org")
-    (let ((table (bazel--target-pattern-completion-table dir "")))
-      ;; The test cases are of the form (STRING TRY ALL TEST BOUND).  STRING is
-      ;; the input string.  TRY, ALL, and TEST are the expected results of
-      ;; ‘try-completion’, ‘all-completions’, and ‘test-completion’,
-      ;; respectively.  BOUND is the expected prefix completion bound returned
-      ;; by ‘completion-bounds’.
-      (dolist (case '(("" "" ("test" ":all" ":all-targets" ":*" "..." "//" "@")
-                       nil 0)
-                      ("te" "test" ("test") nil 0)
-                      ("test" t ("test") t 0)
-                      ("a" nil () nil 0)
-                      (":" ":" ("test" "all" "all-targets" "*") nil 1)
-                      (":te" ":test" ("test") nil 1)
-                      (":test" t ("test") t 1)
-                      (":a" ":all" ("all" "all-targets") nil 1)
-                      (":all" ":all" ("all" "all-targets") t 1)
-                      (":all-targets" t ("all-targets") t 1)
-                      (":foo/bar" nil () nil 1)
-                      ("@" nil () nil 1)
-                      ("@w" nil () nil 1)
-                      ("/" "//" ("//") nil 0)
-                      ("//" "//" (":" "...") nil 2)
-                      ("//:" "//:" ("test" "all" "all-targets" "*") nil 3)
-                      ("//:te" "//:test" ("test") nil 3)
-                      ("//:test" t ("test") t 3)
-                      ("//:a" "//:all" ("all" "all-targets") nil 3)
-                      ("//:all" "//:all" ("all" "all-targets") t 3)
-                      ("//:all-targets" t ("all-targets") t 3)
-                      ("//:*" t ("*") t 3)
-                      ("//pack" nil () nil 2)
-                      ("//package/" nil () nil 10)
-                      ("//package:" nil () nil 10)
-                      ("//." "//..." ("...") nil 2)
-                      ("//..." "//..." ("..." "...:") t 2)
-                      ("//...:" "//...:" ("all" "all-targets" "*") nil 6)))
-        (cl-destructuring-bind (string try all test bound) case
-          (ert-info ((prin1-to-string string) :prefix "Input: ")
-            (should (equal (try-completion string table) try))
-            (should (equal (all-completions string table) all))
-            (should (eq (test-completion string table) test))
-            (should (equal (completion-boundaries string table nil "suffix")
-                           (cons bound 6)))))))))
+    (bazel-test--tangle dir "target-completion-root.org")
+    ;; The test cases are of the form (STRING PATTERN TRY ALL TEST BOUND).
+    ;; STRING is the input string.  PATTERN specifies whether to complete target
+    ;; patterns; if PATTERNS is ‘*’, try both with and without pattern
+    ;; completion.  TRY, ALL, and TEST are the expected results of
+    ;; ‘try-completion’, ‘all-completions’, and ‘test-completion’, respectively.
+    ;; BOUND is the expected prefix completion bound returned by
+    ;; ‘completion-bounds’.
+    (dolist (case '(("" nil "" ("test" "test.cc" "//" "@") nil 0)
+                    ("" t "" ("test" ":all" ":all-targets" ":*" "..." "//" "@")
+                     nil 0)
+                    ("te" nil "test" ("test" "test.cc") nil 0)
+                    ("te" t "test" ("test") nil 0)
+                    ("test" nil "test" ("test" "test.cc") t 0)
+                    ("test" t t ("test") t 0)
+                    ("test.c" nil "test.cc" ("test.cc") nil 0)
+                    ("test.c" t nil () nil 0)
+                    ("a" * nil () nil 0)
+                    (":" t ":" ("test" "all" "all-targets" "*") nil 1)
+                    (":" nil ":test" ("test" "test.cc") nil 1)
+                    (":te" nil ":test" ("test" "test.cc") nil 1)
+                    (":te" t ":test" ("test") nil 1)
+                    (":test" nil ":test" ("test" "test.cc") t 1)
+                    (":test" t t ("test") t 1)
+                    (":a" nil nil () nil 1)
+                    (":a" t ":all" ("all" "all-targets") nil 1)
+                    (":all" nil nil () nil 1)
+                    (":all" t ":all" ("all" "all-targets") t 1)
+                    (":all-targets" nil nil () nil 1)
+                    (":all-targets" t t ("all-targets") t 1)
+                    (":foo/bar" * nil () nil 1)
+                    ("@" * nil () nil 1)
+                    ("@w" * nil () nil 1)
+                    ("/" * "//" ("//") nil 0)
+                    ("//" nil "//:" (":") nil 2)
+                    ("//" t "//" (":" "...") nil 2)
+                    ("//:" nil "//:test" ("test" "test.cc") nil 3)
+                    ("//:" t "//:" ("test" "all" "all-targets" "*") nil 3)
+                    ("//:te" nil "//:test" ("test" "test.cc") nil 3)
+                    ("//:te" t "//:test" ("test") nil 3)
+                    ("//:test" nil "//:test" ("test" "test.cc") t 3)
+                    ("//:test" t t ("test") t 3)
+                    ("//:a" nil nil () nil 3)
+                    ("//:a" t "//:all" ("all" "all-targets") nil 3)
+                    ("//:all" nil nil () nil 3)
+                    ("//:all" t "//:all" ("all" "all-targets") t 3)
+                    ("//:all-targets" nil nil () nil 3)
+                    ("//:all-targets" t t ("all-targets") t 3)
+                    ("//:*" nil nil () nil 3)
+                    ("//:*" t t ("*") t 3)
+                    ("//pack" * nil () nil 2)
+                    ("//package/" * nil () nil 10)
+                    ("//package:" * nil () nil 10)
+                    ("//." nil nil () nil 0)
+                    ("//." t "//..." ("...") nil 2)
+                    ("//..." nil nil () nil 0)
+                    ("//..." t "//..." ("..." "...:") t 2)
+                    ("//...:" nil nil () nil 0)
+                    ("//...:" t "//...:" ("all" "all-targets" "*") nil 6)))
+      (cl-destructuring-bind (string pattern try all test bound) case
+        (dolist (pattern (if (eq pattern '*) '(nil t) (list pattern)))
+          (ert-info ((if pattern "yes" "no") :prefix "Pattern completion: ")
+            (let ((table (bazel--target-completion-table dir "" pattern)))
+              (ert-info ((prin1-to-string string) :prefix "Input: ")
+                (should (equal (try-completion string table) try))
+                (should (equal (all-completions string table) all))
+                (should (eq (test-completion string table) test))
+                (should (equal (completion-boundaries string table nil "suffix")
+                               (cons bound 6)))))))))))
 
-(ert-deftest bazel--target-pattern-completion-table/subpackage ()
-  "Test target pattern completion in a subpackage."
+(ert-deftest bazel--target-completion-table/subpackage ()
+  "Test target completion in a subpackage."
   (bazel-test--with-temp-directory dir
-    (bazel-test--tangle dir "target-pattern-completion-package.org")
+    (bazel-test--tangle dir "target-completion-package.org")
     ;; The test cases are of the form (PACKAGE STRING TRY ALL TEST BOUND).
     ;; PACKAGE is the package name (t stands for both "" and "package").  STRING
     ;; is the input string.  TRY, ALL, and TEST are the expected results of
@@ -563,7 +589,7 @@ the rule."
             (dolist (package packages)
               (ert-info ((prin1-to-string package) :prefix "Package: ")
                 (let ((table
-                       (bazel--target-pattern-completion-table dir package)))
+                       (bazel--target-completion-table dir package :pattern)))
                   (should (equal (try-completion string table) try))
                   (should (equal (all-completions string table) all))
                   (should (eq (test-completion string table) test))
