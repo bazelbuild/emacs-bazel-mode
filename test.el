@@ -657,8 +657,10 @@ in ‘bazel-mode’."
                '(face font-lock-string-face) "\"foo.bzl\"" nil ", "
                '(face font-lock-string-face) "\"\"\"foo\"\"\"" nil ")\n\n"
                nil "cc_library(\n"
-               nil "    name = " '(face font-lock-string-face) "\"foo\""
-               nil ",\n"
+               nil "    name = " '(face font-lock-string-face) "\""
+               '(face (font-lock-variable-name-face font-lock-string-face))
+               "foo"
+               '(face font-lock-string-face) "\"" nil ",\n"
                nil "    "
                '(face font-lock-comment-delimiter-face) "# "
                '(face (font-lock-preprocessor-face font-lock-comment-face))
