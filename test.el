@@ -673,25 +673,20 @@ blocks should have a ‘:tangle’ header argument specifying the
 filename within DIRECTORY.
 See Info node ‘(org) Extracting Source Code’."
   ;; Tangling requires a file-visiting Org buffer.
-  (let ((buffer (find-file-noselect
-                 (expand-file-name (concat "testdata/" org-file)
-                                   bazel-test--directory))))
-    (unwind-protect
-        (with-current-buffer buffer
-          (let ((default-directory directory)
-                (org-babel-tangle-body-hook
-                 (list
-                  (lambda ()
-                    ;; Replace the %ROOTDIR% placeholder added by
-                    ;; testdata/make_*_out by our temporary root.
-                    (save-excursion
-                      (goto-char (point-min))
-                      (while (search-forward "%ROOTDIR%" nil t)
-                        (replace-match
-                         (file-name-unquote (directory-file-name directory))
-                         :fixedcase :literal)))))))
-            (org-babel-tangle)))
-      (kill-buffer buffer))))
+  (bazel-test--with-file-buffer (expand-file-name (concat "testdata/" org-file)
+                                                  bazel-test--directory)
+    (let ((default-directory directory)
+          (org-babel-tangle-body-hook
+           (list (lambda ()
+                   ;; Replace the %ROOTDIR% placeholder added by
+                   ;; testdata/make_*_out by our temporary root.
+                   (save-excursion
+                     (goto-char (point-min))
+                     (while (search-forward "%ROOTDIR%" nil t)
+                       (replace-match
+                        (file-name-unquote (directory-file-name directory))
+                        :fixedcase :literal)))))))
+      (org-babel-tangle))))
 
 (defun bazel-test--intern-properties (object table)
   "Intern all text property values in OBJECT.
