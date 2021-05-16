@@ -164,7 +164,7 @@ file name; see Info node ‘(elisp) Directory Names’."
   "Visit FILENAME in a temporary buffer.
 Execute BODY with the buffer that visits FILENAME current.  Kill
 that buffer once BODY finishes."
-  (declare (indent 1) (debug (sexp body)))
+  (declare (indent 1) (debug t))
   (let ((buffer (make-symbol "buffer")))
     `(let ((,buffer (find-file-noselect ,filename)))
        (unwind-protect
