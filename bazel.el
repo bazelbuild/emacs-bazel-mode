@@ -842,27 +842,28 @@ return nil."
                nil t)
           (match-beginning 2))))))
 
-(defmacro bazel--with-file-buffer (existing filename &rest body)
-  "Evaluate BODY in some buffer that contains the contents of FILENAME.
+(eval-when-compile
+  (defmacro bazel--with-file-buffer (existing filename &rest body)
+    "Evaluate BODY in some buffer that contains the contents of FILENAME.
 If there’s an existing buffer visiting FILENAME, use that and
 bind EXISTING to t.  Otherwise, create a new temporary buffer,
 insert the contents of FILENAME there, and bind EXISTING to nil.
 In any case, return the value of the last BODY form."
-  (declare (debug (symbolp form body)) (indent 2))
-  (cl-check-type existing symbol)
-  (macroexp-let2 nil filename filename
-    (let ((function (make-symbol "function"))
-          (buffer (make-symbol "buffer"))
-          (arg (make-symbol "arg")))
-      ;; Bind a temporary function to reduce code duplication in the byte-compiled
-      ;; version.
-      `(cl-flet ((,function (,arg) (let ((,existing ,arg)) ,@body)))
-         (if-let ((,buffer (find-buffer-visiting ,filename)))
-             (with-current-buffer ,buffer
-               (,function t))
-           (with-temp-buffer
-             (insert-file-contents ,filename)
-             (,function nil)))))))
+    (declare (debug (symbolp form body)) (indent 2))
+    (cl-check-type existing symbol)
+    (macroexp-let2 nil filename filename
+      (let ((function (make-symbol "function"))
+            (buffer (make-symbol "buffer"))
+            (arg (make-symbol "arg")))
+        ;; Bind a temporary function to reduce code duplication in the
+        ;; byte-compiled version.
+        `(cl-flet ((,function (,arg) (let ((,existing ,arg)) ,@body)))
+           (if-let ((,buffer (find-buffer-visiting ,filename)))
+               (with-current-buffer ,buffer
+                 (,function t))
+             (with-temp-buffer
+               (insert-file-contents ,filename)
+               (,function nil))))))))
 
 (defun bazel--xref-location (filename find-function)
   "Return an ‘xref-location’ for some entity within FILENAME.
