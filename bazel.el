@@ -266,6 +266,16 @@ mentioned in the Buildifer source code at URL
     table)
   "Syntax table for `bazel-mode'.")
 
+(defvar bazel-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "C-c C-b") #'bazel-build)
+    (define-key map (kbd "C-c C-t") #'bazel-test)
+    (define-key map (kbd "C-c C-c") #'bazel-coverage)
+    (define-key map (kbd "C-c C-r") #'bazel-run)
+    (define-key map (kbd "C-c C-f") #'bazel-buildifier)
+    map)
+  "Keymap for ‘bazel-mode’.")
+
 (define-derived-mode bazel-mode prog-mode "Bazel"
   "Major mode for editing Bazel BUILD and WORKSPACE files.
 This is the parent mode for the more specific modes
