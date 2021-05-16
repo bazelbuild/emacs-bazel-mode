@@ -152,6 +152,7 @@ the file types documented at URL
   (interactive "*")
   (cl-check-type type (member nil build bzl workspace))
   (let ((input-buffer (current-buffer))
+        (directory default-directory)
         (input-file buffer-file-name)
         (buildifier-buffer (get-buffer-create "*buildifier*"))
         ;; Run buildifier on a file to support remote BUILD files.
@@ -163,11 +164,12 @@ the file types documented at URL
       (with-current-buffer buildifier-buffer
         (setq-local inhibit-read-only t)
         (erase-buffer)
-        (let ((return-code
-               (apply #'process-file
-                      bazel-buildifier-command buildifier-input-file
-                      `(t ,buildifier-error-file) nil
-                      (bazel--buildifier-file-flags type input-file))))
+        (let* ((default-directory directory)
+               (return-code
+                (apply #'process-file
+                       bazel-buildifier-command buildifier-input-file
+                       `(t ,buildifier-error-file) nil
+                       (bazel--buildifier-file-flags type input-file))))
           (if (eq return-code 0)
               (progn
                 (set-buffer input-buffer)
