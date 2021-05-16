@@ -14,7 +14,7 @@
 
 Set up a fake workspace and execution root in the current directory.
 
-#+property: header-args :mkdirp yes
+#+property: header-args :mkdirp yes :main no
 
 #+begin_src bazel-workspace :tangle WORKSPACE
   workspace(name = "test")
