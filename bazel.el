@@ -844,7 +844,8 @@ rule names that start with PREFIX."
   "Attempt to find FILENAME in all workspaces.
 This gets added to ‘ffap-alist’."
   (cl-check-type filename string)
-  (when-let ((main-root (bazel--workspace-root filename)))
+  (when-let* ((this-file (or buffer-file-name default-directory))
+              (main-root (bazel--workspace-root this-file)))
     (let ((external-roots (bazel--external-workspace-roots main-root)))
       (locate-file filename (cons main-root external-roots)))))
 
