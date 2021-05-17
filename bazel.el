@@ -806,6 +806,29 @@ file."
      (propertize (bazel--canonical nil package rule)
                  'bazel-mode-workspace root))))
 
+(eval-when-compile
+  (defmacro bazel--with-file-buffer (existing filename &rest body)
+    "Evaluate BODY in some buffer that contains the contents of FILENAME.
+If there’s an existing buffer visiting FILENAME, use that and
+bind EXISTING to t.  Otherwise, create a new temporary buffer,
+insert the contents of FILENAME there, and bind EXISTING to nil.
+In any case, return the value of the last BODY form."
+    (declare (debug (symbolp form body)) (indent 2))
+    (cl-check-type existing symbol)
+    (macroexp-let2 nil filename filename
+      (let ((function (make-symbol "function"))
+            (buffer (make-symbol "buffer"))
+            (arg (make-symbol "arg")))
+        ;; Bind a temporary function to reduce code duplication in the
+        ;; byte-compiled version.
+        `(cl-flet ((,function (,arg) (let ((,existing ,arg)) ,@body)))
+           (if-let ((,buffer (find-buffer-visiting ,filename)))
+               (with-current-buffer ,buffer
+                 (,function t))
+             (with-temp-buffer
+               (insert-file-contents ,filename)
+               (,function nil))))))))
+
 (defun bazel--consuming-rule (build-file source-file case-fold-file)
   "Return the name of the rule in BUILD-FILE that consumes SOURCE-FILE.
 If CASE-FOLD-FILE is non-nil, ignore filename case when
@@ -814,13 +837,9 @@ searching."
   (cl-check-type source-file string)
   (cl-check-type case-fold-file boolean)
   ;; Prefer a buffer that’s already visiting BUILD-FILE.
-  (if-let ((buffer (find-buffer-visiting build-file)))
-      (with-current-buffer buffer
-        (bazel--consuming-rule-1 source-file case-fold-file))
-    (with-temp-buffer
-      (insert-file-contents build-file)
-      (bazel-build-mode)  ; for correct syntax tables
-      (bazel--consuming-rule-1 source-file case-fold-file))))
+  (bazel--with-file-buffer existing build-file
+    (unless existing (bazel-build-mode))  ; for correct syntax tables
+    (bazel--consuming-rule-1 source-file case-fold-file)))
 
 (defun bazel--consuming-rule-1 (source-file case-fold-file)
   "Return the name of the rule that consumes SOURCE-FILE.
@@ -960,29 +979,6 @@ return nil."
                 :no-group)
                nil t)
           (match-beginning 2))))))
-
-(eval-when-compile
-  (defmacro bazel--with-file-buffer (existing filename &rest body)
-    "Evaluate BODY in some buffer that contains the contents of FILENAME.
-If there’s an existing buffer visiting FILENAME, use that and
-bind EXISTING to t.  Otherwise, create a new temporary buffer,
-insert the contents of FILENAME there, and bind EXISTING to nil.
-In any case, return the value of the last BODY form."
-    (declare (debug (symbolp form body)) (indent 2))
-    (cl-check-type existing symbol)
-    (macroexp-let2 nil filename filename
-      (let ((function (make-symbol "function"))
-            (buffer (make-symbol "buffer"))
-            (arg (make-symbol "arg")))
-        ;; Bind a temporary function to reduce code duplication in the
-        ;; byte-compiled version.
-        `(cl-flet ((,function (,arg) (let ((,existing ,arg)) ,@body)))
-           (if-let ((,buffer (find-buffer-visiting ,filename)))
-               (with-current-buffer ,buffer
-                 (,function t))
-             (with-temp-buffer
-               (insert-file-contents ,filename)
-               (,function nil))))))))
 
 (defun bazel--xref-location (filename find-function)
   "Return an ‘xref-location’ for some entity within FILENAME.
@@ -1833,14 +1829,10 @@ and skip files.  This is a helper function for
         (lambda (prefix)
           (cl-check-type prefix string)
           (append
-           (if-let ((buffer (find-buffer-visiting build-file)))
-               (with-current-buffer buffer
-                 (bazel--complete-rules prefix))
-             (with-temp-buffer
-               (insert-file-contents build-file)
-               ;; ‘bazel--complete-rules’ only works in ‘bazel-mode’.
-               (bazel-build-mode)
-               (bazel--complete-rules prefix)))
+           (bazel--with-file-buffer existing build-file
+             ;; ‘bazel--complete-rules’ only works in ‘bazel-mode’.
+             (unless existing (bazel-build-mode))
+             (bazel--complete-rules prefix))
            (unless pattern
              ;; Include source files only if we’re not completing a target
              ;; pattern.  Building a source file makes no sense.
