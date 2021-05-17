@@ -871,6 +871,32 @@ in ‘bazel-mode’."
                (buffer-substring-no-properties (point-min) (point)))))
         (should (equal actual expected))))))
 
+(ert-deftest bazelrc-mode ()
+  (let ((text (ert-propertized-string
+               '(face font-lock-keyword-face) "import"
+               nil " %workspace%/other.bazelrc\n"
+               '(face font-lock-comment-delimiter-face) "# "
+               '(face font-lock-comment-face) "Comment\n"
+               '(face font-lock-variable-name-face) "build"
+               nil " --verbose_failures\n")))
+    (with-temp-buffer
+      (bazelrc-mode)
+      (insert (substring-no-properties text))
+      (font-lock-flush)
+      (font-lock-ensure)
+      (should (ert-equal-including-properties (buffer-string) text)))))
+
+(ert-deftest bazelrc-ffap ()
+  (bazel-test--with-temp-directory dir
+    (bazel-test--tangle dir "bazelrc.org")
+    (bazel-test--with-file-buffer (expand-file-name ".bazelrc" dir)
+      (should (derived-mode-p 'bazelrc-mode))
+      (search-forward "import %workspace%/")
+      (let ((file-at-point (ffap-file-at-point)))
+        (should (stringp file-at-point))
+        (should (bazel-test--file-equal-p
+                 file-at-point (expand-file-name "other.bazelrc" dir)))))))
+
 (put #'looking-at-p 'ert-explainer #'bazel-test--explain-looking-at-p)
 
 (defun bazel-test--explain-looking-at-p (regexp)
