@@ -755,6 +755,25 @@ in ‘bazel-mode’."
      (equal commands
             '("bazel test --test_filter\\=bazel/project -- //\\:bazel_test")))))
 
+(ert-deftest bazel-test-at-point/python-mode ()
+  "Test ‘bazel-test-at-point’ in ‘python-mode’."
+  (bazel-test--with-temp-directory dir
+    (bazel-test--tangle dir "test-at-point-python.org")
+    (cl-letf* ((commands ())
+               ((symbol-function #'compile)
+                (lambda (command &optional _comint)
+                  (push command commands))))
+      (bazel-test--with-file-buffer (expand-file-name "py_test.py" dir)
+        (should-error (bazel-test-at-point) :type 'user-error)
+        (search-forward "# Test case class")
+        (bazel-test-at-point)
+        (search-forward "# Test method")
+        (bazel-test-at-point))
+      (should
+       (equal (reverse commands)
+              '("bazel test --test_filter\\=MyTest -- //\\:py_test"
+                "bazel test --test_filter\\=MyTest.testFoo -- //\\:py_test"))))))
+
 (ert-deftest bazel-test-at-point-functions ()
   "Test that ‘which-function’ is at the end of
 ‘bazel-test-at-point-functions’."
