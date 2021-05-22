@@ -790,6 +790,25 @@ in ‘bazel-mode’."
        (equal commands
               '("bazel test --test_filter\\=foo/test -- //\\:foo_test"))))))
 
+(ert-deftest bazel-test-at-point/c++-mode ()
+  "Test ‘bazel-test-at-point’ in ‘c++-mode’."
+  (bazel-test--with-temp-directory dir
+    (bazel-test--tangle dir "test-at-point-c++.org")
+    (cl-letf* ((commands ())
+               ((symbol-function #'compile)
+                (lambda (command &optional _comint)
+                  (push command commands))))
+      (bazel-test--with-file-buffer (expand-file-name "cc_test.cc" dir)
+        (should-error (bazel-test-at-point) :type 'user-error)
+        (search-forward "EXPECT_EQ(1, 2)")
+        (bazel-test-at-point)
+        (search-forward "EXPECT_EQ(4, 5)")
+        (bazel-test-at-point))
+      (should
+       (equal (reverse commands)
+              '("bazel test --test_filter\\=FooTest.Bar -- //\\:cc_test"
+                "bazel test --test_filter\\=BazTest.Qux -- //\\:cc_test"))))))
+
 (ert-deftest bazel-test-at-point/go-mode ()
   "Test ‘bazel-test-at-point’ in ‘go-mode’."
   (bazel-test--with-temp-directory dir

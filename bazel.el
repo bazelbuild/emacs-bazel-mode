@@ -1487,6 +1487,32 @@ COMMAND is a Bazel command to be included in the minibuffer prompt."
 
 ;;;; Language-specific support
 
+(add-hook 'c++-mode-hook #'bazel-c++-mode-hook)
+
+(defun bazel-c++-mode-hook ()
+  "Set up ‘c++-mode’ to work with Bazel.
+Added to ‘c++-mode-hook’."
+  (add-hook 'bazel-test-at-point-functions #'bazel-c++-test-at-point
+            nil :local))
+
+(defun bazel-c++-test-at-point ()
+  "Return the name of the C++ test at point.
+Useful for ‘bazel-test-at-point-functions’.
+See URL ‘https://google.github.io/googletest/primer.html’."
+  (save-excursion
+    (and (beginning-of-defun)
+         ;; Right now we only support Googletest.  See
+         ;; https://google.github.io/googletest/primer.html.
+         (looking-at (rx bol (or "TEST" "TEST_F") (* (syntax whitespace)) ?\(
+                         (* (syntax whitespace))
+                         (group (+ (or (syntax word) (syntax symbol))))
+                         (* (syntax whitespace)) ?, (* (syntax whitespace))
+                         (group (+ (or (syntax word) (syntax symbol))))
+                         (* (syntax whitespace)) ?\)))
+         ;; https://google.github.io/googletest/advanced.html#running-a-subset-of-the-tests.
+         (concat (match-string-no-properties 1) "."
+                 (match-string-no-properties 2)))))
+
 (add-hook 'go-mode-hook #'bazel-go-mode-hook)
 
 (defun bazel-go-mode-hook ()
