@@ -1,3 +1,44 @@
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+#+property: header-args :mkdirp yes :main no
+
+* Test data for ~bazel-mode-flymake~
+
+#+begin_src bazel-workspace :tangle WORKSPACE
+  workspace(name = "test")
+#+end_src
+
+#+name: starlark
+#+begin_src bazel-starlark :tangle buildifier.bzl
+  def foo(bar):
+      """ """
+      a = 1 / 2
+#+end_src
+
+To make the Flymake test hermetic, we generate Buildifier output statically and
+tangle the output when running the test.  Execute this code block to regenerate
+the Buildifier output:
+
+#+begin_src sh :noweb yes :results output scalar :wrap "src js :tangle buildifier.json"
+  buildifier -mode=check -lint=warn -format=json -v -path=buildifier.bzl <<'EOF'
+  <<starlark>>
+  EOF
+#+end_src
+
+#+RESULTS:
+#+begin_src js :tangle buildifier.json
 {
     "success": false,
     "files": [
@@ -8,11 +49,11 @@
             "warnings": [
                 {
                     "start": {
-                        "line": 15,
+                        "line": 1,
                         "column": 1
                     },
                     "end": {
-                        "line": 15,
+                        "line": 1,
                         "column": 2
                     },
                     "category": "module-docstring",
@@ -22,11 +63,11 @@
                 },
                 {
                     "start": {
-                        "line": 16,
+                        "line": 2,
                         "column": 5
                     },
                     "end": {
-                        "line": 16,
+                        "line": 2,
                         "column": 12
                     },
                     "category": "function-docstring-header",
@@ -36,11 +77,11 @@
                 },
                 {
                     "start": {
-                        "line": 17,
+                        "line": 3,
                         "column": 9
                     },
                     "end": {
-                        "line": 17,
+                        "line": 3,
                         "column": 14
                     },
                     "category": "integer-division",
@@ -52,3 +93,14 @@
         }
     ]
 }
+#+end_src
+
+We also provide a “fake” Buildifier binary that only emits our canned output.
+
+#+begin_src sh :tangle buildifier :shebang "#!/bin/bash" :var dir=(file-name-unquote (expand-file-name default-directory))
+  # Fake waiting for file input.
+  cat > /dev/null
+
+  # Fake some Buildifier output.
+  cat -- "${dir:?}/buildifier.json"
+#+end_src
