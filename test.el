@@ -440,7 +440,7 @@ the rule."
       (should (equal (sort (cl-loop for file in files
                                     collect (file-relative-name file dir))
                            #'string-lessp)
-                     '("WORKSPACE" "package/BUILD"))))))
+                     '(".bazelignore" "WORKSPACE" "package/BUILD"))))))
 
 (ert-deftest bazel-test/coverage ()
   "Test coverage parsing and display."

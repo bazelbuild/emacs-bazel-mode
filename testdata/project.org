@@ -14,12 +14,20 @@
 
 #+property: header-args :mkdirp yes
 
+* Test data for project tests
+
 #+begin_src bazel-workspace :tangle WORKSPACE
   workspace(name = "test")
 #+end_src
 
 #+begin_src fundamental :tangle bazel-out
   Dummy symbolic link
+#+end_src
+
+#+begin_src bazelignore :tangle .bazelignore
+  ignored-directory/
+  # comment
+  ignored directory # with number sign
 #+end_src
 
 #+begin_src bazel-build :tangle package/BUILD
@@ -44,4 +52,17 @@
           "//pkg:lib",
       ],
   )
+#+end_src
+
+** Files in ignored subdirectories
+
+The contents don’t matter; we add these files so that the directories are
+created.
+
+#+begin_src bazel-build :tangle ignored-directory/BUILD
+  # Empty file
+#+end_src
+
+#+begin_src bazel-build :tangle "ignored directory # with number sign/BUILD"
+  # Empty file
 #+end_src
