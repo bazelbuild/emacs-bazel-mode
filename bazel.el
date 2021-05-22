@@ -25,10 +25,10 @@
 ;;
 ;; The package provides four major modes for editing Bazel-related files:
 ;; ‘bazel-build-mode’ for BUILD files, ‘bazel-workspace-mode’ for WORKSPACE
-;; files, ‘bazelrc-mode’ for .bazelrc configuration files, and
-;; ‘bazel-starlark-mode’ for extension files written in the Starlark language.
-;; These modes also extend Imenu and ‘find-file-at-point’ to support
-;; Bazel-specific syntax.
+;; files, ‘bazelrc-mode’ for .bazelrc configuration files, ‘bazelignore-mode’
+;; for .bazelignore files, and ‘bazel-starlark-mode’ for extension files
+;; written in the Starlark language.  These modes also extend Imenu and
+;; ‘find-file-at-point’ to support Bazel-specific syntax.
 ;;
 ;; If Buildifier is available, the ‘bazel-mode-flymake’ backend for Flymake
 ;; provides on-the-fly syntax checking for Bazel files.  You can also run
@@ -541,6 +541,44 @@ return its name.  See URL
  #'bazelrc-mode
  ;; https://docs.bazel.build/versions/3.0.0/guide.html#imports
  (list (rx symbol-start (or "import" "try-import") symbol-end)))
+
+;;;; ‘bazelignore-mode’
+
+;;;###autoload
+(add-to-list 'auto-mode-alist
+             ;; https://docs.bazel.build/versions/4.0.0/guide.html#bazelignore
+             (cons (rx "/.bazelignore" eos) #'bazelignore-mode))
+
+;;;###autoload
+(define-derived-mode bazelignore-mode prog-mode "bazelignore"
+  "Major mode for editing .bazelignore files."
+  (setq-local comment-start "# ")
+  (setq-local comment-start-skip (rx bol (+ ?#) (* (syntax whitespace))))
+  (setq-local comment-end "")
+  (setq-local comment-use-syntax t)
+  ;; In .bazelignore files, comments need to cover whole lines,
+  ;; cf. https://github.com/bazelbuild/bazel/blob/09c621e4cf5b968f4c6cdf905ab142d5961f9ddc/src/main/java/com/google/devtools/build/lib/skyframe/IgnoredPackagePrefixesFunction.java#L123.
+  ;; We need to install a custom ‘syntax-propertize-function’ to deal with
+  ;; this.
+  (setq-local syntax-propertize-function #'bazelignore--syntax-propertize))
+
+(defun bazelignore--syntax-propertize (start end)
+  "Detect .bazelignore syntax between START and END.
+‘bazelignore-mode’ uses this as ‘syntax-propertize-function’.
+See Info node ‘(elisp) Syntax Properties’
+and Info node ‘(elisp) Syntax Table Internals’."
+  (save-excursion
+    (goto-char start)
+    (let ((case-fold-search nil)
+          (inhibit-point-motion-hooks t))
+      (while (re-search-forward (rx bol ?#) end t)
+        ;; 11 = comment start, 12 = comment end
+        (put-text-property (match-beginning 0) (match-end 0)
+                           'syntax-table '(11))
+        (end-of-line)
+        (unless (eobp)  ; otherwise (1+ (point)) is invalid
+          (put-text-property (point) (1+ (point))
+                             'syntax-table '(12)))))))
 
 ;;;; Menu item
 
