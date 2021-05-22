@@ -326,6 +326,8 @@ This is the parent mode for the more specific modes
   ;; Almost all Starlark code in existence uses 4 spaces for indentation.
   ;; Buildifier also enforces this style.
   (setq-local tab-width 4)
+  (setq-local python-indent-offset 4)
+  (setq-local python-indent-guess-indent-offset nil)
   (setq-local indent-tabs-mode nil)
   ;; Take over some syntactic constructs from ‘python-mode’.
   (setq-local comment-start "# ")
