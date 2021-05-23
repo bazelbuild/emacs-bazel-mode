@@ -1997,7 +1997,9 @@ the match text.  The second match group matches the name."
               (group (any ?\" ?'))
               (group (+ (any "a-z" "A-Z" "0-9" ?-
                              "!%@^_` #$&()*+,;<=>?[]{|}~/.")))
-              (backref 1))
+              ;; Don’t look for dynamic target names such as "foo" + SUFFIX;
+              ;; only fontifying the "foo" part would be confusing.
+              (backref 1) (* blank) (any ?, ?\)))
           bound t)
          (let ((syntax (syntax-ppss)))
            (and (> (nth 0 syntax) 0) (null (nth 8 syntax)))))))

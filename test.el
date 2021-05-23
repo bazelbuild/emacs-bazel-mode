@@ -671,7 +671,9 @@ in ‘bazel-mode’."
                '(face font-lock-string-face) "\"*.cc\"" nil "]),\n"
                nil "    alwayslink = "
                '(face font-lock-constant-face) "True" nil ",\n"
-               nil")\n\n")))
+               nil")\n\n"
+               nil "some_rule(name = "
+               '(face font-lock-string-face) "\"foo\"" nil " + SUFFIX)\n\n")))
     (with-temp-buffer
       (bazel-build-mode)
       (insert (substring-no-properties text))
