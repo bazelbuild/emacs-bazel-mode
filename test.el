@@ -38,6 +38,7 @@
 (require 'project)
 (require 'rx)
 (require 'speedbar)
+(require 'subr-x)
 (require 'syntax)
 (require 'url)
 (require 'warnings)
@@ -52,24 +53,29 @@
 ;;;; Helper macros
 
 (eval-when-compile
-  (defmacro bazel-test--with-temp-directory (name &rest body)
+  (defmacro bazel-test--with-temp-directory (name org-file &rest body)
     "Create a new temporary directory.
 Bind the name of the directory to NAME and execute BODY while the
 directory exists.  Remove the directory and all its contents once
 BODY finishes successfully.  NAME will be a directory name, not a
-directory file name; see Info node ‘(elisp) Directory Names’."
-    (declare (indent 1) (debug (symbolp body)))
+directory file name; see Info node ‘(elisp) Directory Names’.  If
+ORG-FILE is non-nil, tangle code blocks in ORG-FILE into the
+directory first using ‘bazel-test--tangle’."
+    (declare (indent 2) (debug (symbolp form body)))
     (cl-check-type name symbol)
     (let ((directory (make-symbol "directory"))
+          (file (make-symbol "file"))
           (success (make-symbol "success")))
       `(let ((,directory (make-temp-file "bazel-mode-test-" :dir-flag))
              (,success nil))
-         (ert-info (,directory :prefix "Temporary directory: ")
-           (unwind-protect
-               (prog1 (let ((,name (file-name-as-directory ,directory)))
-                        ,@body)
-                 (setq ,success t))
-             (when ,success (delete-directory ,directory :recursive)))))))
+         (ert-info (,directory :prefix "Temporary directory: "))
+         (unwind-protect
+             (prog2 (when-let ((,file ,org-file))
+                      (bazel-test--tangle ,directory ,file))
+                 (let ((,name (file-name-as-directory ,directory)))
+                   ,@body)
+               (setq ,success t))
+           (when ,success (delete-directory ,directory :recursive))))))
 
   (defmacro bazel-test--with-file-buffer (filename &rest body)
     "Visit FILENAME in a temporary buffer.
@@ -124,8 +130,7 @@ We test that function instead of the Flymake backend directly so
 we don’t have to start or mock a process."
   ;; This test doesn’t work in Emacs 27 due to Bug#39971.
   (skip-unless (not (eql emacs-major-version 27)))
-  (bazel-test--with-temp-directory dir
-    (bazel-test--tangle dir "flymake.org")
+  (bazel-test--with-temp-directory dir "flymake.org"
     (bazel-test--with-file-buffer (expand-file-name "buildifier.json" dir)
       (let ((output-buffer (current-buffer))
             (diagnostics nil))
@@ -157,8 +162,7 @@ we don’t have to start or mock a process."
 
 (ert-deftest bazel-mode-flymake ()
   "Unit test for the ‘bazel-mode-flymake’ Flymake backend."
-  (bazel-test--with-temp-directory dir
-    (bazel-test--tangle dir "flymake.org")
+  (bazel-test--with-temp-directory dir "flymake.org"
     (bazel-test--with-file-buffer (expand-file-name "buildifier.bzl" dir)
       (let ((bazel-buildifier-command (expand-file-name "buildifier" dir))
             (flymake-diagnostic-functions '(bazel-mode-flymake))
@@ -203,8 +207,7 @@ we don’t have to start or mock a process."
 (ert-deftest bazel-mode/xref ()
   "Unit test for XRef support."
   (let ((definitions ()))
-    (bazel-test--with-temp-directory dir
-      (bazel-test--tangle dir "xref.org")
+    (bazel-test--with-temp-directory dir "xref.org"
       (bazel-test--with-file-buffer (expand-file-name "root/BUILD" dir)
         (forward-comment (point-max))
         ;; Search for all sources and dependencies.  These are strings that
@@ -275,8 +278,7 @@ we don’t have to start or mock a process."
 
 (ert-deftest bazel-mode/ffap ()
   "Unit test for ‘find-file-at-point’ support."
-  (bazel-test--with-temp-directory dir
-    (bazel-test--tangle dir "find-file-at-point.org")
+  (bazel-test--with-temp-directory dir "find-file-at-point.org"
     (bazel-test--with-file-buffer (expand-file-name "root/pkg/aaa.c" dir)
       (search-forward "\"" (line-end-position))
       (should (equal (ffap-file-at-point)
@@ -324,8 +326,7 @@ the rule."
 
 (ert-deftest bazel-mode/compile ()
   "Check that \\[next-error] jumps to the correct places."
-  (bazel-test--with-temp-directory dir
-    (bazel-test--tangle dir "compile.org")
+  (bazel-test--with-temp-directory dir "compile.org"
     (with-temp-buffer
       (let* ((file nil) (line nil)
              (next-error-move-function
@@ -367,8 +368,7 @@ the rule."
 
 (ert-deftest bazel-build-mode/imenu ()
   "Check that ‘imenu’ finds BUILD rules."
-  (bazel-test--with-temp-directory dir
-    (bazel-test--tangle dir "xref.org")
+  (bazel-test--with-temp-directory dir "xref.org"
     (with-temp-buffer
       (insert-file-contents (expand-file-name "root/BUILD" dir))
       (bazel-build-mode)
@@ -410,8 +410,7 @@ the rule."
 
 (ert-deftest bazel/project ()
   "Test project support for Bazel workspaces."
-  (bazel-test--with-temp-directory dir
-    (bazel-test--tangle dir "project.org")
+  (bazel-test--with-temp-directory dir "project.org"
     (let ((project (project-current nil dir)))
       (should project)
       (should (bazel-workspace-p project))
@@ -426,8 +425,7 @@ the rule."
 
 (ert-deftest bazel/project-files ()
   "Test ‘project-files’ support for Bazel workspaces."
-  (bazel-test--with-temp-directory dir
-    (bazel-test--tangle dir "project.org")
+  (bazel-test--with-temp-directory dir "project.org"
     (let* ((dir (file-name-unquote dir))  ; unquote to work around Bug#47799
            ;; Try to work around Bug#48471 by picking GNU find on macOS.
            (find-program (if (eq system-type 'darwin) "gfind" find-program))
@@ -448,9 +446,8 @@ the rule."
 
 (ert-deftest bazel-test/coverage ()
   "Test coverage parsing and display."
-  (bazel-test--with-temp-directory dir
-    ;; Set up a fake workspace and execution root.  We use DIR for both.
-    (bazel-test--tangle dir "coverage.org")
+  ;; Set up a fake workspace and execution root.  We use DIR for both.
+  (bazel-test--with-temp-directory dir "coverage.org"
     (let* ((package-dir (expand-file-name "package" dir))
            (library (expand-file-name "library.h" package-dir)))
       (bazel-test--with-file-buffer library
@@ -483,8 +480,7 @@ the rule."
 
 (ert-deftest bazel--target-completion-table/root-package ()
   "Test target completion in the root package."
-  (bazel-test--with-temp-directory dir
-    (bazel-test--tangle dir "target-completion-root.org")
+  (bazel-test--with-temp-directory dir "target-completion-root.org"
     (make-symbolic-link dir (expand-file-name "bazel-out" dir))
     ;; The test cases are of the form (STRING PATTERN TRY ALL TEST BOUND).
     ;; STRING is the input string.  PATTERN specifies whether to complete target
@@ -560,8 +556,7 @@ the rule."
 
 (ert-deftest bazel--target-completion-table/subpackage ()
   "Test target completion in a subpackage."
-  (bazel-test--with-temp-directory dir
-    (bazel-test--tangle dir "target-completion-package.org")
+  (bazel-test--with-temp-directory dir "target-completion-package.org"
     ;; The test cases are of the form (PACKAGE STRING TRY ALL TEST BOUND).
     ;; PACKAGE is the package name (t stands for both "" and "package").  STRING
     ;; is the input string.  TRY, ALL, and TEST are the expected results of
@@ -653,8 +648,7 @@ the rule."
 (ert-deftest bazel-mode/which-function ()
   "Verify that ‘which-function’ and ‘add-log-current-defun’ work
 in ‘bazel-mode’."
-  (bazel-test--with-temp-directory dir
-    (bazel-test--tangle dir "xref.org")
+  (bazel-test--with-temp-directory dir "xref.org"
     (bazel-test--with-file-buffer (expand-file-name "root/BUILD" dir)
       (bazel-mode)
       (dolist (case '(("name = \"lib\"" "lib")
@@ -721,7 +715,7 @@ in ‘bazel-mode’."
 
 (ert-deftest bazel-compile-current-file ()
   "Test for ‘bazel-compile-current-file’."
-  (bazel-test--with-temp-directory dir
+  (bazel-test--with-temp-directory dir nil
     (write-region "" nil (expand-file-name "WORKSPACE" dir))
     (write-region "" nil (expand-file-name "BUILD" dir))
     (make-directory (expand-file-name "package" dir))
@@ -742,8 +736,7 @@ in ‘bazel-mode’."
 
 (ert-deftest bazel-completion-at-point ()
   "Test for ‘completion-at-point’ in ‘bazel-mode’."
-  (bazel-test--with-temp-directory dir
-    (bazel-test--tangle dir "completion-at-point.org")
+  (bazel-test--with-temp-directory dir "completion-at-point.org"
     (bazel-test--with-file-buffer (expand-file-name "BUILD" dir)
       (let* ((got-args ())
              (completion-in-region-function
@@ -778,8 +771,7 @@ in ‘bazel-mode’."
 
 (ert-deftest bazel-test-at-point/emacs-lisp-mode ()
   "Test ‘bazel-test-at-point’ in ‘emacs-lisp-mode’."
-  (bazel-test--with-temp-directory dir
-    (bazel-test--tangle dir "test-at-point-elisp.org")
+  (bazel-test--with-temp-directory dir "test-at-point-elisp.org"
     (cl-letf* ((case-fold-search nil)
                (commands ())
                ((symbol-function #'compile)
@@ -795,8 +787,7 @@ in ‘bazel-mode’."
 
 (ert-deftest bazel-test-at-point/c++-mode ()
   "Test ‘bazel-test-at-point’ in ‘c++-mode’."
-  (bazel-test--with-temp-directory dir
-    (bazel-test--tangle dir "test-at-point-c++.org")
+  (bazel-test--with-temp-directory dir "test-at-point-c++.org"
     (cl-letf* ((commands ())
                ((symbol-function #'compile)
                 (lambda (command &optional _comint)
@@ -814,8 +805,7 @@ in ‘bazel-mode’."
 
 (ert-deftest bazel-test-at-point/go-mode ()
   "Test ‘bazel-test-at-point’ in ‘go-mode’."
-  (bazel-test--with-temp-directory dir
-    (bazel-test--tangle dir "test-at-point-go.org")
+  (bazel-test--with-temp-directory dir "test-at-point-go.org"
     (cl-letf* ((commands ())
                ((symbol-function #'compile)
                 (lambda (command &optional _comint)
@@ -841,8 +831,7 @@ in ‘bazel-mode’."
 
 (ert-deftest bazel-test-at-point/python-mode ()
   "Test ‘bazel-test-at-point’ in ‘python-mode’."
-  (bazel-test--with-temp-directory dir
-    (bazel-test--tangle dir "test-at-point-python.org")
+  (bazel-test--with-temp-directory dir "test-at-point-python.org"
     (cl-letf* ((commands ())
                ((symbol-function #'compile)
                 (lambda (command &optional _comint)
@@ -871,7 +860,7 @@ in ‘bazel-mode’."
              "foobar"))))
 
 (ert-deftest bazel-buildifier/success ()
-  (bazel-test--with-temp-directory dir
+  (bazel-test--with-temp-directory dir nil
     (let ((bash (executable-find "bash"))
           (bazel-buildifier-command (expand-file-name "buildifier" dir)))
       (skip-unless bash)
@@ -898,7 +887,7 @@ in ‘bazel-mode’."
               (should (equal (buffer-string) expected)))))))))
 
 (ert-deftest bazel-buildifier/failure ()
-  (bazel-test--with-temp-directory dir
+  (bazel-test--with-temp-directory dir nil
     (let* ((bash (executable-find "bash"))
            (bazel-buildifier-command (expand-file-name "buildifier" dir))
            (temp-buffers nil))
@@ -928,8 +917,7 @@ in ‘bazel-mode’."
           (should (equal (buffer-string) "error\n")))))))
 
 (ert-deftest bazel-insert-http-archive ()
-  (bazel-test--with-temp-directory dir
-    (bazel-test--tangle dir "http-archive.org")
+  (bazel-test--with-temp-directory dir "http-archive.org"
     (should (set-file-times (expand-file-name "prefix" dir)
                             (encode-time 0 0 0 2 5 2019 t)))
     (let* ((archive (file-name-unquote
@@ -990,8 +978,7 @@ in ‘bazel-mode’."
       (should (ert-equal-including-properties (buffer-string) text)))))
 
 (ert-deftest bazelrc-ffap ()
-  (bazel-test--with-temp-directory dir
-    (bazel-test--tangle dir "bazelrc.org")
+  (bazel-test--with-temp-directory dir "bazelrc.org"
     (bazel-test--with-file-buffer (expand-file-name ".bazelrc" dir)
       (should (derived-mode-p 'bazelrc-mode))
       (search-forward "import %workspace%/")
@@ -1001,7 +988,7 @@ in ‘bazel-mode’."
                  file-at-point (expand-file-name "other.bazelrc" dir)))))))
 
 (ert-deftest bazel-find-build-file ()
-  (bazel-test--with-temp-directory dir
+  (bazel-test--with-temp-directory dir nil
     (dolist (file '("WORKSPACE"
                     "BUILD"
                     "a/WORKSPACE"
@@ -1042,7 +1029,7 @@ in ‘bazel-mode’."
                                  :type expected)))))))))))
 
 (ert-deftest bazel-find-workspace-file ()
-  (bazel-test--with-temp-directory dir
+  (bazel-test--with-temp-directory dir nil
     (dolist (file '("WORKSPACE"
                     "a/b/WORKSPACE.bazel"
                     "a/b/WORKSPACE"
