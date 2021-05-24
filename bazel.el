@@ -154,7 +154,8 @@ If ‘local’, only do so for local files."
   "Face for lines not covered by unit tests."
   :group 'bazel)
 
-;;;; Commands to run Buildifier.
+;;;; Commands to run Buildifier
+
 (defvar-local bazel--buildifier-type nil
   "Type of the file that the current buffer visits.
 This must be a symbol and a valid value for the Buildifier -type
