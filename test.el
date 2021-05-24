@@ -877,6 +877,7 @@ in ‘bazel-mode’."
   "ERT explainer for ‘looking-at-p’.
 See Info node ‘(ert) Defining Explanation Functions’.  REGEXP is
 the expected regular expression."
+  (cl-check-type regexp string)
   (unless (looking-at-p regexp)
     `(rest-of-line ,(buffer-substring-no-properties
                      (point) (line-end-position)))))
@@ -887,6 +888,8 @@ ORG-FILE is a filename within the “testdata” directory.  The code
 blocks should have a ‘:tangle’ header argument specifying the
 filename within DIRECTORY.
 See Info node ‘(org) Extracting Source Code’."
+  (cl-check-type directory string)
+  (cl-check-type org-file string)
   ;; Tangling requires a file-visiting Org buffer.
   (bazel-test--with-file-buffer (expand-file-name (concat "testdata/" org-file)
                                                   bazel-test--directory)
