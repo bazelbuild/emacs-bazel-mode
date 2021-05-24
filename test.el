@@ -1099,6 +1099,8 @@ in ‘bazel-mode’."
       (remove-list-of-text-properties (point-min) (point-max) '(syntax-table))
       (should (ert-equal-including-properties (buffer-string) text)))))
 
+;;;; Test helpers
+
 (put #'looking-at-p 'ert-explainer #'bazel-test--explain-looking-at-p)
 
 (defun bazel-test--explain-looking-at-p (regexp)
