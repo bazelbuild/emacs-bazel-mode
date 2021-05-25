@@ -20,7 +20,6 @@ load("@phst_rules_elisp//elisp:defs.bzl", "elisp_library", "elisp_test")
 elisp_library(
     name = "bazel",
     srcs = ["bazel.el"],
-    load_path = ["."],
     visibility = ["//obsolete:__pkg__"],
 )
 
