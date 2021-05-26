@@ -476,6 +476,9 @@ Return a list (NAME SHA-256 PREFIX TIME) for
       (list name sha256 prefix time))))
 
 (defun bazel--extract-archive (file directory)
+  "Extract the archive FILE into DIRECTORY."
+  (cl-check-type file (and string (not file-remote)))
+  (cl-check-type directory (and string (not file-remote)))
   ;; Prefer BSD tar if installed, as it supports more archive types.
   (let ((program (cl-some #'executable-find '("bsdtar" "tar"))))
     (unless program
