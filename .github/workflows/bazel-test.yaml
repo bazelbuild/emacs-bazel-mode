@@ -23,9 +23,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v2
       - name: Install Bazelisk
-        # TODO: Switch to Bazel-owned action once
-        # https://github.com/bazelbuild/bazelisk/issues/134 is fixed.
-        uses: mishas/setup-bazelisk-action@v1
+        uses: bazelbuild/setup-bazelisk@v1
       - name: Run Bazel tests
         run: bazel test --test_output=all -- //...
 
