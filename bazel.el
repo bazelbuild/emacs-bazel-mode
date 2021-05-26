@@ -436,6 +436,9 @@ Return a list (NAME SHA-256 PREFIX TIME) for
          (coding-system-for-write 'no-conversion))
     (url-copy-file url archive-file)
     (progress-reporter-update reporter)
+    ;; The ‘bound-and-true-p’ check below won’t load ‘tramp-archive’, so load it
+    ;; manually here.
+    (require 'tramp-archive nil :noerror)
     (let* ((archive-dir
             ;; Prefer TRAMP’s archive support if available.
             (if (bound-and-true-p tramp-archive-enabled)
