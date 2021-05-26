@@ -760,20 +760,20 @@ in ‘bazel-mode’."
               (_ (ert-fail (format "Unexpected arguments %S" got-args))))))))))
 
 (ert-deftest bazel-test-at-point ()
-  (cl-letf* ((case-fold-search nil)
-             (test-file (expand-file-name "test.el" bazel-test--directory))
-             (commands ())
-             ((symbol-function #'compile)
-              (lambda (command &optional _comint)
-                (push command commands))))
-    (bazel-test--with-file-buffer test-file
-      (emacs-lisp-mode)
-      (should-error (bazel-test-at-point) :type 'user-error)
-      (re-search-forward (rx bol "(ert-deftest bazel/project ()"))
-      (bazel-test-at-point))
-    (should
-     (equal commands
-            '("bazel test --test_filter\\=bazel/project -- //\\:bazel_test")))))
+  (bazel-test--with-temp-directory dir
+    (bazel-test--tangle dir "test-at-point.org")
+    (cl-letf* ((case-fold-search nil)
+               (commands ())
+               ((symbol-function #'compile)
+                (lambda (command &optional _comint)
+                  (push command commands))))
+      (bazel-test--with-file-buffer (expand-file-name "foo-test.el" dir)
+        (should-error (bazel-test-at-point) :type 'user-error)
+        (re-search-forward (rx bol "(ert-deftest foo/test ()"))
+        (bazel-test-at-point))
+      (should
+       (equal commands
+              '("bazel test --test_filter\\=foo/test -- //\\:foo_test"))))))
 
 (ert-deftest bazel-test-at-point-functions ()
   "Test that ‘which-function’ is at the end of
