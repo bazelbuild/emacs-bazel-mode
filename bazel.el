@@ -1721,6 +1721,28 @@ and skip files.  This is a helper function for
       (when pattern
         (bazel--target-package-completion-table root nil package pattern))))))
 
+(eval-when-compile
+  (defmacro bazel--make-conjunction (predicate arg &rest body)
+    "Create the logical conjunction of PREDICATE and BODY.
+PREDICATE must be a lexically-bound variable name.  Its value
+should be a predicate function, i.e., a function of one argument.
+Set PREDICATE to a new predicate function that is the logical
+conjunction of PREDICATE and BODY.  Within BODY, ARG is bound to
+the candidate to be tested.  The value of PREDICATE can also be
+nil, which is interpreted as an always-true predicate."
+    (declare (indent 2) (debug (symbolp symbolp def-body)))
+    (cl-check-type predicate (and symbol (not special-variable)))
+    (cl-check-type arg (and symbol (not special-variable)))
+    (let ((original (make-symbol "original")))
+      `(let ((,original ,predicate))
+         (cl-check-type ,predicate (or function null))
+         (setq ,predicate (if ,original
+                              (lambda (,arg)
+                                (and ,(macroexp-progn body)
+                                     (funcall ,original ,arg)))
+                            (lambda (,arg) nil nil ,@body)))
+         nil))))
+
 (defun bazel--target-workspace-completion-table (root)
   "Return a target completion table for external workspace names.
 ROOT is the parent directory of the external workspaces as
@@ -1731,9 +1753,9 @@ function for ‘bazel--target-completion-table’."
       ;; Restrict completions to valid workspace names.
       (let ((completion-regexp-list
              (cons (rx bos (+ (any "A-Z" "a-z" "0-9" ?_ ?- ?.)) eos)
-                   completion-regexp-list))
-            (predicate
-             (bazel--target-completion-directory-predicate predicate)))
+                   completion-regexp-list)))
+        (bazel--make-conjunction predicate candidate
+          (bazel--target-completion-directory-p candidate))
         (condition-case nil
             (pcase action
               ('nil
@@ -1790,9 +1812,9 @@ This is a helper function for
     (let ((completion-regexp-list
            ;; Restrict completions to valid package names.
            (cons (rx bos (+ (any "A-Z" "a-z" "0-9" ?_ ?- ?.)) eos)
-                 completion-regexp-list))
-          (predicate
-           (bazel--target-completion-directory-predicate predicate)))
+                 completion-regexp-list)))
+      (bazel--make-conjunction predicate candidate
+        (bazel--target-completion-directory-p candidate))
       (condition-case nil
           ;; ‘file-name-completion’ and ‘file-name-all-completions’ always
           ;; return directories as directory names.  Since a directory name
@@ -1861,18 +1883,6 @@ colon.  This is a helper function for
          (if colon
              '(":all" ":all-targets" ":*")
            '("all" "all-targets" "*")))))))
-
-(defun bazel--target-completion-directory-predicate (predicate)
-  "Return a completion predicate useful for workspace and package completion.
-Combine PREDICATE with a predicate that checks for valid
-workspace and package names.  This is a helper function for
-‘bazel--target-completion-table’."
-  (cl-check-type predicate (or function null))
-  (if predicate
-      (lambda (candidate)
-        (and (bazel--target-completion-directory-p candidate)
-             (funcall predicate candidate)))
-    #'bazel--target-completion-directory-p))
 
 (defun bazel--target-completion-directory-p (string)
   "Return whether STRING is a valid workspace or package name.
