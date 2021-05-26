@@ -723,29 +723,25 @@ This gets added to ‘xref-backend-functions’."
 (cl-defmethod xref-backend-identifier-at-point ((_backend (eql bazel-mode)))
   "Return the Bazel label at point as an XRef identifier."
   ;; This only detects string literals representing labels.
-  (let ((identifier (bazel--string-at-point)))
-    (when identifier
-      (cl-destructuring-bind (&whole valid-p &optional workspace package target)
-          (bazel--parse-label identifier)
-        (when valid-p
-          ;; Save the current workspace directory as text property in case the
-          ;; user switches directories between this call and selecting a
-          ;; reference.  ‘xref-backend-definitions’ falls back to the current
-          ;; workspace if the property isn’t present so that users can still
-          ;; invoke ‘xref-find-definitions’ and enter a label manually.
-          ;; Likewise, save the current package if possible by canonicalizing
-          ;; the label.  We don’t care about valid but exotic labels here,
-          ;; e.g., labels containing newlines or backslashes.
-          (let* ((this-workspace
-                  (and buffer-file-name
-                       (bazel--workspace-root buffer-file-name)))
-                 (package
-                  (or package
-                      (and buffer-file-name this-workspace
-                           (bazel--package-name buffer-file-name
-                                                this-workspace)))))
-            (propertize (bazel--canonical workspace package target)
-                        'bazel-mode-workspace this-workspace)))))))
+  (when-let* ((identifier (bazel--string-at-point))
+              (parsed-label (bazel--parse-label identifier)))
+    (cl-destructuring-bind (workspace package target) parsed-label
+      ;; Save the current workspace directory as text property in case the user
+      ;; switches directories between this call and selecting a reference.
+      ;; ‘xref-backend-definitions’ falls back to the current workspace if the
+      ;; property isn’t present so that users can still invoke
+      ;; ‘xref-find-definitions’ and enter a label manually.  Likewise, save
+      ;; the current package if possible by canonicalizing the label.  We don’t
+      ;; care about valid but exotic labels here, e.g., labels containing
+      ;; newlines or backslashes.
+      (let* ((this-workspace (and buffer-file-name
+                                  (bazel--workspace-root buffer-file-name)))
+             (package (or package
+                          (and buffer-file-name this-workspace
+                               (bazel--package-name buffer-file-name
+                                                    this-workspace)))))
+        (propertize (bazel--canonical workspace package target)
+                    'bazel-mode-workspace this-workspace)))))
 
 (cl-defmethod xref-backend-definitions ((_backend (eql bazel-mode)) identifier)
   "Return locations where the Bazel target IDENTIFIER might be defined.
