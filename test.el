@@ -156,7 +156,7 @@ Bind the name of the directory to NAME and execute BODY while the
 directory exists.  Remove the directory and all its contents once
 BODY finishes successfully.  NAME will be a directory name, not a
 directory file name; see Info node ‘(elisp) Directory Names’."
-    (declare (indent 1) (debug (sexp body)))
+    (declare (indent 1) (debug (symbolp body)))
     (cl-check-type name symbol)
     (let ((directory (make-symbol "directory"))
           (success (make-symbol "success")))
