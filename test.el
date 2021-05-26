@@ -161,13 +161,12 @@ directory file name; see Info node ‘(elisp) Directory Names’."
           (success (make-symbol "success")))
       `(let ((,directory (make-temp-file "bazel-mode-test-" :dir-flag))
              (,success nil))
-         (unwind-protect
-             (prog1 (let ((,name (file-name-as-directory ,directory)))
-                      ,@body)
-               (setq ,success t))
-           (if ,success
-               (delete-directory ,directory :recursive)
-             (message "Temporary directory: %s" ,directory))))))
+         (ert-info (,directory :prefix "Temporary directory: ")
+           (unwind-protect
+               (prog1 (let ((,name (file-name-as-directory ,directory)))
+                        ,@body)
+                 (setq ,success t))
+             (when ,success (delete-directory ,directory :recursive)))))))
 
   (defmacro bazel-test--with-file-buffer (filename &rest body)
     "Visit FILENAME in a temporary buffer.
