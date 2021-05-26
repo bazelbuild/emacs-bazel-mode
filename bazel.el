@@ -877,7 +877,7 @@ In any case, return the value of the last BODY form."
 (defun bazel--consuming-rule (build-file source-file case-fold-file)
   "Return the name of the rule in BUILD-FILE that consumes SOURCE-FILE.
 If CASE-FOLD-FILE is non-nil, ignore filename case when
-searching."
+searching.  Return nil if no consuming rule was found."
   (cl-check-type build-file string)
   (cl-check-type source-file string)
   (cl-check-type case-fold-file boolean)
