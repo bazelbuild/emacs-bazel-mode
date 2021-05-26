@@ -117,12 +117,11 @@ that buffer once BODY finishes."
     (should (= (current-column) 4))))
 
 (ert-deftest bazel-mode/indent-region ()
-  (with-temp-buffer
-    (bazel-mode)
-    (insert-file-contents (expand-file-name "BUILD" bazel-test--directory))
-    (let ((before (buffer-string)))
-      (indent-region (point-min) (point-max))
-      (should (equal (buffer-string) before)))))
+  (bazel-test--with-temp-directory dir "indent.org"
+    (bazel-test--with-file-buffer (expand-file-name "BUILD" dir)
+      (let ((before (buffer-string)))
+        (indent-region (point-min) (point-max))
+        (should (equal (buffer-string) before))))))
 
 (ert-deftest bazel--make-diagnostics ()
   "Unit test for ‘bazel--make-diagnostics’.
@@ -306,23 +305,21 @@ we don’t have to start or mock a process."
 (ert-deftest bazel-build-mode/beginning-of-defun ()
   "Check that ‘beginning-of-defun’ in BUILD buffers moves to the
 beginning of the rule."
-  (with-temp-buffer
-    (insert-file-contents (expand-file-name "BUILD" bazel-test--directory))
-    (bazel-build-mode)
-    (search-forward "bazel.el")
-    (beginning-of-defun)
-    (should (looking-at-p (rx bol "elisp_library(" ?\n
-                              "    name = \"bazel\",")))))
+  (bazel-test--with-temp-directory dir "defun-navigation.org"
+    (bazel-test--with-file-buffer (expand-file-name "BUILD" dir)
+      (search-forward "bazel.el")
+      (beginning-of-defun)
+      (should (looking-at-p (rx bol "elisp_library(" ?\n
+                                "    name = \"bazel\","))))))
 
 (ert-deftest bazel-build-mode/end-of-defun ()
   "Check that ‘end-of-defun’ in BUILD buffers moves to the end of
 the rule."
-  (with-temp-buffer
-    (insert-file-contents (expand-file-name "BUILD" bazel-test--directory))
-    (bazel-build-mode)
-    (search-forward "bazel.el")
-    (end-of-defun)
-    (should (looking-back (rx "\n)\n") nil))))
+  (bazel-test--with-temp-directory dir "defun-navigation.org"
+    (bazel-test--with-file-buffer (expand-file-name "BUILD" dir)
+      (search-forward "bazel.el")
+      (end-of-defun)
+      (should (looking-back (rx "\n)\n") nil)))))
 
 (ert-deftest bazel-mode/compile ()
   "Check that \\[next-error] jumps to the correct places."
@@ -378,11 +375,12 @@ the rule."
 
 (ert-deftest bazel-mode/speedbar ()
   "Check that \\[speedbar] detects BUILD files."
-  (with-temp-buffer
-    (speedbar-default-directory-list bazel-test--directory 0)
-    (goto-char (point-min))
-    (let ((case-fold-search nil))
-      (search-forward "BUILD"))))
+  (bazel-test--with-temp-directory dir "speedbar.org"
+    (with-temp-buffer
+      (speedbar-default-directory-list dir 0)
+      (goto-char (point-min))
+      (let ((case-fold-search nil))
+        (search-forward "BUILD")))))
 
 (ert-deftest bazel-mode/triple-quoted-strings ()
   "Check that triple-quoted strings work as expected."
