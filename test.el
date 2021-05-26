@@ -34,6 +34,7 @@
 (require 'font-lock)
 (require 'imenu)
 (require 'org)
+(require 'ob-shell)
 (require 'project)
 (require 'rx)
 (require 'speedbar)
@@ -121,17 +122,61 @@ that buffer once BODY finishes."
   "Unit test for ‘bazel--make-diagnostics’.
 We test that function instead of the Flymake backend directly so
 we don’t have to start or mock a process."
-  ;; This test doesn’t work in Emacs 27 due to Bug#39971.
+  ;; This test doesn’t work in Emacs 27 due to
+  ;; https://debbugs.gnu.org/cgi/bugreport.cgi?bug=39971.
   (skip-unless (not (eql emacs-major-version 27)))
-  (with-temp-buffer
-    (let ((output-buffer (current-buffer))
-          (diagnostics nil))
-      (insert-file-contents
-       (expand-file-name "testdata/buildifier.json" bazel-test--directory))
-      (with-temp-buffer
-        (insert-file-contents
-         (expand-file-name "testdata/buildifier.bzl" bazel-test--directory))
-        (dolist (diag (bazel--make-diagnostics output-buffer))
+  (bazel-test--with-temp-directory dir
+    (bazel-test--tangle dir "flymake.org")
+    (bazel-test--with-file-buffer (expand-file-name "buildifier.json" dir)
+      (let ((output-buffer (current-buffer))
+            (diagnostics nil))
+        (bazel-test--with-file-buffer (expand-file-name "buildifier.bzl" dir)
+          (dolist (diag (bazel--make-diagnostics output-buffer))
+            (ert-info ((prin1-to-string diag))
+              (should (eq (flymake-diagnostic-buffer diag) (current-buffer)))
+              (should (eq (flymake-diagnostic-type diag) :warning))
+              (push (list (buffer-substring-no-properties
+                           (flymake-diagnostic-beg diag)
+                           (flymake-diagnostic-end diag))
+                          (flymake-diagnostic-text diag))
+                    diagnostics))))
+        (should (equal (nreverse diagnostics)
+                       `(("def foo(bar):"
+                          ,(concat "The file has no module docstring. "
+                                   "[module-docstring] "
+                                   "(https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md#module-docstring)"))
+                         ("\"\"\" \"\"\""
+                          ,(concat "The docstring for the function \"foo\" "
+                                   "should start with a one-line summary. "
+                                   "[function-docstring-header] "
+                                   "(https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md#function-docstring-header)"))
+                         ("1 / 2"
+                          ,(concat "The \"/\" operator for integer division "
+                                   "is deprecated in favor of \"//\". "
+                                   "[integer-division] "
+                                   "(https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md#integer-division)")))))))))
+
+(ert-deftest bazel-mode-flymake ()
+  "Unit test for the ‘bazel-mode-flymake’ Flymake backend."
+  (bazel-test--with-temp-directory dir
+    (bazel-test--tangle dir "flymake.org")
+    (bazel-test--with-file-buffer (expand-file-name "buildifier.bzl" dir)
+      (let ((bazel-buildifier-command (expand-file-name "buildifier" dir))
+            (flymake-diagnostic-functions '(bazel-mode-flymake))
+            (warning-minimum-log-level :debug)
+            (diagnostics ()))
+        (skip-unless (file-executable-p bazel-buildifier-command))
+        (flymake-mode)
+        (flymake-start)
+        (should (flymake-is-running))
+        (should (equal (flymake-running-backends) '(bazel-mode-flymake)))
+        ;; Wait for the backend to start reporting.
+        (while (not (memq #'bazel-mode-flymake (flymake-reporting-backends)))
+          (sleep-for 0.1))
+        ;; Give the backend some time to report.  This isn’t 100% robust, but
+        ;; should be good enough in typical cases.
+        (sleep-for 1)
+        (dolist (diag (flymake-diagnostics))
           (ert-info ((prin1-to-string diag))
             (should (eq (flymake-diagnostic-buffer diag) (current-buffer)))
             (should (eq (flymake-diagnostic-type diag) :warning))
@@ -139,68 +184,22 @@ we don’t have to start or mock a process."
                          (flymake-diagnostic-beg diag)
                          (flymake-diagnostic-end diag))
                         (flymake-diagnostic-text diag))
-                  diagnostics))))
-      (should (equal (nreverse diagnostics)
-                     `(("def foo(bar):"
-                        ,(concat "The file has no module docstring. "
-                                 "[module-docstring] "
-                                 "(https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md#module-docstring)"))
-                       ("\"\"\" \"\"\""
-                        ,(concat "The docstring for the function \"foo\" "
-                                 "should start with a one-line summary. "
-                                 "[function-docstring-header] "
-                                 "(https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md#function-docstring-header)"))
-                       ("1 / 2"
-                        ,(concat "The \"/\" operator for integer division "
-                                 "is deprecated in favor of \"//\". "
-                                 "[integer-division] "
-                                 "(https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md#integer-division)"))))))))
-
-(ert-deftest bazel-mode-flymake ()
-  "Unit test for the ‘bazel-mode-flymake’ Flymake backend."
-  (with-temp-buffer
-    (let ((bazel-buildifier-command
-           (expand-file-name "testdata/fake_buildifier" bazel-test--directory))
-          (flymake-diagnostic-functions '(bazel-mode-flymake))
-          (warning-minimum-log-level :debug)
-          (diagnostics ()))
-      (skip-unless (file-executable-p bazel-buildifier-command))
-      (insert-file-contents
-       (expand-file-name "testdata/buildifier.bzl" bazel-test--directory))
-      (flymake-mode)
-      (flymake-start)
-      (should (flymake-is-running))
-      (should (equal (flymake-running-backends) '(bazel-mode-flymake)))
-      ;; Wait for the backend to start reporting.
-      (while (not (memq #'bazel-mode-flymake (flymake-reporting-backends)))
-        (sleep-for 0.1))
-      ;; Give the backend some time to report.  This isn’t 100% robust, but
-      ;; should be good enough in typical cases.
-      (sleep-for 1)
-      (dolist (diag (flymake-diagnostics))
-        (ert-info ((prin1-to-string diag))
-          (should (eq (flymake-diagnostic-buffer diag) (current-buffer)))
-          (should (eq (flymake-diagnostic-type diag) :warning))
-          (push (list (buffer-substring-no-properties
-                       (flymake-diagnostic-beg diag)
-                       (flymake-diagnostic-end diag))
-                      (flymake-diagnostic-text diag))
-                diagnostics)))
-      (should (equal diagnostics
-                     `(("def foo(bar):"
-                        ,(concat "The file has no module docstring. "
-                                 "[module-docstring] "
-                                 "(https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md#module-docstring)"))
-                       ("\"\"\" \"\"\""
-                        ,(concat "The docstring for the function \"foo\" "
-                                 "should start with a one-line summary. "
-                                 "[function-docstring-header] "
-                                 "(https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md#function-docstring-header)"))
-                       ("1 / 2"
-                        ,(concat "The \"/\" operator for integer division "
-                                 "is deprecated in favor of \"//\". "
-                                 "[integer-division] "
-                                 "(https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md#integer-division)"))))))))
+                  diagnostics)))
+        (should (equal diagnostics
+                       `(("def foo(bar):"
+                          ,(concat "The file has no module docstring. "
+                                   "[module-docstring] "
+                                   "(https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md#module-docstring)"))
+                         ("\"\"\" \"\"\""
+                          ,(concat "The docstring for the function \"foo\" "
+                                   "should start with a one-line summary. "
+                                   "[function-docstring-header] "
+                                   "(https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md#function-docstring-header)"))
+                         ("1 / 2"
+                          ,(concat "The \"/\" operator for integer division "
+                                   "is deprecated in favor of \"//\". "
+                                   "[integer-division] "
+                                   "(https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md#integer-division)")))))))))
 
 (ert-deftest bazel-mode/xref ()
   "Unit test for XRef support."
