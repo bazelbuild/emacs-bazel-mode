@@ -1450,6 +1450,34 @@ COMMAND is a Bazel command to be included in the minibuffer prompt."
                                                 :pattern)))
     (completing-read prompt table)))
 
+;;;; Language-specific support
+
+(add-hook 'go-mode-hook #'bazel-go-mode-hook)
+
+(defun bazel-go-mode-hook ()
+  "Set up ‘go-mode’ to work with Bazel.
+Added to ‘go-mode-hook’."
+  (add-hook 'bazel-test-at-point-functions #'bazel-go-test-at-point
+            nil :local))
+
+(defun bazel-go-test-at-point ()
+  "Return the name of the Go test at point.
+Useful for ‘bazel-test-at-point-functions’.
+See URL ‘https://pkg.go.dev/testing’."
+  (save-excursion
+    (and (beginning-of-defun)
+         (looking-at (rx bol "func" (+ blank)
+                         (group (or "Test" "Benchmark" "Example")
+                                ;; https://golang.org/ref/spec#Identifiers
+                                (* (any alnum ?_)))
+                         (* blank) ?\())
+         ;; Go interprets the filter as unanchored regular expression,
+         ;; cf. https://pkg.go.dev/testing#hdr-Subtests_and_Sub_benchmarks.  So
+         ;; we anchor and quote the function name.  Don’t use ‘regexp-quote’,
+         ;; since the Emacs and Go regular expression syntaxes aren’t
+         ;; compatible.
+         (concat "^\\Q" (match-string-no-properties 1) "\\E$"))))
+
 ;;;; Utility functions to work with Bazel workspaces
 
 (defun bazel-util-workspace-root (file-name)

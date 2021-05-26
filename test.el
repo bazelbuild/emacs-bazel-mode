@@ -775,6 +775,33 @@ in ‘bazel-mode’."
        (equal commands
               '("bazel test --test_filter\\=foo/test -- //\\:foo_test"))))))
 
+(ert-deftest bazel-test-at-point/go-mode ()
+  "Test ‘bazel-test-at-point’ in ‘go-mode’."
+  (bazel-test--with-temp-directory dir
+    (bazel-test--tangle dir "test-at-point-go.org")
+    (cl-letf* ((commands ())
+               ((symbol-function #'compile)
+                (lambda (command &optional _comint)
+                  (push command commands))))
+      (bazel-test--with-file-buffer (expand-file-name "go_test.go" dir)
+        (unless (derived-mode-p 'go-mode)
+          ;; ‘go-mode’ might not be installed or available.  Simulate it as
+          ;; best as possible.
+          (setq-local beginning-of-defun-function
+                      (lambda (&optional arg)
+                        (re-search-backward (rx bol "func" blank)
+                                            nil t arg)))
+          (run-hooks 'go-mode-hook))
+        (should-error (bazel-test-at-point) :type 'user-error)
+        (search-forward "t.Error(")
+        (bazel-test-at-point)
+        (search-forward "b.Error(")
+        (bazel-test-at-point))
+      (should
+       (equal (reverse commands)
+              '("bazel test --test_filter\\=\\^\\\\QTest\\\\E\\$ -- //\\:go_test"
+                "bazel test --test_filter\\=\\^\\\\QBenchmarkFoo_Bar\\\\E\\$ -- //\\:go_test"))))))
+
 (ert-deftest bazel-test-at-point-functions ()
   "Test that ‘which-function’ is at the end of
 ‘bazel-test-at-point-functions’."
