@@ -1072,6 +1072,29 @@ in ‘bazel-mode’."
                          buffer-file-name
                          (expand-file-name expected dir)))))))))))
 
+(ert-deftest bazelignore-mode/font-lock ()
+  "Test Font Locking in ‘bazelignore-mode’."
+  (let ((text (ert-propertized-string
+               '(face font-lock-comment-delimiter-face) "# "
+               '(face font-lock-comment-face) "comment\n" nil "\n"
+               nil "directory\n\n"
+               nil "directory/subdirectory\n"
+               ;; Comments in .bazelignore files must cover an entire line,
+               ;; cf. https://github.com/bazelbuild/bazel/blob/09c621e4cf5b968f4c6cdf905ab142d5961f9ddc/src/main/java/com/google/devtools/build/lib/skyframe/IgnoredPackagePrefixesFunction.java#L123.
+               nil "directory # with number sign\n"
+               '(face font-lock-comment-delimiter-face) "# "
+               '(face font-lock-comment-face) "comment at end of buffer")))
+    (with-temp-buffer
+      (bazelignore-mode)
+      (insert (substring-no-properties text))
+      (font-lock-flush)
+      (font-lock-ensure)
+      ;; Remove the ‘syntax-table’ properties that
+      ;; ‘bazelignore--syntax-propertize’ added; they are implementation
+      ;; details.
+      (remove-list-of-text-properties (point-min) (point-max) '(syntax-table))
+      (should (ert-equal-including-properties (buffer-string) text)))))
+
 (put #'looking-at-p 'ert-explainer #'bazel-test--explain-looking-at-p)
 
 (defun bazel-test--explain-looking-at-p (regexp)
