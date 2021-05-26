@@ -1429,9 +1429,44 @@ the containing workspace.  This function is suitable for
 
 (cl-defmethod project-ignores ((project bazel-workspace) dir)
   "Return glob patterns for files to be ignored in a Bazel workspace PROJECT.
-DIR is the Bazel workspace directory to consider."
-  ;; Ignore the convenience symbolic links.
-  (cons "./bazel-*" (cl-call-next-method project dir)))
+Ignore the convenience symbolic links and directories listed in
+.bazelignore.  PROJECT refers to a Bazel workspace, and DIR is
+the Bazel workspace directory to consider.
+See URL ‘https://docs.bazel.build/versions/4.0.0/guide.html#bazelignore’."
+  `(,@(bazel--bazelignore-patterns (bazel-workspace-root project))
+    "./bazel-*"
+    ,@(cl-call-next-method project dir)))
+
+(defun bazel--bazelignore-patterns (workspace-root)
+  "Parse a .bazelignore file in WORKSPACE-ROOT.
+Return a list of glob patterns for ‘project-ignores’.
+Return nil if no .bazelignore file exists."
+  (cl-check-type workspace-root string)
+  (with-temp-buffer
+    ;; Bazel always treats .bazelignore files as UTF-8,
+    ;; cf. https://github.com/bazelbuild/bazel/blob/09c621e4cf5b968f4c6cdf905ab142d5961f9ddc/src/main/java/com/google/devtools/build/lib/skyframe/IgnoredPackagePrefixesFunction.java#L52.
+    (let ((coding-system-for-read 'utf-8)
+          (format-alist nil)
+          (after-insert-file-functions nil)
+          (bazelignore-file (expand-file-name ".bazelignore" workspace-root))
+          (patterns ()))
+      ;; It’s not a critical error if the .bazelignore file doesn’t exist or we
+      ;; can’t read it.
+      (when (condition-case nil
+                (insert-file-contents bazelignore-file)
+              (file-error nil))
+        ;; Replicate behavior of
+        ;; https://github.com/bazelbuild/bazel/blob/09c621e4cf5b968f4c6cdf905ab142d5961f9ddc/src/main/java/com/google/devtools/build/lib/skyframe/IgnoredPackagePrefixesFunction.java#L122-L127.
+        (while (not (eobp))
+          (unless (or (eolp) (eq (following-char) ?#))
+            ;; This glob pattern isn’t quite correct if the line contains
+            ;; wildcard characters, but we have no way to escape them.
+            (push (concat "./" (file-name-as-directory
+                                (buffer-substring-no-properties
+                                 (point) (line-end-position))))
+                  patterns))
+          (forward-line))
+        (nreverse patterns)))))
 
 ;;;; Commands to build and run code using Bazel
 
