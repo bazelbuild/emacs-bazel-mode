@@ -48,6 +48,60 @@
   (substitute-in-file-name "$TEST_SRCDIR/$TEST_WORKSPACE/")
   "Directory with data dependencies for this package.")
 
+;;;; Helper macros
+
+(eval-when-compile
+  (defmacro bazel-test--with-temp-directory (name &rest body)
+    "Create a new temporary directory.
+Bind the name of the directory to NAME and execute BODY while the
+directory exists.  Remove the directory and all its contents once
+BODY finishes successfully.  NAME will be a directory name, not a
+directory file name; see Info node ‘(elisp) Directory Names’."
+    (declare (indent 1) (debug (symbolp body)))
+    (cl-check-type name symbol)
+    (let ((directory (make-symbol "directory"))
+          (success (make-symbol "success")))
+      `(let ((,directory (make-temp-file "bazel-mode-test-" :dir-flag))
+             (,success nil))
+         (ert-info (,directory :prefix "Temporary directory: ")
+           (unwind-protect
+               (prog1 (let ((,name (file-name-as-directory ,directory)))
+                        ,@body)
+                 (setq ,success t))
+             (when ,success (delete-directory ,directory :recursive)))))))
+
+  (defmacro bazel-test--with-file-buffer (filename &rest body)
+    "Visit FILENAME in a temporary buffer.
+Execute BODY with the buffer that visits FILENAME current.  Kill
+that buffer once BODY finishes."
+    (declare (indent 1) (debug t))
+    (let ((previous-buffers (make-symbol "previous-buffers"))
+          (buffer (make-symbol "buffer")))
+      (macroexp-let2 nil filename filename
+        `(let ((,previous-buffers (buffer-list)))
+           (access-file ,filename "Visiting test file")
+           (save-current-buffer
+             (find-file-existing ,filename)
+             (let ((,buffer (current-buffer)))
+               (unwind-protect
+                   ,(macroexp-progn body)
+                 ;; Kill the buffer only if ‘find-file-existing’ has generated a
+                 ;; new one.
+                 (unless (memq ,buffer ,previous-buffers)
+                   (kill-buffer ,buffer)))))))))
+
+  (defmacro bazel-test--with-buffers (&rest body)
+    "Evaluate BODY and kill all buffers that it created."
+    (declare (indent 0) (debug t))
+    (let ((buffers (make-symbol "buffers")))
+      `(let ((,buffers (buffer-list)))
+         (unwind-protect
+             ,(macroexp-progn body)
+           (dolist (buffer (buffer-list))
+             (unless (memq buffer ,buffers) (kill-buffer buffer))))))))
+
+;;;; Unit tests
+
 (ert-deftest bazel-mode/indent-after-colon ()
   (with-temp-buffer
     (bazel-mode)
@@ -147,56 +201,6 @@ we don’t have to start or mock a process."
                                  "is deprecated in favor of \"//\". "
                                  "[integer-division] "
                                  "(https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md#integer-division)"))))))))
-
-(eval-when-compile
-  (defmacro bazel-test--with-temp-directory (name &rest body)
-    "Create a new temporary directory.
-Bind the name of the directory to NAME and execute BODY while the
-directory exists.  Remove the directory and all its contents once
-BODY finishes successfully.  NAME will be a directory name, not a
-directory file name; see Info node ‘(elisp) Directory Names’."
-    (declare (indent 1) (debug (symbolp body)))
-    (cl-check-type name symbol)
-    (let ((directory (make-symbol "directory"))
-          (success (make-symbol "success")))
-      `(let ((,directory (make-temp-file "bazel-mode-test-" :dir-flag))
-             (,success nil))
-         (ert-info (,directory :prefix "Temporary directory: ")
-           (unwind-protect
-               (prog1 (let ((,name (file-name-as-directory ,directory)))
-                        ,@body)
-                 (setq ,success t))
-             (when ,success (delete-directory ,directory :recursive)))))))
-
-  (defmacro bazel-test--with-file-buffer (filename &rest body)
-    "Visit FILENAME in a temporary buffer.
-Execute BODY with the buffer that visits FILENAME current.  Kill
-that buffer once BODY finishes."
-    (declare (indent 1) (debug t))
-    (let ((previous-buffers (make-symbol "previous-buffers"))
-          (buffer (make-symbol "buffer")))
-      (macroexp-let2 nil filename filename
-        `(let ((,previous-buffers (buffer-list)))
-           (access-file ,filename "Visiting test file")
-           (save-current-buffer
-             (find-file-existing ,filename)
-             (let ((,buffer (current-buffer)))
-               (unwind-protect
-                   ,(macroexp-progn body)
-                 ;; Kill the buffer only if ‘find-file-existing’ has generated a
-                 ;; new one.
-                 (unless (memq ,buffer ,previous-buffers)
-                   (kill-buffer ,buffer))))))))))
-
-(defmacro bazel-test--with-buffers (&rest body)
-  "Evaluate BODY and kill all buffers that it created."
-  (declare (indent 0) (debug t))
-  (let ((buffers (make-symbol "buffers")))
-    `(let ((,buffers (buffer-list)))
-       (unwind-protect
-           ,(macroexp-progn body)
-         (dolist (buffer (buffer-list))
-           (unless (memq buffer ,buffers) (kill-buffer buffer)))))))
 
 (ert-deftest bazel-mode/xref ()
   "Unit test for XRef support."
