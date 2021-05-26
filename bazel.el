@@ -1814,7 +1814,8 @@ ROOT is the main workspace root, WORKSPACE is the external
 workspace name or nil for the main workspace, and PACKAGE is the
 package name within the workspace.  If PATTERN is non-nil,
 complete target patterns, include target wildcards like “:all”,
-and skip files.  This is a helper function for
+and skip files.  If COLON is non-nil, prefix the wildcards with a
+colon.  This is a helper function for
 ‘bazel--target-completion-table’."
   (cl-check-type root string)
   (cl-check-type workspace (or null string))
