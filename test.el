@@ -777,9 +777,10 @@ in ‘bazel-mode’."
                         '(3 . 1))))
               (_ (ert-fail (format "Unexpected arguments %S" got-args))))))))))
 
-(ert-deftest bazel-test-at-point ()
+(ert-deftest bazel-test-at-point/emacs-lisp-mode ()
+  "Test ‘bazel-test-at-point’ in ‘emacs-lisp-mode’."
   (bazel-test--with-temp-directory dir
-    (bazel-test--tangle dir "test-at-point.org")
+    (bazel-test--tangle dir "test-at-point-elisp.org")
     (cl-letf* ((case-fold-search nil)
                (commands ())
                ((symbol-function #'compile)
