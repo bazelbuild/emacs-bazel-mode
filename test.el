@@ -208,47 +208,48 @@ we don’t have to start or mock a process."
   (let ((definitions ()))
     (bazel-test--with-temp-directory dir "xref.org"
       (bazel-test--with-file-buffer (expand-file-name "root/BUILD" dir)
-        (forward-comment (point-max))
-        ;; Search for all sources and dependencies.  These are strings that
-        ;; stand on their own in a line.
-        (while (re-search-forward (rx bol (* blank) ?\") nil t)
-          (let ((backend (xref-find-backend))
-                (root (expand-file-name "root" dir)))
-            (should (eq backend 'bazel-mode))
-            (ert-info ((format "line %d, %s" (line-number-at-pos)
-                               (buffer-substring-no-properties
-                                (1- (point)) (line-end-position))))
-              (let ((identifier (xref-backend-identifier-at-point backend)))
-                (should (stringp identifier))
-                (should
-                 (equal (expand-file-name
-                         (get-text-property 0 'bazel-mode-workspace identifier))
-                        (file-name-as-directory root)))
-                (let* ((defs (xref-backend-definitions backend identifier))
-                       (def (car-safe defs)))
-                  (should (consp defs))
-                  ;; Check that ‘xref-backend-definitions’ still works if the
-                  ;; magic text properties aren’t present.  This allows users
-                  ;; to invoke ‘xref-find-definitions’ and enter a target
-                  ;; manually.
-                  (should
-                   (equal defs
-                          (xref-backend-definitions
-                           backend (substring-no-properties identifier))))
-                  ;; We only expect one definition for now.
-                  (should-not (cdr defs))
-                  (should (xref-item-p def))
-                  (should (equal (xref-item-summary def) identifier))
-                  (let ((ref-file (buffer-file-name
-                                   (marker-buffer
-                                    (xref-location-marker
-                                     (xref-item-location def))))))
-                    ;; Work around Bug#46219.
-                    (cl-callf file-name-unquote root)
-                    (cl-callf file-name-unquote ref-file)
-                    (push (list (substring-no-properties identifier)
-                                (file-relative-name ref-file root))
-                          definitions)))))))
+        (let ((case-fold-search nil))
+          (forward-comment (point-max))
+          ;; Search for all sources and dependencies.  These are strings that
+          ;; stand on their own in a line.
+          (while (re-search-forward (rx bol (* blank) ?\") nil t)
+            (let ((backend (xref-find-backend))
+                  (root (expand-file-name "root" dir)))
+              (should (eq backend 'bazel-mode))
+              (ert-info ((format "line %d, %s" (line-number-at-pos)
+                                 (buffer-substring-no-properties
+                                  (1- (point)) (line-end-position))))
+                (let ((identifier (xref-backend-identifier-at-point backend)))
+                  (should (stringp identifier))
+                  (should (equal (expand-file-name
+                                  (get-text-property 0 'bazel-mode-workspace
+                                                     identifier))
+                                 (file-name-as-directory root)))
+                  (let* ((defs (xref-backend-definitions backend identifier))
+                         (def (car-safe defs)))
+                    (should (consp defs))
+                    ;; Check that ‘xref-backend-definitions’ still works if the
+                    ;; magic text properties aren’t present.  This allows users
+                    ;; to invoke ‘xref-find-definitions’ and enter a target
+                    ;; manually.
+                    (should
+                     (equal defs
+                            (xref-backend-definitions
+                             backend (substring-no-properties identifier))))
+                    ;; We only expect one definition for now.
+                    (should-not (cdr defs))
+                    (should (xref-item-p def))
+                    (should (equal (xref-item-summary def) identifier))
+                    (let ((ref-file (buffer-file-name
+                                     (marker-buffer
+                                      (xref-location-marker
+                                       (xref-item-location def))))))
+                      ;; Work around Bug#46219.
+                      (cl-callf file-name-unquote root)
+                      (cl-callf file-name-unquote ref-file)
+                      (push (list (substring-no-properties identifier)
+                                  (file-relative-name ref-file root))
+                            definitions))))))))
         ;; Test completions.
         (let ((table (xref-backend-identifier-completion-table 'bazel-mode)))
           (should (equal (try-completion ":" table) ":"))
@@ -279,16 +280,17 @@ we don’t have to start or mock a process."
   "Unit test for ‘find-file-at-point’ support."
   (bazel-test--with-temp-directory dir "find-file-at-point.org"
     (bazel-test--with-file-buffer (expand-file-name "root/pkg/aaa.c" dir)
-      (search-forward "\"" (line-end-position))
-      (should (equal (ffap-file-at-point)
-                     (file-name-unquote (expand-file-name "root/aaa.h" dir))))
-      (forward-line)
-      (search-forward "\"" (line-end-position))
-      (forward-comment (point-max))
-      (should (equal
-               (ffap-file-at-point)
-               (file-name-unquote
-                (expand-file-name "root/bazel-root/external/ws/bbb.h" dir)))))))
+      (let ((case-fold-search nil))
+        (search-forward "\"" (line-end-position))
+        (should (equal (ffap-file-at-point)
+                       (file-name-unquote (expand-file-name "root/aaa.h" dir))))
+        (forward-line)
+        (search-forward "\"" (line-end-position))
+        (forward-comment (point-max))
+        (should (equal (ffap-file-at-point)
+                       (file-name-unquote
+                        (expand-file-name "root/bazel-root/external/ws/bbb.h"
+                                          dir))))))))
 
 (ert-deftest bazel-mode/fill ()
   "Check that magic comments are left alone."
@@ -449,32 +451,34 @@ the rule."
     (let* ((package-dir (expand-file-name "package" dir))
            (library (expand-file-name "library.h" package-dir)))
       (bazel-test--with-file-buffer library
-        (with-temp-buffer
-          (let ((default-directory dir)
-                (bazel-display-coverage 'local))
-            (insert-file-contents (expand-file-name "bazel.out" dir))
-            ;; The coverage overlays don’t logically change the buffer contents.
-            ;; Ensure that the code works even if the buffer is read-only.
-            (setq buffer-read-only t)
-            ;; Simulate successful exit of the Bazel process.
-            (compilation-handle-exit 'exit 0 "finished\n")))
-        (ert-info ("Comment line")
-          ;; Comment line isn’t covered at all.
-          (should (looking-at-p (rx bol "//")))
-          (should-not (face-at-point)))
-        (ert-info ("Covered line")
-          (search-forward "return 137;")
-          (backward-char)  ; overlay doesn’t extend beyond the end of the line
-          (should (eq (face-at-point) 'bazel-covered-line)))
-        (ert-info ("Uncovered line")
-          (search-forward "return 42;")
-          (backward-char)  ; overlay doesn’t extend beyond the end of the line
-          (should (eq (face-at-point) 'bazel-uncovered-line)))
-        (ert-info ("Removing coverage")
-          (bazel-remove-coverage-display)
-          ;; Now there shouldn’t be any faces left in the buffer.
-          (should (eql (next-single-char-property-change (point-min) 'face)
-                       (point-max))))))))
+        (let ((case-fold-search nil))
+          (with-temp-buffer
+            (let ((default-directory dir)
+                  (bazel-display-coverage 'local))
+              (insert-file-contents (expand-file-name "bazel.out" dir))
+              ;; The coverage overlays don’t logically change the buffer
+              ;; contents.  Ensure that the code works even if the buffer is
+              ;; read-only.
+              (setq buffer-read-only t)
+              ;; Simulate successful exit of the Bazel process.
+              (compilation-handle-exit 'exit 0 "finished\n")))
+          (ert-info ("Comment line")
+            ;; Comment line isn’t covered at all.
+            (should (looking-at-p (rx bol "//")))
+            (should-not (face-at-point)))
+          (ert-info ("Covered line")
+            (search-forward "return 137;")
+            (backward-char)  ; overlay doesn’t extend beyond the end of the line
+            (should (eq (face-at-point) 'bazel-covered-line)))
+          (ert-info ("Uncovered line")
+            (search-forward "return 42;")
+            (backward-char)  ; overlay doesn’t extend beyond the end of the line
+            (should (eq (face-at-point) 'bazel-uncovered-line)))
+          (ert-info ("Removing coverage")
+            (bazel-remove-coverage-display)
+            ;; Now there shouldn’t be any faces left in the buffer.
+            (should (eql (next-single-char-property-change (point-min) 'face)
+                         (point-max)))))))))
 
 (ert-deftest bazel--target-completion-table/root-package ()
   "Test target completion in the root package."
@@ -649,24 +653,25 @@ in ‘bazel-mode’."
   (bazel-test--with-temp-directory dir "xref.org"
     (bazel-test--with-file-buffer (expand-file-name "root/BUILD" dir)
       (bazel-mode)
-      (dolist (case '(("name = \"lib\"" "lib")
-                      ("aaa.cc" "lib")
-                      ("name = \"bin\"" "bin")
-                      ("//pkg:lib" "bin")))
-        (cl-destructuring-bind (search-string expected-name) case
-          (ert-info ((format "Search string: %s" search-string))
-            (goto-char (point-min))
-            (search-forward search-string)
-            (let ((begin (match-beginning 0))
-                  (end (match-end 0)))
-              (dolist (location `((begin ,begin)
-                                  (end ,end)
-                                  (middle ,(/ (+ begin end) 2))))
-                (cl-destructuring-bind (symbol position) location
-                  (ert-info ((format "Location: %s" symbol))
-                    (goto-char position)
-                    (should (equal (add-log-current-defun) expected-name))
-                    (should (equal (which-function) expected-name))))))))))))
+      (let ((case-fold-search nil))
+        (dolist (case '(("name = \"lib\"" "lib")
+                        ("aaa.cc" "lib")
+                        ("name = \"bin\"" "bin")
+                        ("//pkg:lib" "bin")))
+          (cl-destructuring-bind (search-string expected-name) case
+            (ert-info ((format "Search string: %s" search-string))
+              (goto-char (point-min))
+              (search-forward search-string)
+              (let ((begin (match-beginning 0))
+                    (end (match-end 0)))
+                (dolist (location `((begin ,begin)
+                                    (end ,end)
+                                    (middle ,(/ (+ begin end) 2))))
+                  (cl-destructuring-bind (symbol position) location
+                    (ert-info ((format "Location: %s" symbol))
+                      (goto-char position)
+                      (should (equal (add-log-current-defun) expected-name))
+                      (should (equal (which-function) expected-name)))))))))))))
 
 (ert-deftest bazel-build ()
   (cl-letf* ((commands ())
@@ -736,7 +741,8 @@ in ‘bazel-mode’."
   "Test for ‘completion-at-point’ in ‘bazel-mode’."
   (bazel-test--with-temp-directory dir "completion-at-point.org"
     (bazel-test--with-file-buffer (expand-file-name "BUILD" dir)
-      (let* ((got-args ())
+      (let* ((case-fold-search nil)
+             (got-args ())
              (completion-in-region-function
               (lambda (start end collection predicate)
                 (push (list start end collection predicate) got-args))))
@@ -767,83 +773,86 @@ in ‘bazel-mode’."
                         '(3 . 1))))
               (_ (ert-fail (format "Unexpected arguments %S" got-args))))))))))
 
-(ert-deftest bazel-test-at-point/emacs-lisp-mode ()
-  "Test ‘bazel-test-at-point’ in ‘emacs-lisp-mode’."
+(ert-deftest bazel-test-at-point ()
   (bazel-test--with-temp-directory dir "test-at-point-elisp.org"
-    (cl-letf* ((case-fold-search nil)
-               (commands ())
-               ((symbol-function #'compile)
-                (lambda (command &optional _comint)
-                  (push command commands))))
-      (bazel-test--with-file-buffer (expand-file-name "foo-test.el" dir)
+    (bazel-test--with-file-buffer (expand-file-name "foo-test.el" dir)
+      (cl-letf* ((case-fold-search nil)
+                 (commands ())
+                 ((symbol-function #'compile)
+                  (lambda (command &optional _comint)
+                    (push command commands))))
         (should-error (bazel-test-at-point) :type 'user-error)
         (re-search-forward (rx bol "(ert-deftest foo/test ()"))
-        (bazel-test-at-point))
-      (should
-       (equal commands
-              '("bazel test --test_filter\\=foo/test -- //\\:foo_test"))))))
+        (bazel-test-at-point)
+        (should
+         (equal commands
+                '("bazel test --test_filter\\=foo/test -- //\\:foo_test")))))))
 
 (ert-deftest bazel-test-at-point/c++-mode ()
   "Test ‘bazel-test-at-point’ in ‘c++-mode’."
   (bazel-test--with-temp-directory dir "test-at-point-c++.org"
-    (cl-letf* ((commands ())
-               ((symbol-function #'compile)
-                (lambda (command &optional _comint)
-                  (push command commands))))
-      (bazel-test--with-file-buffer (expand-file-name "cc_test.cc" dir)
+    (bazel-test--with-file-buffer (expand-file-name "cc_test.cc" dir)
+      (cl-letf* ((case-fold-search nil)
+                 (commands ())
+                 ((symbol-function #'compile)
+                  (lambda (command &optional _comint)
+                    (push command commands))))
         (should-error (bazel-test-at-point) :type 'user-error)
         (search-forward "EXPECT_EQ(1, 2)")
         (bazel-test-at-point)
         (search-forward "EXPECT_EQ(4, 5)")
-        (bazel-test-at-point))
-      (should
-       (equal (reverse commands)
-              '("bazel test --test_filter\\=FooTest.Bar -- //\\:cc_test"
-                "bazel test --test_filter\\=BazTest.Qux -- //\\:cc_test"))))))
+        (bazel-test-at-point)
+        (should
+         (equal (reverse commands)
+                '("bazel test --test_filter\\=FooTest.Bar -- //\\:cc_test"
+                  "bazel test --test_filter\\=BazTest.Qux -- //\\:cc_test")))))))
 
 (ert-deftest bazel-test-at-point/go-mode ()
   "Test ‘bazel-test-at-point’ in ‘go-mode’."
   (bazel-test--with-temp-directory dir "test-at-point-go.org"
-    (cl-letf* ((commands ())
-               ((symbol-function #'compile)
-                (lambda (command &optional _comint)
-                  (push command commands))))
-      (bazel-test--with-file-buffer (expand-file-name "go_test.go" dir)
+    (bazel-test--with-file-buffer (expand-file-name "go_test.go" dir)
+      (cl-letf* ((case-fold-search nil)
+                 (commands ())
+                 ((symbol-function #'compile)
+                  (lambda (command &optional _comint)
+                    (push command commands))))
         (unless (derived-mode-p 'go-mode)
           ;; ‘go-mode’ might not be installed or available.  Simulate it as
           ;; best as possible.
           (setq-local beginning-of-defun-function
                       (lambda (&optional arg)
-                        (re-search-backward (rx bol "func" blank)
-                                            nil t arg)))
+                        (let ((case-fold-search nil))
+                          (re-search-backward (rx bol "func" blank)
+                                              nil t arg))))
           (run-hooks 'go-mode-hook))
         (should-error (bazel-test-at-point) :type 'user-error)
         (search-forward "t.Error(")
         (bazel-test-at-point)
         (search-forward "b.Error(")
-        (bazel-test-at-point))
-      (should
-       (equal (reverse commands)
-              '("bazel test --test_filter\\=\\^\\\\QTest\\\\E\\$ -- //\\:go_test"
-                "bazel test --test_filter\\=\\^\\\\QBenchmarkFoo_Bar\\\\E\\$ -- //\\:go_test"))))))
+        (bazel-test-at-point)
+        (should
+         (equal (reverse commands)
+                '("bazel test --test_filter\\=\\^\\\\QTest\\\\E\\$ -- //\\:go_test"
+                  "bazel test --test_filter\\=\\^\\\\QBenchmarkFoo_Bar\\\\E\\$ -- //\\:go_test")))))))
 
 (ert-deftest bazel-test-at-point/python-mode ()
   "Test ‘bazel-test-at-point’ in ‘python-mode’."
   (bazel-test--with-temp-directory dir "test-at-point-python.org"
-    (cl-letf* ((commands ())
-               ((symbol-function #'compile)
-                (lambda (command &optional _comint)
-                  (push command commands))))
-      (bazel-test--with-file-buffer (expand-file-name "py_test.py" dir)
+    (bazel-test--with-file-buffer (expand-file-name "py_test.py" dir)
+      (cl-letf* ((case-fold-search nil)
+                 (commands ())
+                 ((symbol-function #'compile)
+                  (lambda (command &optional _comint)
+                    (push command commands))))
         (should-error (bazel-test-at-point) :type 'user-error)
         (search-forward "# Test case class")
         (bazel-test-at-point)
         (search-forward "# Test method")
-        (bazel-test-at-point))
-      (should
-       (equal (reverse commands)
-              '("bazel test --test_filter\\=MyTest -- //\\:py_test"
-                "bazel test --test_filter\\=MyTest.testFoo -- //\\:py_test"))))))
+        (bazel-test-at-point)
+        (should
+         (equal (reverse commands)
+                '("bazel test --test_filter\\=MyTest -- //\\:py_test"
+                  "bazel test --test_filter\\=MyTest.testFoo -- //\\:py_test")))))))
 
 (ert-deftest bazel-test-at-point-functions ()
   "Test that ‘which-function’ is at the end of
@@ -940,20 +949,21 @@ in ‘bazel-mode’."
              (with-temp-buffer
                (insert-file-contents
                 (expand-file-name "WORKSPACE.expected" dir))
-               (pcase (process-lines sha256sum "-b" "--" archive)
-                 ;; “sha256sum” should print exactly one line, the hash followed
-                 ;; by a space and the filename.  See Info node ‘(coreutils)
-                 ;; sha2 utilities’ and Info node ‘(coreutils) md5sum
-                 ;; invocation’.
-                 (`(,(rx bos (let hash (+ xdigit)) ?\s))
-                  ;; Replace variables in expected snippet with their values.
-                  (dolist (pair `(("%sha256%" . ,hash)
-                                  ("%url%" . ,url)))
-                    (cl-destructuring-bind (variable . value) pair
-                      (goto-char (point-min))
-                      (while (search-forward variable nil t)
-                        (replace-match value :fixedcase :literal)))))
-                 (o (ert-fail (format "Invalid sha256sum output: %S" o))))
+               (let ((case-fold-search nil))
+                 (pcase (process-lines sha256sum "-b" "--" archive)
+                   ;; “sha256sum” should print exactly one line, the hash
+                   ;; followed by a space and the filename.
+                   ;; See Info node ‘(coreutils) sha2 utilities’
+                   ;; and Info node ‘(coreutils) md5sum invocation’.
+                   (`(,(rx bos (let hash (+ xdigit)) ?\s))
+                    ;; Replace variables in expected snippet with their values.
+                    (dolist (pair `(("%sha256%" . ,hash)
+                                    ("%url%" . ,url)))
+                      (cl-destructuring-bind (variable . value) pair
+                        (goto-char (point-min))
+                        (while (search-forward variable nil t)
+                          (replace-match value :fixedcase :literal)))))
+                   (o (ert-fail (format "Invalid sha256sum output: %S" o)))))
                ;; We don’t expect a trailing newline.
                (goto-char (point-max))
                (skip-chars-backward "\n")
@@ -978,12 +988,13 @@ in ‘bazel-mode’."
 (ert-deftest bazelrc-ffap ()
   (bazel-test--with-temp-directory dir "bazelrc.org"
     (bazel-test--with-file-buffer (expand-file-name ".bazelrc" dir)
-      (should (derived-mode-p 'bazelrc-mode))
-      (search-forward "import %workspace%/")
-      (let ((file-at-point (ffap-file-at-point)))
-        (should (stringp file-at-point))
-        (should (bazel-test--file-equal-p
-                 file-at-point (expand-file-name "other.bazelrc" dir)))))))
+      (let ((case-fold-search nil))
+        (should (derived-mode-p 'bazelrc-mode))
+        (search-forward "import %workspace%/")
+        (let ((file-at-point (ffap-file-at-point)))
+          (should (stringp file-at-point))
+          (should (bazel-test--file-equal-p
+                   file-at-point (expand-file-name "other.bazelrc" dir))))))))
 
 (ert-deftest bazel-find-build-file ()
   (bazel-test--with-temp-directory dir nil
@@ -1113,11 +1124,12 @@ See Info node ‘(org) Extracting Source Code’."
                    ;; Replace the %ROOTDIR% placeholder added by
                    ;; testdata/make_*_out by our temporary root.
                    (save-excursion
-                     (goto-char (point-min))
-                     (while (search-forward "%ROOTDIR%" nil t)
-                       (replace-match
-                        (file-name-unquote (directory-file-name directory))
-                        :fixedcase :literal)))))))
+                     (let ((case-fold-search nil))
+                       (goto-char (point-min))
+                       (while (search-forward "%ROOTDIR%" nil t)
+                         (replace-match
+                          (file-name-unquote (directory-file-name directory))
+                          :fixedcase :literal))))))))
       (org-babel-tangle))))
 
 ;; In Emacs 26, ‘file-equal-p’ is buggy and doesn’t work correctly on quoted
