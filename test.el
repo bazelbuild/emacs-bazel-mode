@@ -67,8 +67,7 @@
   "Unit test for ‘bazel--make-diagnostics’.
 We test that function instead of the Flymake backend directly so
 we don’t have to start or mock a process."
-  ;; This test doesn’t work in Emacs 27 due to
-  ;; https://debbugs.gnu.org/cgi/bugreport.cgi?bug=39971.
+  ;; This test doesn’t work in Emacs 27 due to Bug#39971.
   (skip-unless (not (eql emacs-major-version 27)))
   (with-temp-buffer
     (let ((output-buffer (current-buffer))
@@ -231,8 +230,7 @@ that buffer once BODY finishes."
                                    (marker-buffer
                                     (xref-location-marker
                                      (xref-item-location def))))))
-                    ;; Work around
-                    ;; https://debbugs.gnu.org/cgi/bugreport.cgi?bug=46219.
+                    ;; Work around Bug#46219.
                     (cl-callf file-name-unquote root)
                     (cl-callf file-name-unquote ref-file)
                     (push (list (substring-no-properties identifier)
