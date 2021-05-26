@@ -412,6 +412,28 @@ the rule."
       (should (bazel-test--file-equal-p (car (project-roots project)) dir))
       (should-not (project-external-roots project)))))
 
+(ert-deftest bazel/project-files ()
+  "Test ‘project-files’ support for Bazel workspaces."
+  (bazel-test--with-temp-directory dir
+    (bazel-test--tangle dir "project.org")
+    (let* ((dir (file-name-unquote dir))  ; unquote to work around Bug#47799
+           ;; Try to work around Bug#48471 by picking GNU find on macOS.
+           (find-program (if (eq system-type 'darwin) "gfind" find-program))
+           (project (project-current nil dir))
+           (files (cond ((fboundp 'project-files)  ; Emacs 27
+                         (project-files project))
+                        ((fboundp 'project-file-completion-table)  ; Emacs 26
+                         (all-completions "" (project-file-completion-table
+                                              project (list dir)))))))
+      (skip-unless (executable-find find-program))
+      (should project)
+      (should (bazel-workspace-p project))
+      (should files)
+      (should (equal (sort (cl-loop for file in files
+                                    collect (file-relative-name file dir))
+                           #'string-lessp)
+                     '("WORKSPACE" "package/BUILD"))))))
+
 (ert-deftest bazel-test/coverage ()
   "Test coverage parsing and display."
   (bazel-test--with-temp-directory dir
