@@ -473,6 +473,7 @@ the rule."
   "Test target completion in the root package."
   (bazel-test--with-temp-directory dir
     (bazel-test--tangle dir "target-completion-root.org")
+    (make-symbolic-link dir (expand-file-name "bazel-out" dir))
     ;; The test cases are of the form (STRING PATTERN TRY ALL TEST BOUND).
     ;; STRING is the input string.  PATTERN specifies whether to complete target
     ;; patterns; if PATTERNS is ‘*’, try both with and without pattern

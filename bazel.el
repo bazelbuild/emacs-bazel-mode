@@ -1776,7 +1776,14 @@ and include wildcards.  This is a helper function for
                         (completion-table-merge
                          (bazel--target-package-completion-table-1
                           parent-directory)
-                         (and pattern '("...")))))))
+                         (and pattern '("..."))))))
+             (predicate
+              (if (string-empty-p package)
+                  ;; Skip convenience symlinks in the workspace root.
+                  (lambda (candidate)
+                    (and (not (string-prefix-p "bazel-" candidate))
+                         (if predicate (funcall predicate candidate) t)))
+                predicate)))
         (complete-with-action action table string predicate)))))
 
 (defun bazel--target-package-completion-table-1 (directory)
