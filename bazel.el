@@ -1771,8 +1771,8 @@ and include wildcards.  This is a helper function for
         (complete-with-action action table string predicate)))))
 
 (defun bazel--target-package-completion-table-1 (directory)
-  "Return a completion table for Bazel packages found in
-DIRECTORY.  This is a helper function for
+  "Return a completion table for Bazel packages found in DIRECTORY.
+This is a helper function for
 ‘bazel--target-package-completion-table’."
   (cl-check-type directory string)
   (lambda (string predicate action)
