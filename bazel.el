@@ -779,10 +779,13 @@ This gets added to ‘xref-backend-functions’."
       ;; newlines or backslashes.
       (let* ((this-workspace (and buffer-file-name
                                   (bazel--workspace-root buffer-file-name)))
-             (package (or package
-                          (and buffer-file-name this-workspace
-                               (bazel--package-name buffer-file-name
-                                                    this-workspace)))))
+             (package
+              (or package
+                  (and buffer-file-name this-workspace
+                       (when-let ((directory
+                                   (bazel--package-directory
+                                    buffer-file-name this-workspace)))
+                         (bazel--package-name directory this-workspace))))))
         (propertize (bazel--canonical workspace package target)
                     'bazel-mode-workspace this-workspace)))))
 
@@ -802,8 +805,11 @@ IDENTIFIER should be an XRef identifier returned by
                   (package
                    (or package
                        (and buffer-file-name
-                            (bazel--package-name buffer-file-name
-                                                 this-workspace))))
+                            (when-let ((directory
+                                        (bazel--package-directory
+                                         buffer-file-name this-workspace)))
+                              (bazel--package-name directory
+                                                   this-workspace)))))
                   (location
                    (bazel--target-location
                     (bazel--external-workspace workspace this-workspace)
@@ -816,7 +822,8 @@ IDENTIFIER should be an XRef identifier returned by
   "Return a completion table for Bazel targets."
   (when-let* ((file-name (or buffer-file-name default-directory))
               (root (bazel--workspace-root file-name))
-              (package (bazel--package-name file-name root)))
+              (directory (bazel--package-directory file-name root))
+              (package (bazel--package-name directory root)))
     (bazel--target-completion-table root package nil)))
 
 (defun bazel-show-consuming-rule ()
@@ -831,9 +838,10 @@ file."
                           (user-error "Buffer doesn’t visit a file")))
          (root (or (bazel--workspace-root source-file)
                    (user-error "File is not in a Bazel workspace")))
-         (package (or (bazel--package-name source-file root)
+         (directory (or (bazel--package-directory source-file root)
+                        (user-error "File is not in a Bazel package")))
+         (package (or (bazel--package-name directory root)
                       (user-error "File is not in a Bazel package")))
-         (directory (file-name-as-directory (expand-file-name package root)))
          (build-file (or (locate-file "BUILD" (list directory) '(".bazel" ""))
                          (user-error "No BUILD file found")))
          (relative-file (file-relative-name source-file directory))
@@ -966,7 +974,9 @@ See Info node ‘(elisp) Completion in Buffers’ for context."
               (let ((end (1- (point))))
                 (when (>= end start)
                   (when-let* ((root (bazel--workspace-root buffer-file-name))
-                              (package (bazel--package-name file-name root)))
+                              (directory
+                               (bazel--package-directory file-name root))
+                              (package (bazel--package-name directory root)))
                     (list start end (bazel--target-completion-table
                                      root package nil))))))))))))
 
@@ -1079,9 +1089,8 @@ rule names that start with PREFIX."
               (user-error "Buffer doesn’t visit a file or directory")))
          (root (or (bazel--workspace-root source-file)
                    (user-error "File is not in a Bazel workspace")))
-         (package (or (bazel--package-name source-file root)
-                      (user-error "File is not in a Bazel package")))
-         (directory (file-name-as-directory (expand-file-name package root)))
+         (directory (or (bazel--package-directory source-file root)
+                        (user-error "File is not in a Bazel package")))
          (build-file (or (locate-file "BUILD" (list directory) '(".bazel" ""))
                          (user-error "No BUILD file found"))))
     (find-file build-file)))
@@ -1505,9 +1514,10 @@ Return nil if no .bazelignore file exists."
                           (user-error "Buffer doesn’t visit a file")))
          (root (or (bazel--workspace-root source-file)
                    (user-error "File is not in a Bazel workspace")))
-         (package (or (bazel--package-name source-file root)
+         (directory (or (bazel--package-directory source-file root)
+                        (user-error "File is not in a Bazel package")))
+         (package (or (bazel--package-name directory root)
                       (user-error "File is not in a Bazel package")))
-         (directory (file-name-as-directory (expand-file-name package root)))
          (build-file (or (locate-file "BUILD" (list directory) '(".bazel" ""))
                          (user-error "No BUILD file found")))
          (relative-file (file-relative-name source-file directory))
@@ -1549,8 +1559,10 @@ COMMAND is a Bazel command to be included in the minibuffer prompt."
           (or (bazel--workspace-root file-name)
               (user-error
                "Not in a Bazel workspace.  No WORKSPACE file found")))
+         (directory (or (bazel--package-directory file-name workspace-root)
+                        (user-error "Not in a Bazel package")))
          (package-name
-          (or (bazel--package-name file-name workspace-root)
+          (or (bazel--package-name directory workspace-root)
               (user-error "Not in a Bazel package.  No BUILD file found")))
          (prompt (combine-and-quote-strings
                   `(,@bazel-command "--" ,command "")))
@@ -1643,17 +1655,14 @@ If FILE-NAME is not in a Bazel package, return nil."
                      "2021-04-13"))
   (cl-check-type file-name string)
   (cl-check-type workspace-root string)
-  (bazel--package-name file-name workspace-root))
+  (when-let ((directory (bazel--package-directory file-name workspace-root)))
+    (bazel--package-name directory workspace-root)))
 
-(defun bazel--package-name (file-name workspace-root)
-  "Return the nearest Bazel package for FILE-NAME under WORKSPACE-ROOT.
+(defun bazel--package-directory (file-name workspace-root)
+  "Return the Bazel package directory for FILE-NAME under WORKSPACE-ROOT.
 If FILE-NAME is not in a Bazel package, return nil."
   (cl-check-type file-name string)
   (cl-check-type workspace-root string)
-  (when (< emacs-major-version 27)
-    ;; Work around Bug#29579.
-    (cl-callf file-name-unquote file-name)
-    (cl-callf file-name-unquote workspace-root))
   (let* ((parent (file-name-directory (directory-file-name workspace-root)))
          ;; Don’t search beyond workspace root.
          (locate-dominating-stop-dir-regexp
@@ -1661,21 +1670,31 @@ If FILE-NAME is not in a Bazel package, return nil."
               (rx-to-string `(or (seq bos ,parent eos)
                                  (regexp ,locate-dominating-stop-dir-regexp))
                             :no-group)
-            locate-dominating-stop-dir-regexp))
-         (build-file-directory
-          (locate-dominating-file file-name #'bazel--package-directory-p)))
-    (cond ((not build-file-directory) nil)
-          ((file-equal-p workspace-root build-file-directory) "")
-          ((file-in-directory-p build-file-directory workspace-root)
-           (let ((package-name
-                  (file-relative-name build-file-directory workspace-root)))
-             ;; Only return package-name if we can confirm it is the local
-             ;; relative file name of a BUILD file.
-             (and package-name
-                  (not (file-remote-p package-name))
-                  (not (file-name-absolute-p package-name))
-                  (not (string-prefix-p "." package-name))
-                  (directory-file-name package-name)))))))
+            locate-dominating-stop-dir-regexp)))
+    (locate-dominating-file file-name #'bazel--package-directory-p)))
+
+(defun bazel--package-name (build-file-directory workspace-root)
+  "Return the Bazel package name for BUILD-FILE-DIRECTORY.
+BUILD-FILE-DIRECTORY must be a Bazel package, i.e., it must
+contain a BUILD file.  WORKSPACE-ROOT is the Bazel workspace root
+directory."
+  (cl-check-type build-file-directory string)
+  (cl-check-type workspace-root string)
+  (when (< emacs-major-version 27)
+    ;; Work around Bug#29579.
+    (cl-callf file-name-unquote build-file-directory)
+    (cl-callf file-name-unquote workspace-root))
+  (cond ((file-equal-p workspace-root build-file-directory) "")
+        ((file-in-directory-p build-file-directory workspace-root)
+         (let ((package-name
+                (file-relative-name build-file-directory workspace-root)))
+           ;; Only return package-name if we can confirm it is the local
+           ;; relative file name of a BUILD file.
+           (and package-name
+                (not (file-remote-p package-name))
+                (not (file-name-absolute-p package-name))
+                (not (string-prefix-p "." package-name))
+                (directory-file-name package-name))))))
 
 (defun bazel--package-directory-p (directory)
   "Return non-nil if DIRECTORY is a Bazel package directory.
