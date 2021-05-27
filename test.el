@@ -1083,6 +1083,26 @@ in ‘bazel-mode’."
       (remove-list-of-text-properties (point-min) (point-max) '(syntax-table))
       (should (ert-equal-including-properties (buffer-string) text)))))
 
+(ert-deftest bazel-test/completion ()
+  "Test completion for ‘bazel-test’."
+  (bazel-test--with-temp-directory dir "target-completion-root.org"
+    (bazel-test--with-file-buffer (expand-file-name "test.cc" dir)
+      (cl-letf* ((completing-read-args ())
+                 (completing-read-function
+                  (lambda (&rest args)
+                    (push args completing-read-args)
+                    ":test"))
+                 (compile-commands ())
+                 ((symbol-function #'compile)
+                  (lambda (command &optional _comint)
+                    (push command compile-commands))))
+        (call-interactively #'bazel-test)
+        (pcase completing-read-args
+          (`(("bazel -- test " ,_ nil nil nil nil "//:test" nil)))
+          (_ (ert-fail (list "Invalid arguments to ‘completing-read’"
+                             completing-read-args))))
+        (should (equal compile-commands '("bazel test -- \\:test")))))))
+
 ;;;; Test helpers
 
 (put #'looking-at-p 'ert-explainer #'bazel-test--explain-looking-at-p)
