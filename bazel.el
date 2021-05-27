@@ -1574,6 +1574,10 @@ COMMAND is a Bazel command such as \"build\" or \"run\"."
   "Run Bazel in a Compilation buffer with the given ARGS."
   (compile (mapconcat #'shell-quote-argument (append bazel-command args) " ")))
 
+(defvar bazel-target-history nil
+  "History for Bazel target pattern completion.
+See Info node ‘(elisp) Minibuffer History’.")
+
 (defun bazel--read-target-pattern (command)
   "Read a Bazel build target pattern from the minibuffer.
 COMMAND is a Bazel command to be included in the minibuffer prompt."
@@ -1593,7 +1597,7 @@ COMMAND is a Bazel command to be included in the minibuffer prompt."
                                                 :pattern))
          (default (bazel--target-completion-default
                    buffer-file-name workspace-root package-name)))
-    (completing-read prompt table nil nil nil nil default)))
+    (completing-read prompt table nil nil nil 'bazel-target-history default)))
 
 (defun bazel--target-completion-default (source-file root package)
   "Return default completion target for SOURCE-FILE.
