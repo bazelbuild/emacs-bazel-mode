@@ -884,41 +884,32 @@ searching."
   ;; Prefer a buffer that’s already visiting BUILD-FILE.
   (bazel--with-file-buffer existing build-file
     (unless existing (bazel-build-mode))  ; for correct syntax tables
-    (bazel--consuming-rule-1 source-file case-fold-file)))
-
-(defun bazel--consuming-rule-1 (source-file case-fold-file)
-  "Return the name of the rule that consumes SOURCE-FILE.
-Search the current buffer for candidates.  If CASE-FOLD-FILE is
-non-nil, ignore filename case when searching.  This is a helper
-function for ‘bazel--consuming-rule’."
-  (cl-check-type source-file string)
-  (cl-check-type case-fold-file boolean)
-  (let ((case-fold-search nil))
-    (save-excursion
-      ;; Don’t widen; if the rule isn’t found within the accessible portion of
-      ;; the current buffer, that’s probably what the user wants.
-      (goto-char (point-min))
-      ;; We perform a simple textual search for rules with “srcs” attributes
-      ;; that contain references to SOURCE-FILE.  That’s in no way exact, but
-      ;; faster than invoking “bazel query”, and most BUILD files are regular
-      ;; enough for this approach to give acceptable results.
-      (cl-block nil
-        (while (let ((case-fold-search case-fold-file))
-                 (re-search-forward (rx-to-string `(seq (group (any ?\" ?\'))
-                                                        (? ?:) ,source-file
-                                                        (backref 1)))
-                                    nil t))
-          (let ((begin (match-beginning 0))
-                (end (match-end 0)))
-            (goto-char begin)
-            (python-nav-up-list -1)
-            (when (looking-back
-                   (rx symbol-start "srcs" (* blank) ?= (* blank))
-                   (line-beginning-position))
-              (when-let ((rule-name (bazel-mode-current-rule-name)))
-                (cl-return rule-name)))
-            ;; Ensure we don’t loop forever if we ended up in a weird place.
-            (goto-char end)))))))
+    (let ((case-fold-search nil))
+      (save-excursion
+        ;; Don’t widen; if the rule isn’t found within the accessible portion of
+        ;; the current buffer, that’s probably what the user wants.
+        (goto-char (point-min))
+        ;; We perform a simple textual search for rules with “srcs” attributes
+        ;; that contain references to SOURCE-FILE.  That’s in no way exact, but
+        ;; faster than invoking “bazel query”, and most BUILD files are regular
+        ;; enough for this approach to give acceptable results.
+        (cl-block nil
+          (while (let ((case-fold-search case-fold-file))
+                   (re-search-forward (rx-to-string `(seq (group (any ?\" ?\'))
+                                                          (? ?:) ,source-file
+                                                          (backref 1)))
+                                      nil t))
+            (let ((begin (match-beginning 0))
+                  (end (match-end 0)))
+              (goto-char begin)
+              (python-nav-up-list -1)
+              (when (looking-back
+                     (rx symbol-start "srcs" (* blank) ?= (* blank))
+                     (line-beginning-position))
+                (when-let ((rule-name (bazel-mode-current-rule-name)))
+                  (cl-return rule-name)))
+              ;; Ensure we don’t loop forever if we ended up in a weird place.
+              (goto-char end))))))))
 
 (defun bazel--target-location (workspace package target)
   "Return an ‘xref-location’ for a Bazel target.
