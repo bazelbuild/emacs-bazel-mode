@@ -25,7 +25,7 @@ but can at least be made to work somewhat reliably.
 #+property: header-args :mkdirp yes :main no
 
 #+begin_src bazel-workspace :tangle WORKSPACE
-  workspace(name = "test")
+workspace(name = "test")
 #+end_src
 
 We follow the
@@ -33,101 +33,101 @@ We follow the
 best practices]].
 
 #+begin_src bazel-build :tangle src/main/java/example/BUILD
-  java_library(
-      name = "example",
-      srcs = glob(["*.java"]),
-      visibility = ["//src/test/java/example:__pkg__"],
-  )
+java_library(
+    name = "example",
+    srcs = glob(["*.java"]),
+    visibility = ["//src/test/java/example:__pkg__"],
+)
 #+end_src
 
 #+begin_src bazel-build :tangle src/test/java/example/BUILD
-  java_test(
-      name = "example_test",
-      srcs = glob(["*.java"]),
-      test_class = "example.ExampleTest",
-      deps = ["//src/main/java/example"],
-  )
+java_test(
+    name = "example_test",
+    srcs = glob(["*.java"]),
+    test_class = "example.ExampleTest",
+    deps = ["//src/main/java/example"],
+)
 #+end_src
 
 #+begin_src java :tangle src/main/java/example/Example.java
-  package example;
+package example;
 
-  public class Example {
-      public static int function(boolean arg) {
-          if (arg) {
-              return 137;
-          } else {
-              return 42;
-          }
-      }
-  }
+public class Example {
+    public static int function(boolean arg) {
+        if (arg) {
+            return 137;
+        } else {
+            return 42;
+        }
+    }
+}
 #+end_src
 
 #+begin_src java :tangle src/test/java/example/ExampleTest.java
-  package example;
+package example;
 
-  import static org.junit.Assert.assertEquals;
-  import org.junit.Test;
+import static org.junit.Assert.assertEquals;
+import org.junit.Test;
 
-  public class ExampleTest {
-      @Test
-      public void function() {
-          assertEquals(137, Example.function(true));
-      }
-  }
+public class ExampleTest {
+    @Test
+    public void function() {
+        assertEquals(137, Example.function(true));
+    }
+}
 #+end_src
 
 #+begin_src fundamental :tangle bazel-out/k8-fastbuild/testlogs/src/test/java/example/example_test/coverage.dat
-  SF:src/main/java/example/Example.java
-  FN:3,example/Example::<init> ()V
-  FN:5,example/Example::function (Z)I
-  FNDA:0,example/Example::<init> ()V
-  FNDA:1,example/Example::function (Z)I
-  FNF:2
-  FNH:1
-  BRDA:5,0,0,1
-  BRDA:5,0,1,0
-  BRF:2
-  BRH:1
-  DA:3,0
-  DA:5,1
-  DA:6,1
-  DA:8,0
-  LH:2
-  LF:4
-  end_of_record
+SF:src/main/java/example/Example.java
+FN:3,example/Example::<init> ()V
+FN:5,example/Example::function (Z)I
+FNDA:0,example/Example::<init> ()V
+FNDA:1,example/Example::function (Z)I
+FNF:2
+FNH:1
+BRDA:5,0,0,1
+BRDA:5,0,1,0
+BRF:2
+BRH:1
+DA:3,0
+DA:5,1
+DA:6,1
+DA:8,0
+LH:2
+LF:4
+end_of_record
 #+end_src
 
 Merged standard output and error from Bazel:
 
 #+begin_src fundamental :tangle bazel.out
-  Loading: 
-  Loading: 0 packages loaded
-  INFO: Using default value for --instrumentation_filter: "^//src/main/java/example[/:]".
-  INFO: Override the above default with --instrumentation_filter
-  Analyzing: 2 targets (2 packages loaded, 0 targets configured)
-  Analyzing: 2 targets (13 packages loaded, 49 targets configured)
-  Analyzing: 2 targets (13 packages loaded, 49 targets configured)
-  Analyzing: 2 targets (24 packages loaded, 377 targets configured)
-  Analyzing: 2 targets (25 packages loaded, 423 targets configured)
-  Analyzing: 2 targets (26 packages loaded, 587 targets configured)
-  INFO: Analyzed 2 targets (27 packages loaded, 764 targets configured).
-  INFO: Found 1 target and 1 test target...
-  WARNING: failed to create one or more convenience symlinks for prefix 'bazel-':
-    cannot create symbolic link bazel-out -> %ROOTDIR%/bazel-out:  /private/var/folders/hw/0wwmn4393436_1ylv82fksbr0000gn/T/tmp.IMTNZh4zkw/bazel-out (File exists)
-  bazel: Entering directory `%ROOTDIR%/'
-  [0 / 11] Testing //src/test/java/example:example_test [[0s] (2 actions)]
-  [8 / 13] Action external/bazel_tools/tools/jdk/platformclasspath_classes/DumpPlatformClassPath.class; 1s darwin-sandbox
-  [10 / 13] Compiling Java headers src/main/java/example/libexample-hjar.jar (1 source file); 0s darwin-sandbox ... (2 actions running)
-  [19 / 22] Action external/bazel_tools/tools/jdk/platformclasspath.jar; 0s darwin-sandbox
-  bazel: Leaving directory `%ROOTDIR%/'
-  INFO: Elapsed time: 13,736s, Critical Path: 4,19s
-  INFO: 22 processes: 12 internal, 7 darwin-sandbox, 3 worker.
-  INFO: Build completed successfully, 22 total actions
-  //src/test/java/example:example_test                                     PASSED in 0.7s
-    %ROOTDIR%/bazel-out/k8-fastbuild/testlogs/src/test/java/example/example_test/coverage.dat
-  
-  Executed 1 out of 1 test: 1 test passes.
-  There were tests whose specified size is too big. Use the --test_verbose_timeout_warnings command line option to see which ones these are.
-  INFO: Build completed successfully, 22 total actions
+Loading: 
+Loading: 0 packages loaded
+INFO: Using default value for --instrumentation_filter: "^//src/main/java/example[/:]".
+INFO: Override the above default with --instrumentation_filter
+Analyzing: 2 targets (2 packages loaded, 0 targets configured)
+Analyzing: 2 targets (13 packages loaded, 49 targets configured)
+Analyzing: 2 targets (13 packages loaded, 49 targets configured)
+Analyzing: 2 targets (24 packages loaded, 377 targets configured)
+Analyzing: 2 targets (25 packages loaded, 423 targets configured)
+Analyzing: 2 targets (26 packages loaded, 587 targets configured)
+INFO: Analyzed 2 targets (27 packages loaded, 764 targets configured).
+INFO: Found 1 target and 1 test target...
+WARNING: failed to create one or more convenience symlinks for prefix 'bazel-':
+  cannot create symbolic link bazel-out -> %ROOTDIR%/bazel-out:  /private/var/folders/hw/0wwmn4393436_1ylv82fksbr0000gn/T/tmp.IMTNZh4zkw/bazel-out (File exists)
+bazel: Entering directory `%ROOTDIR%/'
+[0 / 11] Testing //src/test/java/example:example_test [[0s] (2 actions)]
+[8 / 13] Action external/bazel_tools/tools/jdk/platformclasspath_classes/DumpPlatformClassPath.class; 1s darwin-sandbox
+[10 / 13] Compiling Java headers src/main/java/example/libexample-hjar.jar (1 source file); 0s darwin-sandbox ... (2 actions running)
+[19 / 22] Action external/bazel_tools/tools/jdk/platformclasspath.jar; 0s darwin-sandbox
+bazel: Leaving directory `%ROOTDIR%/'
+INFO: Elapsed time: 13,736s, Critical Path: 4,19s
+INFO: 22 processes: 12 internal, 7 darwin-sandbox, 3 worker.
+INFO: Build completed successfully, 22 total actions
+//src/test/java/example:example_test                                     PASSED in 0.7s
+  %ROOTDIR%/bazel-out/k8-fastbuild/testlogs/src/test/java/example/example_test/coverage.dat
+
+Executed 1 out of 1 test: 1 test passes.
+There were tests whose specified size is too big. Use the --test_verbose_timeout_warnings command line option to see which ones these are.
+INFO: Build completed successfully, 22 total actions
 #+end_src

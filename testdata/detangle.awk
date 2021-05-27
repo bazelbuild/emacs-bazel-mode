@@ -21,7 +21,7 @@ BEGIN {
 
 /^#\+begin_src .+ :tangle / && $4 == out {
   print
-  while ((getline < src) == 1) print "  " $0
+  while ((getline < src) == 1) print
   close(src)
   in_block = 1
   next

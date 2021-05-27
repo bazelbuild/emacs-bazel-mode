@@ -16,25 +16,25 @@
 
 ** Contents of the test repository archive
 
-   #+begin_src bazel-workspace :tangle prefix/WORKSPACE :mkdirp yes
-     workspace(name = "test_repository")
-   #+end_src
+#+begin_src bazel-workspace :tangle prefix/WORKSPACE :mkdirp yes
+workspace(name = "test_repository")
+#+end_src
 
-   #+begin_src bazel-build :tangle prefix/BUILD :mkdirp yes
-     # Empty BUILD file
-   #+end_src
+#+begin_src bazel-build :tangle prefix/BUILD :mkdirp yes
+# Empty BUILD file
+#+end_src
 
 ** Expected ~http_workspace~ snippet
 
-   The ~bazel-insert-http-archive~ test fakes a date of 2019-05-02.
+The ~bazel-insert-http-archive~ test fakes a date of 2019-05-02.
 
-   #+begin_src bazel-workspace :tangle WORKSPACE.expected
-     http_archive(
-         name = "test_repository",
-         sha256 = "%sha256%",
-         strip_prefix = "prefix/",
-         urls = [
-             "%url%",  # 2019-05-02
-         ],
-     )
-   #+end_src
+#+begin_src bazel-workspace :tangle WORKSPACE.expected
+http_archive(
+    name = "test_repository",
+    sha256 = "%sha256%",
+    strip_prefix = "prefix/",
+    urls = [
+        "%url%",  # 2019-05-02
+    ],
+)
+#+end_src

@@ -15,17 +15,17 @@
 #+property: header-args :mkdirp yes :main no
 
 #+begin_src bazel-workspace :tangle WORKSPACE
-  workspace(name = "test")
+workspace(name = "test")
 #+end_src
 
 #+begin_src bazel-build :tangle package/BUILD
-  cc_library(
-      name = "test",
-      srcs = ["test.cc"],
-      deprecation = "Deprecated!",
-  )
+cc_library(
+    name = "test",
+    srcs = ["test.cc"],
+    deprecation = "Deprecated!",
+)
 #+end_src
 
 #+begin_src C++ :tangle package/test.cc
-  UnknownType foo;
+UnknownType foo;
 #+end_src

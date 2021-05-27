@@ -17,14 +17,14 @@
 * Test data for ~bazel-mode-flymake~
 
 #+begin_src bazel-workspace :tangle WORKSPACE
-  workspace(name = "test")
+workspace(name = "test")
 #+end_src
 
 #+name: starlark
 #+begin_src bazel-starlark :tangle buildifier.bzl
-  def foo(bar):
-      """ """
-      a = 1 / 2
+def foo(bar):
+    """ """
+    a = 1 / 2
 #+end_src
 
 To make the Flymake test hermetic, we generate Buildifier output statically and
@@ -32,9 +32,9 @@ tangle the output when running the test.  Execute this code block to regenerate
 the Buildifier output:
 
 #+begin_src sh :noweb yes :results output scalar :wrap "src js :tangle buildifier.json"
-  buildifier -mode=check -lint=warn -format=json -v -path=buildifier.bzl <<'EOF'
-  <<starlark>>
-  EOF
+buildifier -mode=check -lint=warn -format=json -v -path=buildifier.bzl <<'EOF'
+<<starlark>>
+EOF
 #+end_src
 
 #+RESULTS:
@@ -98,9 +98,9 @@ the Buildifier output:
 We also provide a “fake” Buildifier binary that only emits our canned output.
 
 #+begin_src sh :tangle buildifier :shebang "#!/bin/bash" :var dir=(file-name-unquote (expand-file-name default-directory))
-  # Fake waiting for file input.
-  cat > /dev/null
+# Fake waiting for file input.
+cat > /dev/null
 
-  # Fake some Buildifier output.
-  cat -- "${dir:?}/buildifier.json"
+# Fake some Buildifier output.
+cat -- "${dir:?}/buildifier.json"
 #+end_src
