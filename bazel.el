@@ -822,7 +822,7 @@ file."
                         (user-error "File is not in a Bazel package")))
          (package (or (bazel--package-name directory root)
                       (user-error "File is not in a Bazel package")))
-         (build-file (or (locate-file "BUILD" (list directory) '(".bazel" ""))
+         (build-file (or (bazel--locate-build-file directory)
                          (user-error "No BUILD file found")))
          (relative-file (file-relative-name source-file directory))
          (case-fold-file (file-name-case-insensitive-p source-file))
@@ -918,7 +918,7 @@ valid file target is indeed a file target."
         (bazel--file-location filename)
       ;; A label that likely refers to a rule.  Try to find the rule in the
       ;; BUILD file of the package.
-      (let ((build-file (locate-file "BUILD" (list directory) '("" ".bazel"))))
+      (let ((build-file (bazel--locate-build-file directory)))
         (when build-file
           (bazel--rule-location build-file target))))))
 
@@ -1077,7 +1077,7 @@ restrict the returned rules to test targets."
                    (user-error "File is not in a Bazel workspace")))
          (directory (or (bazel--package-directory source-file root)
                         (user-error "File is not in a Bazel package")))
-         (build-file (or (locate-file "BUILD" (list directory) '(".bazel" ""))
+         (build-file (or (bazel--locate-build-file directory)
                          (user-error "No BUILD file found"))))
     (find-file build-file))
   nil)
@@ -1659,7 +1659,7 @@ Return nil if no .bazelignore file exists."
                         (user-error "File is not in a Bazel package")))
          (package (or (bazel--package-name directory root)
                       (user-error "File is not in a Bazel package")))
-         (build-file (or (locate-file "BUILD" (list directory) '(".bazel" ""))
+         (build-file (or (bazel--locate-build-file directory)
                          (user-error "No BUILD file found")))
          (relative-file (file-relative-name source-file directory))
          (case-fold-file (file-name-case-insensitive-p source-file))
@@ -1866,7 +1866,7 @@ directory."
   "Return non-nil if DIRECTORY is a Bazel package directory.
 This doesn’t check whether DIRECTORY is within a Bazel workspace."
   (and (file-directory-p directory)
-       (locate-file "BUILD" (list directory) '(".bazel" ""))))
+       (bazel--locate-build-file directory)))
 
 (defun bazel--external-workspace (workspace-name this-workspace-root)
   "Return the workspace root of an external workspace.
