@@ -413,23 +413,22 @@ the rule."
   "Test coverage parsing and display."
   ;; Set up a fake workspace and execution root.  We use DIR for both.
   (bazel-test--with-temp-directory dir "coverage.org"
-    (let* ((package-dir (expand-file-name "package" dir))
-           (library (expand-file-name "library.h" package-dir)))
+    (let* ((package-dir (expand-file-name "src/main/java/example" dir))
+           (library (expand-file-name "Example.java" package-dir)))
       (bazel-test--with-file-buffer library
         (let ((case-fold-search nil))
           (with-temp-buffer
             (let ((default-directory dir)
                   (bazel-display-coverage 'local))
               (insert-file-contents (expand-file-name "bazel.out" dir))
-              ;; The coverage overlays don’t logically change the buffer
-              ;; contents.  Ensure that the code works even if the buffer is
-              ;; read-only.
+              ;; The coverage overlays don’t logically change the buffer contents.
+              ;; Ensure that the code works even if the buffer is read-only.
               (setq buffer-read-only t)
               ;; Simulate successful exit of the Bazel process.
               (compilation-handle-exit 'exit 0 "finished\n")))
           (ert-info ("Comment line")
-            ;; Comment line isn’t covered at all.
-            (should (looking-at-p (rx bol "//")))
+            ;; Package declaration isn’t covered at all.
+            (should (looking-at-p (rx bol "package ")))
             (should-not (face-at-point)))
           (ert-info ("Covered line")
             (search-forward "return 137;")
