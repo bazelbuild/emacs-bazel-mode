@@ -895,7 +895,6 @@ If CASE-FOLD-FILE is non-nil, ignore filename case when
 searching.  Return nil if no consuming rule was found."
   (cl-check-type build-file string)
   (cl-check-type source-file string)
-  (cl-check-type case-fold-file boolean)
   ;; Prefer a buffer that’s already visiting BUILD-FILE.
   (bazel--with-file-buffer existing build-file
     (unless existing (bazel-build-mode))  ; for correct syntax tables
