@@ -1841,7 +1841,7 @@ and skip files.  This is a helper function for
      ;; Absolute target label prefix, including the colon.  Must complete to a
      ;; target label.
      (bazel--completion-table-with-prefix prefix
-       (bazel--target-completion-table-2 root workspace package pattern)))
+       (bazel--target-completion-table-2 root workspace package pattern nil)))
     ((rx bos
          ;; Can’t use ‘(? … (let …))’ due to Bug#44532.
          (let prefix (opt ?@ (let workspace (+ (not (any ?: ?/))))) "//")
@@ -1854,7 +1854,7 @@ and skip files.  This is a helper function for
     ((rx bos (let prefix ?:) (* (not (any ?:))) eos)
      ;; Target pattern relative to the current package.
      (bazel--completion-table-with-prefix prefix
-       (bazel--target-completion-table-2 root nil package pattern)))
+       (bazel--target-completion-table-2 root nil package pattern nil)))
     ((rx bos (+ (not (any ?:))) ?/ eos)
      ;; Subpackage or subdirectory of the current package followed by a slash.
      ;; Normally followed by another package name or wildcard, but can also be a
@@ -1862,7 +1862,7 @@ and skip files.  This is a helper function for
      ;; differs between target patterns and labels in BUILD files.
      (if pattern
          (bazel--target-package-completion-table root nil package pattern)
-       (bazel--target-completion-table-2 root nil package pattern)))
+       (bazel--target-completion-table-2 root nil package pattern nil)))
     ((rx bos
          (let prefix (let subpackage (+ (not (any ?:)))) ?:)
          (* (not (any ?:)))
@@ -1874,7 +1874,7 @@ and skip files.  This is a helper function for
                           subpackage
                         (concat package "/" subpackage))))
          (bazel--completion-table-with-prefix prefix
-           (bazel--target-completion-table-2 root nil package pattern)))))
+           (bazel--target-completion-table-2 root nil package pattern nil)))))
     ((rx bos (+ (not (any ?:))) eos)
      ;; Something else, could be either a target or a subpackage of the current
      ;; package.  Prefer targets.
@@ -2002,8 +2002,7 @@ This is a helper function for
              `(boundaries 0 . ,(string-match-p (rx (any ?/ ?:)) suffix))))
         (file-error nil)))))
 
-(defun bazel--target-completion-table-2
-    (root workspace package pattern &optional colon)
+(defun bazel--target-completion-table-2 (root workspace package pattern colon)
   "Return a completion table for Bazel targets or target patterns.
 ROOT is the main workspace root, WORKSPACE is the external
 workspace name or nil for the main workspace, and PACKAGE is the
