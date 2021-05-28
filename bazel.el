@@ -222,7 +222,8 @@ the file types documented at URL
                   (kill-buffer buildifier-buffer))
               (with-temp-buffer-window buildifier-buffer nil nil
                 (insert-file-contents buildifier-error-file)
-                (compilation-minor-mode)))))))))
+                (compilation-minor-mode))))))))
+  nil)
 
 (define-obsolete-function-alias 'bazel-mode-buildifier
   #'bazel-buildifier "2021-04-13")
@@ -673,7 +674,8 @@ backends."
     (save-restriction
       (widen)
       (process-send-region process (point-min) (point-max)))
-    (process-send-eof process)))
+    (process-send-eof process))
+  nil)
 
 (defun bazel--buildifier-file-flags (type filename)
   "Return a list of -path and -type flags for Buildifier.
@@ -849,7 +851,8 @@ file."
      ;; Create a target identifier similar to what
      ;; ‘xref-backend-identifier-at-point’ returns.
      (propertize (bazel--canonical nil package rule)
-                 'bazel-mode-workspace root))))
+                 'bazel-mode-workspace root)))
+  nil)
 
 (eval-when-compile
   (defmacro bazel--with-file-buffer (existing filename &rest body)
@@ -1084,7 +1087,8 @@ rule names that start with PREFIX."
          (directory (file-name-as-directory (expand-file-name package root)))
          (build-file (or (locate-file "BUILD" (list directory) '(".bazel" ""))
                          (user-error "No BUILD file found"))))
-    (find-file build-file)))
+    (find-file build-file))
+  nil)
 
 (defun bazel-find-workspace-file ()
   "Find the WORKSPACE file for the current Bazel workspace."
@@ -1097,7 +1101,8 @@ rule names that start with PREFIX."
          (workspace-file
           (or (locate-file "WORKSPACE" (list root) '(".bazel" ""))
               (user-error "No WORKSPACE file found"))))
-    (find-file workspace-file)))
+    (find-file workspace-file))
+  nil)
 
 ;;;; ‘find-file-at-point’ support for ‘bazel-mode’
 
@@ -1474,7 +1479,8 @@ Return nil if no .bazelignore file exists."
   "Build a Bazel TARGET."
   (interactive (list (bazel--read-target-pattern "build")))
   (cl-check-type target string)
-  (bazel--run-bazel-command "build" target))
+  (bazel--run-bazel-command "build" target)
+  nil)
 
 (defun bazel-compile-current-file ()
   "Compile the file that the current buffer visits with Bazel."
@@ -1484,19 +1490,22 @@ Return nil if no .bazelignore file exists."
          ;; “bazel build --compile_one_dependency” accepts file names relative
          ;; to the current directory.
          (relative-name (file-relative-name file-name)))
-    (bazel--compile "build" "--compile_one_dependency" "--" relative-name)))
+    (bazel--compile "build" "--compile_one_dependency" "--" relative-name))
+  nil)
 
 (defun bazel-run (target)
   "Build and run a Bazel TARGET."
   (interactive (list (bazel--read-target-pattern "run")))
   (cl-check-type target string)
-  (bazel--run-bazel-command "run" target))
+  (bazel--run-bazel-command "run" target)
+  nil)
 
 (defun bazel-test (target)
   "Build and run a Bazel test TARGET."
   (interactive (list (bazel--read-target-pattern "test")))
   (cl-check-type target string)
-  (bazel--run-bazel-command "test" target))
+  (bazel--run-bazel-command "test" target)
+  nil)
 
 (defun bazel-test-at-point ()
   "Run the test case at point."
@@ -1519,13 +1528,15 @@ Return nil if no .bazelignore file exists."
           (or (run-hook-with-args-until-success 'bazel-test-at-point-functions)
               (user-error "Point is not on a test case"))))
     (bazel--compile "test" (concat "--test_filter=" name) "--"
-                    (bazel--canonical nil package rule))))
+                    (bazel--canonical nil package rule)))
+  nil)
 
 (defun bazel-coverage (target)
   "Run Bazel test TARGET with coverage instrumentation enabled."
   (interactive (list (bazel--read-target-pattern "coverage")))
   (cl-check-type target string)
-  (bazel--run-bazel-command "coverage" target))
+  (bazel--run-bazel-command "coverage" target)
+  nil)
 
 (defun bazel--run-bazel-command (command target-pattern)
   "Run Bazel tool with given COMMAND on the given TARGET-PATTERN.
@@ -1566,7 +1577,8 @@ COMMAND is a Bazel command to be included in the minibuffer prompt."
   "Set up ‘c++-mode’ to work with Bazel.
 Added to ‘c++-mode-hook’."
   (add-hook 'bazel-test-at-point-functions #'bazel-c++-test-at-point
-            nil :local))
+            nil :local)
+  nil)
 
 (defun bazel-c++-test-at-point ()
   "Return the name of the C++ test at point.
@@ -1592,7 +1604,8 @@ See URL ‘https://google.github.io/googletest/primer.html’."
   "Set up ‘go-mode’ to work with Bazel.
 Added to ‘go-mode-hook’."
   (add-hook 'bazel-test-at-point-functions #'bazel-go-test-at-point
-            nil :local))
+            nil :local)
+  nil)
 
 (defun bazel-go-test-at-point ()
   "Return the name of the Go test at point.
