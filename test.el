@@ -416,6 +416,7 @@ the rule."
       (should (directory-name-p (bazel-workspace-root project)))
       (should (file-directory-p (bazel-workspace-root project)))
       (should (bazel-test--file-equal-p (bazel-workspace-root project) dir))
+      (should (bazel-test--file-equal-p (project-root project) dir))
       (should (consp (project-roots project)))
       (should-not (cdr (project-roots project)))
       (should (bazel-test--file-equal-p (car (project-roots project)) dir))
