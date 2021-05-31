@@ -123,42 +123,6 @@ that buffer once BODY finishes."
         (indent-region (point-min) (point-max))
         (should (equal (buffer-string) before))))))
 
-(ert-deftest bazel--make-diagnostics ()
-  "Unit test for ‘bazel--make-diagnostics’.
-We test that function instead of the Flymake backend directly so
-we don’t have to start or mock a process."
-  ;; This test doesn’t work in Emacs 27 due to Bug#39971.
-  (skip-unless (not (eql emacs-major-version 27)))
-  (bazel-test--with-temp-directory dir "flymake.org"
-    (bazel-test--with-file-buffer (expand-file-name "buildifier.json" dir)
-      (let ((output-buffer (current-buffer))
-            (diagnostics nil))
-        (bazel-test--with-file-buffer (expand-file-name "buildifier.bzl" dir)
-          (dolist (diag (bazel--make-diagnostics output-buffer))
-            (ert-info ((prin1-to-string diag))
-              (should (eq (flymake-diagnostic-buffer diag) (current-buffer)))
-              (should (eq (flymake-diagnostic-type diag) :warning))
-              (push (list (buffer-substring-no-properties
-                           (flymake-diagnostic-beg diag)
-                           (flymake-diagnostic-end diag))
-                          (flymake-diagnostic-text diag))
-                    diagnostics))))
-        (should (equal (nreverse diagnostics)
-                       `(("def foo(bar):"
-                          ,(concat "The file has no module docstring. "
-                                   "[module-docstring] "
-                                   "(https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md#module-docstring)"))
-                         ("\"\"\" \"\"\""
-                          ,(concat "The docstring for the function \"foo\" "
-                                   "should start with a one-line summary. "
-                                   "[function-docstring-header] "
-                                   "(https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md#function-docstring-header)"))
-                         ("1 / 2"
-                          ,(concat "The \"/\" operator for integer division "
-                                   "is deprecated in favor of \"//\". "
-                                   "[integer-division] "
-                                   "(https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md#integer-division)")))))))))
-
 (ert-deftest bazel-mode-flymake ()
   "Unit test for the ‘bazel-mode-flymake’ Flymake backend."
   (bazel-test--with-temp-directory dir "flymake.org"
