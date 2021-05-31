@@ -41,7 +41,7 @@ execroot="$(cd "${dir:?}" && bazel --bazelrc=/dev/null info execution_root)"
 
 # We explicitly compile with the current directory set to a subdirectory to
 # ensure that workspace-relative filenames still work as expected.
-out="$(cd "${dir:?}/package" && bazel --bazelrc=/dev/null coverage //... 2>&1)"
+out="$(cd "${dir:?}/src" && bazel --bazelrc=/dev/null coverage //... 2>&1)"
 
 # Parse output to find location of coverage.dat.  The output should be
 # relatively stable,
@@ -59,7 +59,7 @@ awk -v out=bazel.out -v src=<(echo "${out:?}") \
   -f "${testdata:?}/detangle.awk" \
   -- "${org:?}" > "${dir:?}/org.tmp" || exit
 
-awk -v out=bazel-out/k8-fastbuild/testlogs/package/library_test/coverage.dat \
+awk -v out=bazel-out/k8-fastbuild/testlogs/src/test/java/example/example_test/coverage.dat \
   -v src="${dat:?}" \
   -f "${testdata:?}/detangle.awk" \
   -- "${dir:?}/org.tmp" > "${org:?}" || exit
