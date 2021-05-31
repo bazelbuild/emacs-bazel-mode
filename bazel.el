@@ -507,24 +507,25 @@ return its name.  See URL
   (save-excursion
     (goto-char (point-min))
     (cl-block nil
-      (while (progn (forward-comment (buffer-size))
-                    (re-search-forward (rx symbol-start "workspace(") nil t))
-        (forward-comment (buffer-size))
-        (unless (or (eobp) (python-syntax-comment-or-string-p))
-          (let ((begin (point))
-                (end (progn (python-nav-end-of-statement) (point))))
-            (goto-char begin)
-            (while (progn (forward-comment (buffer-size))
-                          (re-search-forward
-                           (rx symbol-start "name" (* blank) ?= (* blank)
-                               (group (any ?\" ?\'))
-                               (group (+ (any "a-z" "A-Z" "0-9" ?_ ?- ?.)))
-                               (backref 1))
-                           end t))
-              (let ((name (match-string-no-properties 2)))
-                (unless (python-syntax-comment-or-string-p)
-                  (cl-return name))))
-            (goto-char end)))))))
+      (let ((case-fold-search nil))
+        (while (progn (forward-comment (buffer-size))
+                      (re-search-forward (rx symbol-start "workspace(") nil t))
+          (forward-comment (buffer-size))
+          (unless (or (eobp) (python-syntax-comment-or-string-p))
+            (let ((begin (point))
+                  (end (progn (python-nav-end-of-statement) (point))))
+              (goto-char begin)
+              (while (progn (forward-comment (buffer-size))
+                            (re-search-forward
+                             (rx symbol-start "name" (* blank) ?= (* blank)
+                                 (group (any ?\" ?\'))
+                                 (group (+ (any "a-z" "A-Z" "0-9" ?_ ?- ?.)))
+                                 (backref 1))
+                             end t))
+                (let ((name (match-string-no-properties 2)))
+                  (unless (python-syntax-comment-or-string-p)
+                    (cl-return name))))
+              (goto-char end))))))))
 
 ;;;; ‘bazelrc-mode’
 
@@ -1188,7 +1189,8 @@ successfully.  This function is suitable for
   (when (and bazel-display-coverage (buffer-live-p buffer)
              (string-equal message "finished\n"))
     (with-current-buffer buffer
-      (let ((remote (file-remote-p default-directory))
+      (let ((case-fold-search (file-name-case-insensitive-p default-directory))
+            (remote (file-remote-p default-directory))
             (files ()))
         (when (or (not remote) (eq bazel-display-coverage t))
           ;; First collect potential coverage files.  If there are none (typical
@@ -1233,26 +1235,27 @@ hashtable that maps buffers to hashtables that in turn map line
 numbers to hit counts.  The function walks over the coverage
 information in the current buffer and fills in COVERAGE."
   ;; See the manual page of ‘geninfo’ for a description of the coverage format.
-  (while (re-search-forward (rx bol "SF:" (group (+ nonl)) eol) nil t)
-    (let ((begin (line-beginning-position 2))
-          (file (expand-file-name (match-string-no-properties 1) root)))
-      (when-let ((end (re-search-forward (rx bol "end_of_record" eol) nil t))
-                 ;; Only collect coverage for files that are visited in some
-                 ;; buffer.
-                 (buffer (find-buffer-visiting file)))
-        (goto-char begin)
-        (while (re-search-forward (rx bol "DA:" (group (+ digit)) ?,
-                                      (group (+ digit)) (? ?, (+ nonl)) eol)
-                                  end t)
-          (let ((line (cl-the natnum (string-to-number
-                                      (match-string-no-properties 1))))
-                (hits (cl-the natnum (string-to-number
-                                      (match-string-no-properties 2))))
-                ;; DATA maps line numbers to hit counts for the current file.
-                (data (or (gethash buffer coverage)
-                          (puthash buffer (make-hash-table :test #'eql)
-                                   coverage))))
-            (cl-incf (gethash line data 0) hits)))))))
+  (let ((case-fold-search nil))
+    (while (re-search-forward (rx bol "SF:" (group (+ nonl)) eol) nil t)
+      (let ((begin (line-beginning-position 2))
+            (file (expand-file-name (match-string-no-properties 1) root)))
+        (when-let ((end (re-search-forward (rx bol "end_of_record" eol) nil t))
+                   ;; Only collect coverage for files that are visited in some
+                   ;; buffer.
+                   (buffer (find-buffer-visiting file)))
+          (goto-char begin)
+          (while (re-search-forward (rx bol "DA:" (group (+ digit)) ?,
+                                        (group (+ digit)) (? ?, (+ nonl)) eol)
+                                    end t)
+            (let ((line (cl-the natnum (string-to-number
+                                        (match-string-no-properties 1))))
+                  (hits (cl-the natnum (string-to-number
+                                        (match-string-no-properties 2))))
+                  ;; DATA maps line numbers to hit counts for the current file.
+                  (data (or (gethash buffer coverage)
+                            (puthash buffer (make-hash-table :test #'eql)
+                                     coverage))))
+              (cl-incf (gethash line data 0) hits))))))))
 
 (defun bazel--display-coverage (buffer coverage)
   "Add overlays for coverage information in BUFFER.
