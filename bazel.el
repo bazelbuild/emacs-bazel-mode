@@ -1563,8 +1563,27 @@ COMMAND is a Bazel command to be included in the minibuffer prompt."
          (prompt (combine-and-quote-strings
                   `(,@bazel-command "--" ,command "")))
          (table (bazel--target-completion-table workspace-root package-name
-                                                :pattern)))
-    (completing-read prompt table)))
+                                                :pattern))
+         (default (bazel--target-completion-default
+                   buffer-file-name workspace-root package-name)))
+    (completing-read prompt table nil nil nil nil default)))
+
+(defun bazel--target-completion-default (source-file root package)
+  "Return default completion target for SOURCE-FILE.
+ROOT is the workspace root directory, and PACKAGE is the package
+name.  Return nil if SOURCE-FILE is nil or no suitable default
+target was found."
+  (cl-check-type source-file (or string null))
+  (cl-check-type root string)
+  (cl-check-type package string)
+  (when source-file
+    (let* ((directory (file-name-as-directory (expand-file-name package root)))
+           (relative-file (file-relative-name source-file directory))
+           (case-fold-file (file-name-case-insensitive-p source-file)))
+      (when-let* ((build-file (bazel--locate-build-file directory))
+                  (rule (bazel--consuming-rule build-file relative-file
+                                               case-fold-file)))
+        (bazel--canonical nil package rule)))))
 
 ;;;; Language-specific support
 
