@@ -480,8 +480,12 @@ the rule."
     ;; ‘try-completion’, ‘all-completions’, and ‘test-completion’, respectively.
     ;; BOUND is the expected prefix completion bound returned by
     ;; ‘completion-bounds’.
-    (dolist (case '(("" nil "" ("test" "test.cc" "//" "@") nil 0)
-                    ("" t "" ("test" ":all" ":all-targets" ":*" "..." "//" "@")
+    (dolist (case '(("" nil ""
+                     ("test" "foo_test" "foo_test.py" "test.cc" "//" "@")
+                     nil 0)
+                    ("" t ""
+                     ("test" "foo_test" ":all" ":all-targets" ":*" "..."
+                      "//" "@")
                      nil 0)
                     ("te" nil "test" ("test" "test.cc") nil 0)
                     ("te" t "test" ("test") nil 0)
@@ -490,8 +494,10 @@ the rule."
                     ("test.c" nil "test.cc" ("test.cc") nil 0)
                     ("test.c" t nil () nil 0)
                     ("a" * nil () nil 0)
-                    (":" t ":" ("test" "all" "all-targets" "*") nil 1)
-                    (":" nil ":test" ("test" "test.cc") nil 1)
+                    (":" t ":" ("test" "foo_test" "all" "all-targets" "*")
+                     nil 1)
+                    (":" nil ":" ("test" "foo_test" "foo_test.py" "test.cc")
+                     nil 1)
                     (":te" nil ":test" ("test" "test.cc") nil 1)
                     (":te" t ":test" ("test") nil 1)
                     (":test" nil ":test" ("test" "test.cc") t 1)
@@ -511,8 +517,10 @@ the rule."
                     ("/" * "//" ("//") nil 0)
                     ("//" nil "//:" (":") nil 2)
                     ("//" t "//" (":" "...") nil 2)
-                    ("//:" nil "//:test" ("test" "test.cc") nil 3)
-                    ("//:" t "//:" ("test" "all" "all-targets" "*") nil 3)
+                    ("//:" nil "//:" ("test" "foo_test" "foo_test.py" "test.cc")
+                     nil 3)
+                    ("//:" t "//:" ("test" "foo_test" "all" "all-targets" "*")
+                     nil 3)
                     ("//:te" nil "//:test" ("test" "test.cc") nil 3)
                     ("//:te" t "//:test" ("test") nil 3)
                     ("//:test" nil "//:test" ("test" "test.cc") t 3)
@@ -537,7 +545,45 @@ the rule."
       (cl-destructuring-bind (string pattern try all test bound) case
         (dolist (pattern (if (eq pattern '*) '(nil t) (list pattern)))
           (ert-info ((if pattern "yes" "no") :prefix "Pattern completion: ")
-            (let ((table (bazel--target-completion-table dir "" pattern)))
+            (let ((table (bazel--target-completion-table dir "" pattern nil)))
+              (ert-info ((prin1-to-string string) :prefix "Input: ")
+                (should (equal (try-completion string table) try))
+                (should (equal (all-completions string table) all))
+                (should (eq (test-completion string table) test))
+                (should (equal (completion-boundaries string table nil "suffix")
+                               (cons bound 6)))))))))
+    ;; The test cases are of the form (STRING ONLY-TESTS TRY ALL TEST BOUND).
+    ;; STRING is the input string.  ONLY-TESTS specifies whether to restrict the
+    ;; search to test rules; if TEST-ONLY is ‘*’, try both with and without this
+    ;; restriction.  TRY, ALL, and TEST are the expected results of
+    ;; ‘try-completion’, ‘all-completions’, and ‘test-completion’, respectively.
+    ;; BOUND is the expected prefix completion bound returned by
+    ;; ‘completion-bounds’.
+    (dolist (case '(("" nil ""
+                     ("test" "foo_test" ":all" ":all-targets" ":*" "..."
+                      "//" "@")
+                     nil 0)
+                    ("" t ""
+                     ("foo_test" ":all" ":all-targets" ":*" "..." "//" "@")
+                     nil 0)
+                    ("te" nil "test" ("test") nil 0)
+                    ("te" t nil () nil 0)
+                    ("fo" * "foo_test" ("foo_test") nil 0)
+                    ("a" * nil () nil 0)
+                    (":" nil ":" ("test" "foo_test" "all" "all-targets" "*")
+                     nil 1)
+                    (":" t ":" ("foo_test" "all" "all-targets" "*") nil 1)
+                    (":f" * ":foo_test" ("foo_test") nil 1)
+                    (":te" nil ":test" ("test") nil 1)
+                    (":te" t nil () nil 1)
+                    (":test" nil t ("test") t 1)
+                    (":test" t nil () nil 1)
+                    (":a" * ":all" ("all" "all-targets") nil 1)))
+      (cl-destructuring-bind (string only-tests try all test bound) case
+        (dolist (only-tests (if (eq only-tests '*) '(nil t) (list only-tests)))
+          (ert-info ((if only-tests "yes" "no") :prefix "Only tests: ")
+            (let ((table (bazel--target-completion-table dir "" :pattern
+                                                         only-tests)))
               (ert-info ((prin1-to-string string) :prefix "Input: ")
                 (should (equal (try-completion string table) try))
                 (should (equal (all-completions string table) all))
@@ -627,8 +673,8 @@ the rule."
             (should (consp packages))
             (dolist (package packages)
               (ert-info ((prin1-to-string package) :prefix "Package: ")
-                (let ((table
-                       (bazel--target-completion-table dir package :pattern)))
+                (let ((table (bazel--target-completion-table dir package
+                                                             :pattern nil)))
                   (should (equal (try-completion string table) try))
                   (should (equal (all-completions string table) all))
                   (should (eq (test-completion string table) test))
@@ -764,6 +810,11 @@ in ‘bazel-mode’."
 
 (ert-deftest bazel-test-at-point ()
   (bazel-test--with-temp-directory dir "test-at-point-elisp.org"
+    (bazel-test--with-file-buffer (expand-file-name "foo.el" dir)
+      (let ((case-fold-search nil))
+        (re-search-forward (rx bol "(ert-deftest foo/not-really-a-test ()"))
+        ;; Point is on a test case, but the consuming rule is not a test rule.
+        (should-error (bazel-test-at-point) :type 'user-error)))
     (bazel-test--with-file-buffer (expand-file-name "foo-test.el" dir)
       (cl-letf* ((case-fold-search nil)
                  (commands ())
@@ -1086,7 +1137,7 @@ in ‘bazel-mode’."
 (ert-deftest bazel-test/completion ()
   "Test completion for ‘bazel-test’."
   (bazel-test--with-temp-directory dir "target-completion-root.org"
-    (bazel-test--with-file-buffer (expand-file-name "test.cc" dir)
+    (bazel-test--with-file-buffer (expand-file-name "foo_test.py" dir)
       (cl-letf* ((completing-read-args ())
                  (completing-read-function
                   (lambda (&rest args)
@@ -1099,7 +1150,7 @@ in ‘bazel-mode’."
         (call-interactively #'bazel-test)
         (pcase completing-read-args
           (`(("bazel -- test " ,_ nil nil nil bazel-target-history
-              "//:test" nil)))
+              "//:foo_test" nil)))
           (_ (ert-fail (list "Invalid arguments to ‘completing-read’"
                              completing-read-args))))
         (should (equal compile-commands '("bazel test -- \\:test")))))))

@@ -834,7 +834,7 @@ IDENTIFIER should be an XRef identifier returned by
               (root (bazel--workspace-root file-name))
               (directory (bazel--package-directory file-name root))
               (package (bazel--package-name directory root)))
-    (bazel--target-completion-table root package nil)))
+    (bazel--target-completion-table root package nil nil)))
 
 (defun bazel-show-consuming-rule ()
   "Find the definition of the rule consuming the current file.
@@ -856,9 +856,9 @@ file."
                          (user-error "No BUILD file found")))
          (relative-file (file-relative-name source-file directory))
          (case-fold-file (file-name-case-insensitive-p source-file))
-         (rule
-          (or (bazel--consuming-rule build-file relative-file case-fold-file)
-              (user-error "No rule for file %s found" relative-file)))
+         (rule (or (bazel--consuming-rule build-file relative-file
+                                          case-fold-file nil)
+                   (user-error "No rule for file %s found" relative-file)))
          ;; We press ‘xref-find-definitions’ into service for finding and
          ;; showing the rule.  For that to work, our Xref backend must be found
          ;; unconditionally.
@@ -893,10 +893,11 @@ In any case, return the value of the last BODY form."
                (insert-file-contents ,filename)
                (,function nil))))))))
 
-(defun bazel--consuming-rule (build-file source-file case-fold-file)
+(defun bazel--consuming-rule (build-file source-file case-fold-file only-tests)
   "Return the name of the rule in BUILD-FILE that consumes SOURCE-FILE.
 If CASE-FOLD-FILE is non-nil, ignore filename case when
-searching.  Return nil if no consuming rule was found."
+searching.  If ONLY-TESTS is non-nil, look only for test rules.
+Return nil if no consuming rule was found."
   (cl-check-type build-file string)
   (cl-check-type source-file string)
   ;; Prefer a buffer that’s already visiting BUILD-FILE.
@@ -920,12 +921,13 @@ searching.  Return nil if no consuming rule was found."
             (let ((begin (match-beginning 0))
                   (end (match-end 0)))
               (goto-char begin)
-              (python-nav-up-list -1)
+              (python-nav-up-list -1)  ; move to start of attribute value
               (when (looking-back
                      (rx symbol-start "srcs" (* blank) ?= (* blank))
                      (line-beginning-position))
                 (when-let ((rule-name (bazel-mode-current-rule-name)))
-                  (cl-return rule-name)))
+                  (when (or (not only-tests) (bazel--in-test-rule-p))
+                    (cl-return rule-name))))
               ;; Ensure we don’t loop forever if we ended up in a weird place.
               (goto-char end))))))))
 
@@ -979,7 +981,7 @@ See Info node ‘(elisp) Completion in Buffers’ for context."
                                (bazel--package-directory file-name root))
                               (package (bazel--package-name directory root)))
                     (list start end (bazel--target-completion-table
-                                     root package nil))))))))))))
+                                     root package nil nil))))))))))))
 
 (defun bazel--file-location (filename)
   "Return an ‘xref-location’ for the source file FILENAME."
@@ -1058,10 +1060,11 @@ or change the buffer state permanently."
                                  (line-number-at-pos)
                                  (- (point) (line-beginning-position)))))))
 
-(defun bazel--complete-rules (prefix)
+(defun bazel--complete-rules (prefix only-tests)
   "Find all rules starting with the given PREFIX in the current buffer.
 The current buffer should visit a BUILD file.  Return a list of
-rule names that start with PREFIX."
+rule names that start with PREFIX.  If ONLY-TESTS is non-nil,
+restrict the returned rules to test targets."
   (cl-check-type prefix string)
   (when (derived-mode-p 'bazel-mode)
     (let ((case-fold-search nil)
@@ -1078,8 +1081,19 @@ rule names that start with PREFIX."
                        (backref 1))
                  :no-group)
                 nil t)
-          (push (match-string-no-properties 2) rules)))
+          (let ((name (match-string-no-properties 2)))
+            (when (or (not only-tests) (bazel--in-test-rule-p))
+              (push name rules)))))
       (nreverse rules))))
+
+(defun bazel--in-test-rule-p ()
+  "Return non-nil if point is probably in a test rule."
+  (save-excursion
+    ;; A rule is a test rule if and only if its class name ends in “_test”.  See
+    ;; https://docs.bazel.build/versions/4.1.0/skylark/rules.html#executable-rules-and-test-rules.
+    (python-nav-beginning-of-statement)
+    (looking-at-p (rx symbol-start (+ (or (syntax word) (syntax symbol)))
+                      "_test" (* blank) ?\())))
 
 ;;;; Finding BUILD and WORKSPACE files
 
@@ -1634,7 +1648,7 @@ Return nil if no .bazelignore file exists."
 
 (defun bazel-build (target)
   "Build a Bazel TARGET."
-  (interactive (list (bazel--read-target-pattern "build")))
+  (interactive (list (bazel--read-target-pattern "build" nil)))
   (cl-check-type target string)
   (bazel--run-bazel-command "build" target)
   nil)
@@ -1652,14 +1666,14 @@ Return nil if no .bazelignore file exists."
 
 (defun bazel-run (target)
   "Build and run a Bazel TARGET."
-  (interactive (list (bazel--read-target-pattern "run")))
+  (interactive (list (bazel--read-target-pattern "run" nil)))
   (cl-check-type target string)
   (bazel--run-bazel-command "run" target)
   nil)
 
 (defun bazel-test (target)
   "Build and run a Bazel test TARGET."
-  (interactive (list (bazel--read-target-pattern "test")))
+  (interactive (list (bazel--read-target-pattern "test" :only-tests)))
   (cl-check-type target string)
   (bazel--run-bazel-command "test" target)
   nil)
@@ -1679,9 +1693,9 @@ Return nil if no .bazelignore file exists."
                          (user-error "No BUILD file found")))
          (relative-file (file-relative-name source-file directory))
          (case-fold-file (file-name-case-insensitive-p source-file))
-         (rule
-          (or (bazel--consuming-rule build-file relative-file case-fold-file)
-              (user-error "No rule for file %s found" relative-file)))
+         (rule (or (bazel--consuming-rule build-file relative-file
+                                          case-fold-file :only-tests)
+                   (user-error "No rule for file %s found" relative-file)))
          (name
           (or (run-hook-with-args-until-success 'bazel-test-at-point-functions)
               (user-error "Point is not on a test case"))))
@@ -1691,7 +1705,7 @@ Return nil if no .bazelignore file exists."
 
 (defun bazel-coverage (target)
   "Run Bazel test TARGET with coverage instrumentation enabled."
-  (interactive (list (bazel--read-target-pattern "coverage")))
+  (interactive (list (bazel--read-target-pattern "coverage" :only-tests)))
   (cl-check-type target string)
   (bazel--run-bazel-command "coverage" target)
   nil)
@@ -1711,7 +1725,7 @@ COMMAND is a Bazel command such as \"build\" or \"run\"."
   "History for Bazel target pattern completion.
 See Info node ‘(elisp) Minibuffer History’.")
 
-(defun bazel--read-target-pattern (command)
+(defun bazel--read-target-pattern (command only-tests)
   "Read a Bazel build target pattern from the minibuffer.
 COMMAND is a Bazel command to be included in the minibuffer prompt."
   (cl-check-type command string)
@@ -1727,16 +1741,17 @@ COMMAND is a Bazel command to be included in the minibuffer prompt."
          (prompt (combine-and-quote-strings
                   `(,@bazel-command "--" ,command "")))
          (table (bazel--target-completion-table workspace-root package-name
-                                                :pattern))
+                                                :pattern only-tests))
          (default (bazel--target-completion-default
-                   buffer-file-name workspace-root package-name)))
+                   buffer-file-name workspace-root package-name only-tests)))
     (completing-read prompt table nil nil nil 'bazel-target-history default)))
 
-(defun bazel--target-completion-default (source-file root package)
+(defun bazel--target-completion-default (source-file root package only-tests)
   "Return default completion target for SOURCE-FILE.
 ROOT is the workspace root directory, and PACKAGE is the package
-name.  Return nil if SOURCE-FILE is nil or no suitable default
-target was found."
+name.  If ONLY-TESTS is non-nil, look only for test rules.
+Return nil if SOURCE-FILE is nil or no suitable default target
+was found."
   (cl-check-type source-file (or string null))
   (cl-check-type root string)
   (cl-check-type package string)
@@ -1746,7 +1761,7 @@ target was found."
            (case-fold-file (file-name-case-insensitive-p source-file)))
       (when-let* ((build-file (bazel--locate-build-file directory))
                   (rule (bazel--consuming-rule build-file relative-file
-                                               case-fold-file)))
+                                               case-fold-file only-tests)))
         (bazel--canonical nil package rule)))))
 
 ;;;; Language-specific support
@@ -1937,7 +1952,7 @@ MAIN-ROOT should be the main workspace root as returned by
       ;; If there’s no external workspace directory, don’t signal an error.
       (file-missing nil))))
 
-(defun bazel--target-completion-table (root package pattern)
+(defun bazel--target-completion-table (root package pattern only-tests)
   "Return a completion table for Bazel targets and target patterns.
 See URL
 ‘https://docs.bazel.build/versions/4.0.0/guide.html#specifying-targets-to-build’
@@ -1947,7 +1962,8 @@ completion table that can be passed to ‘completing-read’.  See
 Info node ‘(elisp) Basic Completion’ for more information about
 completion tables.  The completion is not exact and only includes
 potential packages and rules.  If PATTERN is non-nil, complete
-target patterns and skip files."
+target patterns and skip files.  If ONLY-TESTS is non-nil,
+restrict rule target completion to test targets."
   (cl-check-type root string)
   (cl-check-type package string)
   ;; We return a completion function so that we don’t have to find all targets
@@ -1960,14 +1976,17 @@ target patterns and skip files."
       ;; provided prefix pattern.
       (complete-with-action
        action
-       (bazel--target-completion-table-1 root package pattern string)
+       (bazel--target-completion-table-1 root package pattern only-tests
+                                         string)
        string predicate))))
 
-(defun bazel--target-completion-table-1 (root package pattern string)
+(defun bazel--target-completion-table-1
+    (root package pattern only-tests string)
   "Return a completion table completing STRING to a Bazel target or pattern.
 ROOT is the workspace root directory, and PACKAGE is the current
 package name.  If PATTERN is non-nil, complete target patterns
-and skip files.  This is a helper function for
+and skip files.  If ONLY-TESTS is non-nil, restrict rule target
+completion to test targets.  This is a helper function for
 ‘bazel--target-completion-table’."
   (cl-check-type root string)
   (cl-check-type package string)
@@ -1983,7 +2002,8 @@ and skip files.  This is a helper function for
      ;; since these are the most common patterns.  Also offer “@” to select
      ;; external workspaces.
      (completion-table-merge
-      (bazel--target-completion-table-2 root nil package pattern :colon)
+      (bazel--target-completion-table-2 root nil package pattern only-tests
+                                        :colon)
       ;; Relative subpackages are only allowed in target patterns.
       (when pattern
         (bazel--target-package-completion-table root nil package pattern))
@@ -2041,7 +2061,8 @@ and skip files.  This is a helper function for
      ;; Absolute target label prefix, including the colon.  Must complete to a
      ;; target label.
      (bazel--completion-table-with-prefix prefix
-       (bazel--target-completion-table-2 root workspace package pattern nil)))
+       (bazel--target-completion-table-2 root workspace package pattern
+                                         only-tests nil)))
     ((rx bos
          ;; Can’t use ‘(? … (let …))’ due to Bug#44532.
          (let prefix (opt ?@ (let workspace (+ (not (any ?: ?/))))) "//")
@@ -2054,7 +2075,8 @@ and skip files.  This is a helper function for
     ((rx bos (let prefix ?:) (* (not (any ?:))) eos)
      ;; Target pattern relative to the current package.
      (bazel--completion-table-with-prefix prefix
-       (bazel--target-completion-table-2 root nil package pattern nil)))
+       (bazel--target-completion-table-2 root nil package pattern
+                                         only-tests nil)))
     ((rx bos (+ (not (any ?:))) ?/ eos)
      ;; Subpackage or subdirectory of the current package followed by a slash.
      ;; Normally followed by another package name or wildcard, but can also be a
@@ -2062,7 +2084,8 @@ and skip files.  This is a helper function for
      ;; differs between target patterns and labels in BUILD files.
      (if pattern
          (bazel--target-package-completion-table root nil package pattern)
-       (bazel--target-completion-table-2 root nil package pattern nil)))
+       (bazel--target-completion-table-2 root nil package pattern
+                                         only-tests nil)))
     ((rx bos
          (let prefix (let subpackage (+ (not (any ?:)))) ?:)
          (* (not (any ?:)))
@@ -2074,12 +2097,14 @@ and skip files.  This is a helper function for
                           subpackage
                         (concat package "/" subpackage))))
          (bazel--completion-table-with-prefix prefix
-           (bazel--target-completion-table-2 root nil package pattern nil)))))
+           (bazel--target-completion-table-2 root nil package pattern
+                                             only-tests nil)))))
     ((rx bos (+ (not (any ?:))) eos)
      ;; Something else, could be either a target or a subpackage of the current
      ;; package.  Prefer targets.
      (completion-table-merge
-      (bazel--target-completion-table-2 root nil package pattern :colon)
+      (bazel--target-completion-table-2 root nil package pattern only-tests
+                                        :colon)
       (when pattern
         (bazel--target-package-completion-table root nil package pattern))))))
 
@@ -2202,14 +2227,16 @@ This is a helper function for
              `(boundaries 0 . ,(string-match-p (rx (any ?/ ?:)) suffix))))
         (file-error nil)))))
 
-(defun bazel--target-completion-table-2 (root workspace package pattern colon)
+(defun bazel--target-completion-table-2
+    (root workspace package pattern only-tests colon)
   "Return a completion table for Bazel targets or target patterns.
 ROOT is the main workspace root, WORKSPACE is the external
 workspace name or nil for the main workspace, and PACKAGE is the
 package name within the workspace.  If PATTERN is non-nil,
 complete target patterns, include target wildcards like “:all”,
-and skip files.  If COLON is non-nil, prefix the wildcards with a
-colon.  This is a helper function for
+and skip files.  If ONLY-TESTS is non-nil, restrict rule target
+completion to test targets.  If COLON is non-nil, prefix the
+wildcards with a colon.  This is a helper function for
 ‘bazel--target-completion-table’."
   (cl-check-type root string)
   (cl-check-type workspace (or null string))
@@ -2231,7 +2258,7 @@ colon.  This is a helper function for
            (bazel--with-file-buffer existing build-file
              ;; ‘bazel--complete-rules’ only works in ‘bazel-mode’.
              (unless existing (bazel-build-mode))
-             (bazel--complete-rules prefix))
+             (bazel--complete-rules prefix only-tests))
            (unless pattern
              ;; Include source files only if we’re not completing a target
              ;; pattern.  Building a source file makes no sense.

@@ -22,8 +22,21 @@
       srcs = ["test.cc"],
       deprecation = "Deprecated!",
   )
+
+  py_test(
+      name = "foo_test",
+      srcs = ["foo_test.py"],
+  )
 #+end_src
 
 #+begin_src C++ :tangle test.cc
   UnknownType foo;
+#+end_src
+
+#+begin_src python :tangle foo_test.py
+  import unittest
+
+  class FooTest(unittest.TestCase):
+      def testFoo(self):
+          self.assertEquals(1, 2)
 #+end_src
