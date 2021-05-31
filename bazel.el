@@ -989,7 +989,8 @@ directories and BUILD files."
   (let ((files ()))
     (dolist (filename (file-name-all-completions prefix default-directory))
       (and (not (directory-name-p filename))
-           (not (member filename '("BUILD" "BUILD.bazel" "WORKSPACE")))
+           (not (member filename '("BUILD" "BUILD.bazel"
+                                   "WORKSPACE" "WORKSPACE.bazel")))
            (not (equal (file-name-extension filename) "BUILD"))
            (not (string-prefix-p "bazel-" filename))
            (file-regular-p filename)
