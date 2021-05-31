@@ -1227,8 +1227,9 @@ successfully.  This function is suitable for
           ;; Only continue if we’re in a Bazel workspace.
           (when-let ((root (bazel--workspace-root default-directory)))
             ;; COVERAGE maps buffers to hashtables that in turn map line numbers
-            ;; to hit counts.  We first collect coverage information into this
-            ;; hashtable to correctly deal with duplicate file sections.
+            ;; to ‘bazel--coverage’ structures.  We first collect coverage
+            ;; information into this hashtable to correctly deal with duplicate
+            ;; file sections.
             (let ((coverage (make-hash-table :test #'eq)))
               (dolist (file files)
                 (with-temp-buffer
@@ -1240,47 +1241,109 @@ successfully.  This function is suitable for
                     (bazel--parse-coverage root coverage))))
               (maphash #'bazel--display-coverage coverage))))))))
 
+(cl-defstruct (bazel--coverage (:constructor bazel--make-coverage)
+                               (:copier nil))
+  "Coverage information for a single line."
+  (hits nil
+        :type natnum
+        :documentation "Number of times this line was hit.")
+  (blocks nil
+          :type (or null hash-table)
+          :documentation "Hashtable mapping block indices to
+hashtables mapping branch indices to branch hit counts (or nil,
+for unevaluated blocks)."))
+
 (defun bazel--parse-coverage (root coverage)
   "Parse coverage information in the current buffer.
 ROOT is the Bazel workspace root directory.  COVERAGE is a
 hashtable that maps buffers to hashtables that in turn map line
-numbers to hit counts.  The function walks over the coverage
-information in the current buffer and fills in COVERAGE."
+numbers ‘bazel--coverage’ structures.  The function walks over
+the coverage information in the current buffer and fills in
+COVERAGE."
   ;; See the manual page of ‘geninfo’ for a description of the coverage format.
   (let ((case-fold-search nil))
     (while (re-search-forward (rx bol "SF:" (group (+ nonl)) eol) nil t)
       (let ((begin (line-beginning-position 2))
-            (file (expand-file-name (match-string-no-properties 1) root)))
+            (file (expand-file-name (match-string-no-properties 1) root))
+            ;; DATA is a hashtable mapping line numbers to ‘bazel--coverage’
+            ;; structures for the current file.  It’s initialized lazily.
+            (data nil))
         (when-let ((end (re-search-forward (rx bol "end_of_record" eol) nil t))
                    ;; Only collect coverage for files that are visited in some
                    ;; buffer.
                    (buffer (find-buffer-visiting file)))
+          ;; Collect line coverage data.
           (goto-char begin)
           (while (re-search-forward (rx bol "DA:" (group (+ digit)) ?,
                                         (group (+ digit)) (? ?, (+ nonl)) eol)
                                     end t)
-            (let ((line (cl-the natnum (string-to-number
-                                        (match-string-no-properties 1))))
-                  (hits (cl-the natnum (string-to-number
-                                        (match-string-no-properties 2))))
-                  ;; DATA maps line numbers to hit counts for the current file.
-                  (data (or (gethash buffer coverage)
-                            (puthash buffer (make-hash-table :test #'eql)
-                                     coverage))))
-              (cl-incf (gethash line data 0) hits)))
+            (let ((line (bazel--match-natnum 1))
+                  (hits (bazel--match-natnum 2)))
+              (setq data (or (gethash buffer coverage)
+                             (puthash buffer (make-hash-table :test #'eql)
+                                      coverage)))
+              (if-let ((info (gethash line data)))
+                  (cl-incf (bazel--coverage-hits info) hits)
+                (puthash line (bazel--make-coverage :hits hits) data))))
+          ;; Collect branch coverage data, but only if we have any coverage data
+          ;; for this buffer.
+          (when data
+            (goto-char begin)
+            (while (re-search-forward (rx bol "BRDA:"
+                                          (group (+ digit)) ?, ; line number
+                                          (group (+ digit)) ?, ; block number
+                                          (group (+ digit)) ?, ; branch number
+                                          (or ?- (group (+ digit))) ; taken
+                                          eol)
+                                      end t)
+              (let* ((line (bazel--match-natnum 1))
+                     (block (bazel--match-natnum 2))
+                     (branch (bazel--match-natnum 3))
+                     (executedp (match-beginning 4))
+                     (taken (and executedp (bazel--match-natnum 4))))
+                ;; Ignore branch coverage for uncovered lines.
+                (when-let ((coverage (gethash line data)))
+                  (let* ((blocks (or (bazel--coverage-blocks coverage)
+                                     (setf (bazel--coverage-blocks coverage)
+                                           (make-hash-table :test #'eql))))
+                         (branches (or (gethash block blocks)
+                                       (puthash block
+                                                (make-hash-table :test #'eql)
+                                                blocks)))
+                         (previous (gethash branch branches))
+                         (new (if (and previous taken)
+                                  (+ previous taken)
+                                (or previous taken))))
+                    (puthash branch new branches))))))
           (goto-char end))))))
+
+(defun bazel--match-natnum (index)
+  "Return the natural number matched by the subgroup INDEX.
+Return 0 if the subgroup match isn’t an integer."
+  (declare (side-effect-free t))
+  (cl-check-type index natnum)
+  (cl-the natnum (string-to-number (match-string-no-properties index))))
 
 (defun bazel--display-coverage (buffer coverage)
   "Add overlays for coverage information in BUFFER.
-COVERAGE is a hashtable mapping line numbers to hit counts.
-Remove existing coverage overlays first."
+COVERAGE is a hashtable mapping line numbers to ‘bazel--coverage’
+structures.  Remove existing coverage overlays first."
+  (cl-check-type buffer buffer-live)
+  (cl-check-type coverage hash-table)
   (let ((pairs ())
-        (runs ()))
+        (runs ())
+        (some-branch-coverage nil)
+        (margin-width 20))
     (maphash
-     (lambda (line hits)
-       (let ((face
-              (if (cl-plusp hits) 'bazel-covered-line 'bazel-uncovered-line)))
-         (push (cons line face) pairs)))
+     (lambda (line coverage)
+       (cl-check-type line natnum)
+       (cl-check-type coverage bazel--coverage)
+       (let ((face (if (cl-plusp (bazel--coverage-hits coverage))
+                       'bazel-covered-line
+                     'bazel-uncovered-line))
+             (branches (when-let ((blocks (bazel--coverage-blocks coverage)))
+                         (bazel--branch-coverage-string blocks))))
+         (push (list line face branches) pairs)))
      coverage)
     (cl-callf sort pairs #'car-less-than-car)
     ;; The Emacs Lisp manual cautions that overlays don’t scale well; see Info
@@ -1292,7 +1355,7 @@ Remove existing coverage overlays first."
                for tail on (cdr pairs)
                for (j . g) = (car tail)
                for k from (1+ i)  ; expected line number for the next element
-               while (and (eq f g) (eql j k))  ; stop as soon as run ends
+               while (and (equal f g) (eql j k))  ; stop as soon as run ends
                finally (push (list f i (1- k)) runs) (setq pairs tail)))
     (cl-callf nreverse runs)
     (with-current-buffer buffer
@@ -1303,7 +1366,7 @@ Remove existing coverage overlays first."
         ;; We first remove existing coverage overlays because they are likely
         ;; stale.
         (bazel-remove-coverage-display)
-        (cl-loop for (face i j) in runs
+        (cl-loop for ((face branches) i j) in runs
                  ;; Choose overlay positions and stickiness so that inserting
                  ;; text before or after a run doesn’t appear to extend the
                  ;; covered region.
@@ -1314,7 +1377,77 @@ Remove existing coverage overlays first."
                  ;; Add ‘category’ property to find the overlays later (see
                  ;; ‘bazel-remove-coverage-display’).
                  (overlay-put o 'category 'bazel-coverage)
-                 (overlay-put o 'face face))))))
+                 (overlay-put o 'face face)
+                 (when branches
+                   (bazel--add-left-margin
+                    (truncate-string-to-width branches margin-width nil nil "…")
+                    o)
+                   (setq some-branch-coverage t))))
+      (when (and some-branch-coverage (< left-margin-width margin-width))
+        (setq left-margin-width margin-width)
+        ;; Force margin update; see Info node ‘(elisp) Display Margins’.
+        (dolist (window (get-buffer-window-list buffer nil t))
+          (set-window-buffer window buffer))))))
+
+(defun bazel--branch-coverage-string (block-table)
+  "Return a branch coverage information string for BLOCK-TABLE.
+BLOCK-TABLE must be a hashtable mapping block indices to
+hashtables mapping branch indices to branch hit counts (or nil,
+for unevaluated blocks).  The returned string is suitable for
+display in the buffer margins.  Return nil if there’s no branch
+coverage data in BLOCK-TABLE.
+See Info node ‘(elisp) Display Margins’."
+  (cl-check-type block-table hash-table)
+  ;; Extract block and branch information into association lists, and sort them
+  ;; for stability.
+  (let ((block-list ())
+        (plus (propertize "+" 'face 'bazel-covered-line))
+        (minus (propertize "−" 'face 'bazel-uncovered-line)))
+    (maphash
+     (lambda (block-index branch-table)
+       (cl-check-type block-index natnum)
+       (cl-check-type branch-table hash-table)
+       (let ((branch-list ())
+             (executedp nil))
+         (maphash
+          (lambda (branch-index hits)
+            (cl-check-type branch-index natnum)
+            (cl-check-type hits (or null natnum))
+            (push (cons branch-index hits) branch-list)
+            (when hits (setq executedp t)))
+          branch-table)
+         ;; Ignore blocks that weren’t executed at all.
+         (when executedp
+           ;; Sort by branch index, then drop the arbitrary branch indices.  We
+           ;; display branch coverage similar to the output of ‘geninfo’: a plus
+           ;; sign for a covered branch, a minus sign for an uncovered branch,
+           ;; and a question mark for a branch in a basic block that was never
+           ;; executed.  The latter case shouldn’t really happen in practice
+           ;; since we drop unexecuted blocks in ‘bazel--parse-coverage’.
+           (let ((string (cl-loop for (_ . hits) in (sort branch-list
+                                                          #'car-less-than-car)
+                                  concat (cl-case hits
+                                           (nil "?")
+                                           (0 minus)
+                                           (otherwise plus)))))
+             (push (cons block-index string) block-list)))))
+     block-table)
+    (when block-list
+      ;; Sort by block index, then drop the arbitrary block indices.
+      (mapconcat #'cdr (sort block-list #'car-less-than-car) " "))))
+
+(defun bazel--add-left-margin (string overlay)
+  "Add STRING to the left margin of the current buffer.
+Use OVERLAY to attach margin properties.  Don’t alter the display
+of the main buffer text.
+See Info node ‘(elisp) Display Margins’."
+  (cl-check-type string string)
+  (cl-check-type overlay overlay)
+  (overlay-put overlay 'before-string
+               (propertize "unused"  ; must be nonempty
+                           ;; Don’t inherit face from surrounding text.
+                           'face 'default
+                           'display `((margin left-margin) ,string))))
 
 (defun bazel-remove-coverage-display ()
   "Remove all Bazel coverage display in the current buffer.
