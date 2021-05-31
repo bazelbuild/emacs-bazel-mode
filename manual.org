@@ -156,6 +156,12 @@ or C++ files that are built with Bazel.  This functionality also attempts to
 cover files in external repositories loaded by the current workspace.  For more
 information about ~find-file-at-point~, see [[info:Emacs#FFAP][FFAP]].
 
+#+findex: bazel-find-build-file
+#+findex: bazel-find-workspace-file
+To visit the BUILD file that defines the package for the current file, run the
+command ~bazel-find-build-file~.  Similarly, to find the Bazel WORKSPACE file,
+run ~bazel-find-workspace-file~.
+
 #+findex: bazel-show-consuming-rule
 To find out which Bazel rule consumes the file that the current buffer visits,
 run the command ~bazel-show-consuming-rule~.  It will search the corresponding
