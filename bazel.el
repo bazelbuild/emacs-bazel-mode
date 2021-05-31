@@ -565,7 +565,11 @@ return its name.  See URL
   (setq-local syntax-propertize-function #'bazelignore--syntax-propertize)
   ;; Ensure that ‘syntax-propertize’ always looks at entire lines.
   (add-hook 'syntax-propertize-extend-region-functions
-            #'syntax-propertize-wholelines nil :local))
+            #'syntax-propertize-wholelines nil :local)
+  ;; .bazelignore files don’t have any keywords, but we still need to set
+  ;; ‘font-lock-defaults’ to a non-nil value to enable syntactic fontification.
+  ;; See Info node ‘(elisp) Font Lock Basics’.
+  (setq-local font-lock-defaults '(nil)))
 
 (defun bazelignore--syntax-propertize (start end)
   "Detect .bazelignore syntax between START and END.
