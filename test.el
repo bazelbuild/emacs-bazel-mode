@@ -762,6 +762,25 @@ in ‘bazel-mode’."
          (equal commands
                 '("bazel test --test_filter\\=foo/test -- //\\:foo_test")))))))
 
+(ert-deftest bazel-test-at-point/python-mode ()
+  "Test ‘bazel-test-at-point’ in ‘python-mode’."
+  (bazel-test--with-temp-directory dir "test-at-point-python.org"
+    (bazel-test--with-file-buffer (expand-file-name "py_test.py" dir)
+      (cl-letf* ((case-fold-search nil)
+                 (commands ())
+                 ((symbol-function #'compile)
+                  (lambda (command &optional _comint)
+                    (push command commands))))
+        (should-error (bazel-test-at-point) :type 'user-error)
+        (search-forward "# Test case class")
+        (bazel-test-at-point)
+        (search-forward "# Test method")
+        (bazel-test-at-point)
+        (should
+         (equal (reverse commands)
+                '("bazel test --test_filter\\=MyTest -- //\\:py_test"
+                  "bazel test --test_filter\\=MyTest.testFoo -- //\\:py_test")))))))
+
 (ert-deftest bazel-test-at-point/c++-mode ()
   "Test ‘bazel-test-at-point’ in ‘c++-mode’."
   (bazel-test--with-temp-directory dir "test-at-point-c++.org"
@@ -808,25 +827,6 @@ in ‘bazel-mode’."
          (equal (reverse commands)
                 '("bazel test --test_filter\\=\\^\\\\QTest\\\\E\\$ -- //\\:go_test"
                   "bazel test --test_filter\\=\\^\\\\QBenchmarkFoo_Bar\\\\E\\$ -- //\\:go_test")))))))
-
-(ert-deftest bazel-test-at-point/python-mode ()
-  "Test ‘bazel-test-at-point’ in ‘python-mode’."
-  (bazel-test--with-temp-directory dir "test-at-point-python.org"
-    (bazel-test--with-file-buffer (expand-file-name "py_test.py" dir)
-      (cl-letf* ((case-fold-search nil)
-                 (commands ())
-                 ((symbol-function #'compile)
-                  (lambda (command &optional _comint)
-                    (push command commands))))
-        (should-error (bazel-test-at-point) :type 'user-error)
-        (search-forward "# Test case class")
-        (bazel-test-at-point)
-        (search-forward "# Test method")
-        (bazel-test-at-point)
-        (should
-         (equal (reverse commands)
-                '("bazel test --test_filter\\=MyTest -- //\\:py_test"
-                  "bazel test --test_filter\\=MyTest.testFoo -- //\\:py_test")))))))
 
 (ert-deftest bazel-test-at-point-functions ()
   "Test that ‘which-function’ is at the end of
