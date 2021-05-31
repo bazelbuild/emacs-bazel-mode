@@ -105,7 +105,16 @@ that buffer once BODY finishes."
          (unwind-protect
              ,(macroexp-progn body)
            (dolist (buffer (buffer-list))
-             (unless (memq buffer ,buffers) (kill-buffer buffer))))))))
+             (unless (memq buffer ,buffers) (kill-buffer buffer)))))))
+
+  (defmacro bazel-test--with-suppressed-warnings (warnings &rest body)
+    "Suppress WARNINGS in BODY.
+This is the same as ‘with-suppressed-warnigns’ if available.
+Otherwise, just evaluate BODY."
+    (declare (indent 1) (debug (sexp body)))
+    (if (macrop 'with-suppressed-warnings)
+        `(with-suppressed-warnings ,warnings ,@body)
+      (macroexp-progn body))))
 
 ;;;; Unit tests
 
@@ -383,9 +392,10 @@ the rule."
       (should (file-directory-p (bazel-workspace-root project)))
       (should (bazel-test--file-equal-p (bazel-workspace-root project) dir))
       (should (bazel-test--file-equal-p (project-root project) dir))
-      (should (consp (project-roots project)))
-      (should-not (cdr (project-roots project)))
-      (should (bazel-test--file-equal-p (car (project-roots project)) dir))
+      (bazel-test--with-suppressed-warnings ((obsolete project-roots))
+        (should (consp (project-roots project)))
+        (should-not (cdr (project-roots project)))
+        (should (bazel-test--file-equal-p (car (project-roots project)) dir)))
       (should-not (project-external-roots project)))))
 
 (ert-deftest bazel/project-files ()
