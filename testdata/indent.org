@@ -27,4 +27,16 @@
           "aaa.cc",
       ] + glob(["*_test.cc"]),
   )
+
+  # A slightly more complex construct.
+  [
+      cc_binary(
+          name = name,
+          srcs = name + ".cc",
+      )
+      for name in [
+          "bin-a",
+          "bin-b",
+      ]
+  ]
 #+end_src

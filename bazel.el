@@ -345,6 +345,8 @@ This is the parent mode for the more specific modes
   (setq-local indent-line-function #'python-indent-line-function)
   (setq-local indent-region-function #'python-indent-region)
   (setq-local electric-indent-inhibit t)
+  ;; Adapt some Python indentation style variables for Bazel.
+  (setq-local python-indent-def-block-scale 1)
   ;; Treat magic comments as being separate paragraphs for filling.
   (setq-local paragraph-start
               (rx-to-string
