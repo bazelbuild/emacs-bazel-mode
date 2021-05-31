@@ -29,6 +29,10 @@ org="${testdata:?}/coverage.org"
 dir="$(mktemp -d)" || exit
 trap 'rm -r -f -- "${dir}"' EXIT
 
+# Canonicalize the directory so that the textual replacement below doesn’t
+# choke on symbolic links.
+dir="$(realpath -e -- "${dir:?}")" || exit
+
 # Set up a basic workspace layout in the temporary directory.
 emacs --quick --batch --visit="${org:?}" \
   --eval="(let ((default-directory \"${dir:?}/\")) (org-babel-tangle))" || exit
