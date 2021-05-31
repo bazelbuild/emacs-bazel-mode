@@ -1083,7 +1083,8 @@ in ‘bazel-mode’."
                     (push command compile-commands))))
         (call-interactively #'bazel-test)
         (pcase completing-read-args
-          (`(("bazel -- test " ,_ nil nil nil nil "//:test" nil)))
+          (`(("bazel -- test " ,_ nil nil nil bazel-target-history
+              "//:test" nil)))
           (_ (ert-fail (list "Invalid arguments to ‘completing-read’"
                              completing-read-args))))
         (should (equal compile-commands '("bazel test -- \\:test")))))))
