@@ -1268,7 +1268,8 @@ information in the current buffer and fills in COVERAGE."
                   (data (or (gethash buffer coverage)
                             (puthash buffer (make-hash-table :test #'eql)
                                      coverage))))
-              (cl-incf (gethash line data 0) hits))))))))
+              (cl-incf (gethash line data 0) hits)))
+          (goto-char end))))))
 
 (defun bazel--display-coverage (buffer coverage)
   "Add overlays for coverage information in BUFFER.
