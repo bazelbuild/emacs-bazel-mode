@@ -562,7 +562,10 @@ return its name.  See URL
   ;; cf. https://github.com/bazelbuild/bazel/blob/09c621e4cf5b968f4c6cdf905ab142d5961f9ddc/src/main/java/com/google/devtools/build/lib/skyframe/IgnoredPackagePrefixesFunction.java#L123.
   ;; We need to install a custom ‘syntax-propertize-function’ to deal with
   ;; this.
-  (setq-local syntax-propertize-function #'bazelignore--syntax-propertize))
+  (setq-local syntax-propertize-function #'bazelignore--syntax-propertize)
+  ;; Ensure that ‘syntax-propertize’ always looks at entire lines.
+  (add-hook 'syntax-propertize-extend-region-functions
+            #'syntax-propertize-wholelines nil :local))
 
 (defun bazelignore--syntax-propertize (start end)
   "Detect .bazelignore syntax between START and END.
