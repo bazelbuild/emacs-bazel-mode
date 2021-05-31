@@ -466,8 +466,7 @@ Return a list (NAME SHA-256 PREFIX TIME) for
            (prefix (car prefix-and-time))
            (time (cdr prefix-and-time))
            (root-dir (expand-file-name prefix archive-dir))
-           (name (when-let ((workspace (locate-file "WORKSPACE" (list root-dir)
-                                                    '(".bazel" ""))))
+           (name (when-let ((workspace (bazel--locate-workspace-file root-dir)))
                    (with-temp-buffer
                      (insert-file-contents workspace)
                      (bazel-workspace-mode)
@@ -1108,7 +1107,7 @@ rule names that start with PREFIX."
          (root (or (bazel--workspace-root source-file)
                    (user-error "File is not in a Bazel workspace")))
          (workspace-file
-          (or (locate-file "WORKSPACE" (list root) '(".bazel" ""))
+          (or (bazel--locate-workspace-file root)
               (user-error "No WORKSPACE file found"))))
     (find-file workspace-file)))
 
@@ -1652,7 +1651,7 @@ the return value is a directory name."
 (defun bazel--workspace-root-p (directory)
   "Return non-nil if DIRECTORY is a Bazel workspace root directory."
   (and (file-directory-p directory)
-       (locate-file "WORKSPACE" (list directory) '(".bazel" ""))))
+       (bazel--locate-workspace-file directory)))
 
 (defun bazel-util-package-name (file-name workspace-root)
   "Return the nearest Bazel package for FILE-NAME under WORKSPACE-ROOT.
@@ -2082,6 +2081,14 @@ Assume that STRING comes from ‘file-name-completion’ or
   ;; for prior art.
   (and (directory-name-p string)
        (not (string-prefix-p "." string))))
+
+(defun bazel--locate-workspace-file (directory)
+  "Return the file name of the Bazel WORKSPACE file in DIRECTORY.
+Return nil if DIRECTORY is not a Bazel workspace root (i.e.,
+doesn’t contain a WORKSPACE file).  DIRECTORY can be a directory
+name or directory file name."
+  (cl-check-type directory string)
+  (locate-file "WORKSPACE" (list directory) '(".bazel" "")))
 
 (defun bazel--locate-build-file (directory)
   "Return the file name of the Bazel BUILD file in DIRECTORY.
