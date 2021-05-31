@@ -1289,27 +1289,25 @@ Remove existing coverage overlays first."
                finally (push (list f i (1- k)) runs) (setq pairs tail)))
     (cl-callf nreverse runs)
     (with-current-buffer buffer
-      (save-excursion
-        (save-restriction
-          (widen)
-          (goto-char (point-min))
-          ;; See remark at the bottom of Info node ‘(elisp) Managing Overlays’.
-          (overlay-recenter (point-max))
-          ;; We first remove existing coverage overlays because they are likely
-          ;; stale.
-          (bazel-remove-coverage-display)
-          (cl-loop for (face i j) in runs
-                   ;; Choose overlay positions and stickiness so that inserting
-                   ;; text before or after a run doesn’t appear to extend the
-                   ;; covered region.
-                   for o = (make-overlay (line-beginning-position i)
-                                         (line-end-position j)
-                                         buffer :front-advance)
-                   do
-                   ;; Add ‘category’ property to find the overlays later (see
-                   ;; ‘bazel-remove-coverage-display’).
-                   (overlay-put o 'category 'bazel-coverage)
-                   (overlay-put o 'face face)))))))
+      (save-restriction
+        (widen)
+        ;; See remark at the bottom of Info node ‘(elisp) Managing Overlays’.
+        (overlay-recenter (point-max))
+        ;; We first remove existing coverage overlays because they are likely
+        ;; stale.
+        (bazel-remove-coverage-display)
+        (cl-loop for (face i j) in runs
+                 ;; Choose overlay positions and stickiness so that inserting
+                 ;; text before or after a run doesn’t appear to extend the
+                 ;; covered region.
+                 for o = (make-overlay (line-beginning-position i)
+                                       (line-end-position j)
+                                       buffer :front-advance)
+                 do
+                 ;; Add ‘category’ property to find the overlays later (see
+                 ;; ‘bazel-remove-coverage-display’).
+                 (overlay-put o 'category 'bazel-coverage)
+                 (overlay-put o 'face face))))))
 
 (defun bazel-remove-coverage-display ()
   "Remove all Bazel coverage display in the current buffer.
