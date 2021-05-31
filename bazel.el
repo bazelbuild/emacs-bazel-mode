@@ -1581,15 +1581,12 @@ COMMAND is a Bazel command to be included in the minibuffer prompt."
   (let* ((file-name
           (or buffer-file-name default-directory
               (user-error "Buffer doesn’t visit a file or directory")))
-         (workspace-root
-          (or (bazel--workspace-root file-name)
-              (user-error
-               "Not in a Bazel workspace.  No WORKSPACE file found")))
+         (workspace-root (or (bazel--workspace-root file-name)
+                             (user-error "File is not in a Bazel workspace")))
          (directory (or (bazel--package-directory file-name workspace-root)
-                        (user-error "Not in a Bazel package")))
-         (package-name
-          (or (bazel--package-name directory workspace-root)
-              (user-error "Not in a Bazel package.  No BUILD file found")))
+                        (user-error "File is not in a Bazel package")))
+         (package-name (or (bazel--package-name directory workspace-root)
+                           (user-error "File is not in a Bazel package")))
          (prompt (combine-and-quote-strings
                   `(,@bazel-command "--" ,command "")))
          (table (bazel--target-completion-table workspace-root package-name
