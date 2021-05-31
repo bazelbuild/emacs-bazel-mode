@@ -25,8 +25,8 @@ workspace="$(bazel info workspace)" || exit
 testdata="${workspace:?}/testdata"
 org="${testdata:?}/compile.org"
 
-dir="$(mktemp --directory)" || exit
-trap 'rm --recursive --force -- "${dir}"' EXIT
+dir="$(mktemp -d)" || exit
+trap 'rm -r -f -- "${dir}"' EXIT
 
 # Set up a basic workspace layout in the temporary directory.
 emacs --quick --batch --visit="${org:?}" \
@@ -48,11 +48,10 @@ out="${out//${execroot}/%ROOTDIR%}"
 
 # We can’t use ‘org-babel-detangle’ because there are no links in the tangled
 # files.
-awk --lint=fatal \
-  --assign out=bazel.out --assign src=<(echo "${out:?}") \
-  --file "${testdata:?}/detangle.awk" \
+awk -v out=bazel.out -v src=<(echo "${out:?}") \
+  -f "${testdata:?}/detangle.awk" \
   -- "${org:?}" > "${dir:?}/org.tmp" || exit
 
-cp --no-target-directory -- "${dir:?}/org.tmp" "${org:?}" || exit
+cp -- "${dir:?}/org.tmp" "${org:?}" || exit
 
 echo 'Successfully refreshed compile.org'
