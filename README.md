@@ -8,8 +8,8 @@ libraries.  You can install it by dropping the file somewhere in your
 The library provides major modes for editing Bazel [BUILD files][], [WORKSPACE
 files][], [.bazelrc files][], as well as [Starlark files][].  It also provides
 commands to [run Bazel commands][] and integration with core GNU Emacs
-infrastructure like [compilation][] and [xref][].  See the commentary in
-`bazel.el` for the full manual.
+infrastructure like [compilation][] and [xref][].  See the [manual][] for
+details.
 
 [Bazel]: https://bazel.build/
 [GNU Emacs]: https://www.gnu.org/software/emacs/
@@ -20,3 +20,4 @@ infrastructure like [compilation][] and [xref][].  See the commentary in
 [run Bazel commands]: https://docs.bazel.build/guide.html
 [compilation]: https://www.gnu.org/software/emacs/manual/html_node/emacs/Compilation.html
 [xref]: https://www.gnu.org/software/emacs/manual/html_node/emacs/Xref.html
+[manual]: manual.org
