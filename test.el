@@ -68,14 +68,14 @@ directory first using ‘bazel-test--tangle’."
           (success (make-symbol "success")))
       `(let ((,directory (make-temp-file "bazel-mode-test-" :dir-flag))
              (,success nil))
-         (ert-info (,directory :prefix "Temporary directory: "))
-         (unwind-protect
-             (prog2 (when-let ((,file ,org-file))
-                      (bazel-test--tangle ,directory ,file))
-                 (let ((,name (file-name-as-directory ,directory)))
-                   ,@body)
-               (setq ,success t))
-           (when ,success (delete-directory ,directory :recursive))))))
+         (ert-info (,directory :prefix "Temporary directory: ")
+           (unwind-protect
+               (prog2 (when-let ((,file ,org-file))
+                        (bazel-test--tangle ,directory ,file))
+                   (let ((,name (file-name-as-directory ,directory)))
+                     ,@body)
+                 (setq ,success t))
+             (when ,success (delete-directory ,directory :recursive)))))))
 
   (defmacro bazel-test--with-file-buffer (filename &rest body)
     "Visit FILENAME in a temporary buffer.
