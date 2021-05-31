@@ -1429,6 +1429,10 @@ the containing workspace.  This function is suitable for
   (when-let ((root (bazel--workspace-root directory)))
     (make-bazel-workspace :root root)))
 
+(cl-defmethod project-root ((project bazel-workspace))
+  "Return the primary root directory of the Bazel workspace PROJECT."
+  (bazel-workspace-root project))
+
 (cl-defmethod project-roots ((project bazel-workspace))
   "Return the primary root directory of the Bazel workspace PROJECT."
   (list (bazel-workspace-root project)))
