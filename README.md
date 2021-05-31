@@ -13,10 +13,10 @@ infrastructure like [compilation][] and [xref][].  See the commentary in
 
 [Bazel]: https://bazel.build/
 [GNU Emacs]: https://www.gnu.org/software/emacs/
-[BUILD files]: https://docs.bazel.build/versions/master/build-ref.html#BUILD_files
-[WORKSPACE files]: https://docs.bazel.build/versions/master/build-ref.html#packages_targets
-[.bazelrc files]: https://docs.bazel.build/versions/master/guide.html#bazelrc
-[Starlark files]: https://docs.bazel.build/versions/master/skylark/language.html
-[run Bazel commands]: https://docs.bazel.build/versions/master/guide.html
+[BUILD files]: https://docs.bazel.build/build-ref.html#BUILD_files
+[WORKSPACE files]: https://docs.bazel.build/build-ref.html#packages_targets
+[.bazelrc files]: https://docs.bazel.build/guide.html#bazelrc
+[Starlark files]: https://docs.bazel.build/skylark/language.html
+[run Bazel commands]: https://docs.bazel.build/guide.html
 [compilation]: https://www.gnu.org/software/emacs/manual/html_node/emacs/Compilation.html
 [xref]: https://www.gnu.org/software/emacs/manual/html_node/emacs/Xref.html

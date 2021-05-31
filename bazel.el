@@ -410,8 +410,7 @@ This is the parent mode for the more specific modes
 
 (define-skeleton bazel-insert-http-archive
   "Insert an “http_archive” statement at point.
-See URL
-‘https://docs.bazel.build/versions/master/repo/http.html#http_archive’
+See URL ‘https://docs.bazel.build/repo/http.html#http_archive’
 for a description of “http_archive”.  Interactively, prompt for
 an archive URL.  Attempt to detect workspace name and prefix.
 Also add the date when the archive was likely last modified as a
