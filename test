@@ -1,0 +1,55 @@
+#!/bin/bash
+
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+set -u
+
+# All potentially supported Emacs versions.
+versions=(26.{1,2,3} 27.{1,2})
+readonly versions
+
+case "$(uname -sm)" in
+  'Darwin arm64')
+    unsupported=(26.{1,2,3} 27.1) ;;
+  Darwin*)
+    unsupported=(26.{1,2,3}) ;;
+  Linux*)
+    unsupported=() ;;
+  *)
+    echo 'unsupported platform' >&2
+    exit 1 ;;
+esac
+
+is_supported() {
+  for version in "${unsupported[@]}"; do
+    [[ "$1" == "${version}" ]] && return 1
+  done
+}
+
+run() {
+  (set -x; bazel test --test_output=errors "$@" -- //...)
+  echo
+}
+
+# Test default toolchain.
+run || exit
+
+# Test versioned toolchains.
+for version in "${versions[@]}"; do
+  if is_supported "${version}"; then
+    toolchain="@phst_rules_elisp//elisp:emacs_${version}_toolchain"
+    run --extra_toolchains="${toolchain}" || exit
+  fi
+done

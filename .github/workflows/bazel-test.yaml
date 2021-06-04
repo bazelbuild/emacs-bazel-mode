@@ -16,8 +16,8 @@ name: Run Bazel tests
 on: [push, pull_request]
 
 jobs:
-  emacs-stable:
-    name: Latest stable GNU Emacs release
+  test:
+    name: Tests
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -25,22 +25,4 @@ jobs:
       - name: Install Bazelisk
         uses: bazelbuild/setup-bazelisk@v1
       - name: Run Bazel tests
-        run: bazel test --test_output=all -- //...
-
-  emacs-versions:
-    name: All supported GNU Emacs versions
-    strategy:
-      matrix:
-        version: [26.1, 26.2, 26.3, 27.1, 27.2]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v2
-      - name: Install Bazelisk
-        uses: bazelbuild/setup-bazelisk@v1
-      - name: Run Bazel tests
-        run: |
-          bazel test \
-            --test_output=errors \
-            --extra_toolchains=@phst_rules_elisp//elisp:emacs_${{matrix.version}}_toolchain \
-            -- //...
+        run: ./test
