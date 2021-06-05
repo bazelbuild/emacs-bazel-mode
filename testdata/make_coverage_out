@@ -42,6 +42,7 @@ emacs --quick --batch --visit="${org:?}" \
 rm -r -- "${dir:?}/bazel-out"
 
 execroot="$(cd "${dir:?}" && bazel --bazelrc=/dev/null info execution_root)"
+testlogs="$(cd "${dir:?}" && bazel --bazelrc=/dev/null info bazel-testlogs)"
 
 # We explicitly compile with the current directory set to a subdirectory to
 # ensure that workspace-relative filenames still work as expected.
@@ -53,6 +54,12 @@ out="$(cd "${dir:?}/src" && bazel --bazelrc=/dev/null coverage //... 2>&1)"
 pattern=$'\n''  (/.+/coverage\.dat)'$'\n'
 [[ "${out:?}" =~ ${pattern:?} ]] || exit
 dat="${BASH_REMATCH[1]}"
+
+# Replace test log directory in the output with a fixed value.  This gets rid
+# of the arbitrary build configuration directory.  This needs to happen before
+# replacing the execution root because the test log directory is a subdirectory
+# of the execution root.
+out="${out//${testlogs}/%ROOTDIR%/bazel-out/k8-fastbuild/testlogs}"
 
 # Replace the execution root in the output with a placeholder.
 out="${out//${execroot}/%ROOTDIR%}"

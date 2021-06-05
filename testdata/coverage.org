@@ -106,24 +106,23 @@ Loading: 0 packages loaded
 INFO: Using default value for --instrumentation_filter: "^//src/main/java/example[/:]".
 INFO: Override the above default with --instrumentation_filter
 Analyzing: 2 targets (2 packages loaded, 0 targets configured)
-Analyzing: 2 targets (9 packages loaded, 7 targets configured)
+Analyzing: 2 targets (13 packages loaded, 49 targets configured)
 Analyzing: 2 targets (13 packages loaded, 49 targets configured)
 Analyzing: 2 targets (23 packages loaded, 362 targets configured)
-Analyzing: 2 targets (24 packages loaded, 385 targets configured)
-Analyzing: 2 targets (26 packages loaded, 558 targets configured)
+Analyzing: 2 targets (25 packages loaded, 423 targets configured)
 Analyzing: 2 targets (26 packages loaded, 587 targets configured)
 INFO: Analyzed 2 targets (27 packages loaded, 764 targets configured).
 INFO: Found 1 target and 1 test target...
 bazel: Entering directory `%ROOTDIR%/'
-[0 / 12] [Prepa] Writing file src/test/java/example/example_test/baseline_coverage.dat ... (3 actions, 0 running)
-[8 / 13] Action external/bazel_tools/tools/jdk/platformclasspath_classes/DumpPlatformClassPath.class; 0s darwin-sandbox
-[10 / 13] [Prepa] Compiling Java headers src/main/java/example/libexample-hjar.jar (1 source file) ... (2 actions, 0 running)
-[20 / 22] [Prepa] Building external/remote_coverage_tools/Main.jar ()
+[0 / 10] [Prepa] BazelWorkspaceStatusAction stable-status.txt
+[8 / 13] Action external/bazel_tools/tools/jdk/platformclasspath_classes/DumpPlatformClassPath.class; 1s darwin-sandbox
+[10 / 13] Compiling Java headers src/main/java/example/libexample-hjar.jar (1 source file); 0s darwin-sandbox ... (2 actions running)
+[19 / 22] Action external/bazel_tools/tools/jdk/platformclasspath.jar; 0s darwin-sandbox
 bazel: Leaving directory `%ROOTDIR%/'
-INFO: Elapsed time: 14,192s, Critical Path: 4,41s
+INFO: Elapsed time: 13,442s, Critical Path: 4,12s
 INFO: 22 processes: 12 internal, 7 darwin-sandbox, 3 worker.
 INFO: Build completed successfully, 22 total actions
-//src/test/java/example:example_test                                     PASSED in 1.1s
+//src/test/java/example:example_test                                     PASSED in 0.8s
   %ROOTDIR%/bazel-out/k8-fastbuild/testlogs/src/test/java/example/example_test/coverage.dat
 
 Executed 1 out of 1 test: 1 test passes.
