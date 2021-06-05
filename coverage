@@ -25,14 +25,9 @@ trap 'rm -f -- "${log}"' EXIT
 bazel coverage -- //... | tee -- "${log:?}" || exit
 echo
 
-mapfile -t dat < <(sed -r -n -e 's|^  (/.+/coverage\.dat)$|\1|p' -- "${log:?}")
-
-if ((${#dat[@]} == 0)); then
-  echo 'No coverage output found' >&2
-  exit 1
-fi
-
-genhtml --output-directory=coverage-report --branch-coverage \
-  -- "${dat[@]}" || exit
+sed -r -n -e 's|^  (/.+/coverage\.dat)$|\1|p' -- "${log:?}" \
+  | tr '\n' '\0' \
+  | xargs -0 -r -t -- \
+  genhtml --output-directory=coverage-report --branch-coverage -- || exit
 
 echo "Coverage report written to ${root}/coverage-report" >&2
