@@ -43,7 +43,17 @@ all: check $(versions)
 check:
 	$(BAZEL) test --test_output=errors $(BAZELFLAGS) -- //...
 
+coverage: coverage.log
+	sed -r -n -e 's|^  (/.+/coverage\.dat)$$|\1|p' -- '$<' \
+	  | tr '\n' '\0' \
+	  | xargs -0 -r -t -- \
+	  genhtml --output-directory=coverage-report --branch-coverage --
+	echo "Coverage report written to $${PWD}/coverage-report" >&2
+
+coverage.log:
+	$(BAZEL) coverage $(BAZELFLAGS) -- //... > '$@'
+
 $(versions):
 	$(MAKE) check BAZELFLAGS='$(BAZELFLAGS) --extra_toolchains=@phst_rules_elisp//elisp:emacs_$@_toolchain'
 
-.PHONY: all check $(versions)
+.PHONY: all check coverage coverage.log $(versions)
