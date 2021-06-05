@@ -37,6 +37,10 @@ dir="$(realpath -e -- "${dir:?}")" || exit
 emacs --quick --batch --visit="${org:?}" \
   --eval="(let ((default-directory \"${dir:?}/\")) (org-babel-tangle))" || exit
 
+# Remove tangled “bazel-out” directory containing the previous coverage data.
+# This would interfere with the Bazel run below.
+rm -r -- "${dir:?}/bazel-out"
+
 execroot="$(cd "${dir:?}" && bazel --bazelrc=/dev/null info execution_root)"
 
 # We explicitly compile with the current directory set to a subdirectory to
