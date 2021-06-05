@@ -1697,7 +1697,8 @@ See Info node ‘(elisp) Minibuffer History’.")
 
 (defun bazel--read-target-pattern (command only-tests)
   "Read a Bazel build target pattern from the minibuffer.
-COMMAND is a Bazel command to be included in the minibuffer prompt."
+COMMAND is a Bazel command to be included in the minibuffer
+prompt.  If ONLY-TESTS is non-nil, look only for test rules."
   (cl-check-type command string)
   (let* ((file-name
           (or buffer-file-name default-directory
