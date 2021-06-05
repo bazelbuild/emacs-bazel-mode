@@ -741,7 +741,11 @@ in ‘bazel-mode’."
                '(face font-lock-constant-face) "True" nil ",\n"
                nil")\n\n"
                nil "some_rule(name = "
-               '(face font-lock-string-face) "\"foo\"" nil " + SUFFIX)\n\n")))
+               '(face font-lock-string-face) "\"foo\"" nil " + SUFFIX)\n\n"
+               nil "name_only(name = " '(face font-lock-string-face) "\""
+               '(face (font-lock-variable-name-face font-lock-string-face))
+               "foo"
+               '(face font-lock-string-face) "\"" nil ")\n\n")))
     (with-temp-buffer
       (bazel-build-mode)
       (insert (substring-no-properties text))
