@@ -15,46 +15,46 @@
 #+property: header-args :mkdirp yes :main no
 
 #+begin_src bazel-workspace :tangle WORKSPACE
-  workspace(name = "test")
+workspace(name = "test")
 #+end_src
 
 #+begin_src bazel-build :tangle package/BUILD
-  cc_library(
-      name = "test",
-      srcs = ["test.cc"],
-      deprecation = "Deprecated!",
-  )
+cc_library(
+    name = "test",
+    srcs = ["test.cc"],
+    deprecation = "Deprecated!",
+)
 #+end_src
 
 #+begin_src C++ :tangle package/test.cc
-  UnknownType foo;
+UnknownType foo;
 #+end_src
 
 Merged standard output and error from Bazel:
 
 #+begin_src fundamental :tangle bazel.out
-  Loading: 
-  Loading: 0 packages loaded
-  WARNING: %ROOTDIR%/package/BUILD:1:11: target '//package:test' is deprecated: Deprecated!
-  Analyzing: target //package:test (1 packages loaded, 0 targets configured)
-  Analyzing: target //package:test (11 packages loaded, 18 targets configured)
-  INFO: Analyzed target //package:test (15 packages loaded, 51 targets configured).
-  INFO: Found 1 target...
-  bazel: Entering directory `%ROOTDIR%/'
-  [0 / 6] [Prepa] Writing file package/libtest.a-2.params ... (3 actions, 0 running)
-  ERROR: %ROOTDIR%/package/BUILD:1:11: Compiling package/test.cc failed: (Exit 1): gcc failed: error executing command /usr/bin/gcc -U_FORTIFY_SOURCE -fstack-protector -Wall -Wunused-but-set-parameter -Wno-free-nonheap-object -fno-omit-frame-pointer '-std=c++0x' -MD -MF ... (remaining 16 argument(s) skipped)
-  
-  Use --sandbox_debug to see verbose messages from the sandbox gcc failed: error executing command /usr/bin/gcc -U_FORTIFY_SOURCE -fstack-protector -Wall -Wunused-but-set-parameter -Wno-free-nonheap-object -fno-omit-frame-pointer '-std=c++0x' -MD -MF ... (remaining 16 argument(s) skipped)
-  
-  Use --sandbox_debug to see verbose messages from the sandbox
-  package/test.cc:1:1: error: 'UnknownType' does not name a type
-      1 | UnknownType foo;
-        | ^~~~~~~~~~~
-  bazel: Leaving directory `%ROOTDIR%/'
-  Target //package:test failed to build
-  Use --verbose_failures to see the command lines of failed build steps.
-  INFO: Elapsed time: 1.702s, Critical Path: 0.04s
-  INFO: 4 processes: 4 internal.
-  FAILED: Build did NOT complete successfully
-  FAILED: Build did NOT complete successfully
+Loading: 
+Loading: 0 packages loaded
+WARNING: %ROOTDIR%/package/BUILD:1:11: target '//package:test' is deprecated: Deprecated!
+Analyzing: target //package:test (1 packages loaded, 0 targets configured)
+Analyzing: target //package:test (11 packages loaded, 18 targets configured)
+INFO: Analyzed target //package:test (15 packages loaded, 51 targets configured).
+INFO: Found 1 target...
+bazel: Entering directory `%ROOTDIR%/'
+[0 / 6] [Prepa] Writing file package/libtest.a-2.params ... (3 actions, 0 running)
+ERROR: %ROOTDIR%/package/BUILD:1:11: Compiling package/test.cc failed: (Exit 1): gcc failed: error executing command /usr/bin/gcc -U_FORTIFY_SOURCE -fstack-protector -Wall -Wunused-but-set-parameter -Wno-free-nonheap-object -fno-omit-frame-pointer '-std=c++0x' -MD -MF ... (remaining 16 argument(s) skipped)
+
+Use --sandbox_debug to see verbose messages from the sandbox gcc failed: error executing command /usr/bin/gcc -U_FORTIFY_SOURCE -fstack-protector -Wall -Wunused-but-set-parameter -Wno-free-nonheap-object -fno-omit-frame-pointer '-std=c++0x' -MD -MF ... (remaining 16 argument(s) skipped)
+
+Use --sandbox_debug to see verbose messages from the sandbox
+package/test.cc:1:1: error: 'UnknownType' does not name a type
+    1 | UnknownType foo;
+      | ^~~~~~~~~~~
+bazel: Leaving directory `%ROOTDIR%/'
+Target //package:test failed to build
+Use --verbose_failures to see the command lines of failed build steps.
+INFO: Elapsed time: 1.702s, Critical Path: 0.04s
+INFO: 4 processes: 4 internal.
+FAILED: Build did NOT complete successfully
+FAILED: Build did NOT complete successfully
 #+end_src

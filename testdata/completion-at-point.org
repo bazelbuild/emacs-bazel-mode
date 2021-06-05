@@ -13,18 +13,18 @@
 # limitations under the License.
 
 #+begin_src bazel-workspace :tangle WORKSPACE
-  workspace(name = "test")
+workspace(name = "test")
 #+end_src
 
 #+begin_src bazel-build :tangle BUILD
-  cc_library(
-      name = "lib",
-      srcs = ["lib.cc"],
-  )
+cc_library(
+    name = "lib",
+    srcs = ["lib.cc"],
+)
 
-  cc_binary(
-      name = "bin",
-      srcs = ["bin.cc"],
-      deps = ["//:li"],
-  )
+cc_binary(
+    name = "bin",
+    srcs = ["bin.cc"],
+    deps = ["//:li"],
+)
 #+end_src

@@ -17,14 +17,14 @@
 * Test data for ~bazel-build-mode/beginning-of-defun~ and ~bazel-build-mode/end-of-defun~
 
 #+begin_src bazel-workspace :tangle WORKSPACE
-  workspace(name = "root")
+workspace(name = "root")
 #+end_src
 
 #+begin_src bazel-build :tangle BUILD
-  # Some comment.
+# Some comment.
 
-  elisp_library(
-      name = "bazel",
-      srcs = ["bazel.el"],
-  )
+elisp_library(
+    name = "bazel",
+    srcs = ["bazel.el"],
+)
 #+end_src
