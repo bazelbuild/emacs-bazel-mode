@@ -19,13 +19,10 @@ set -Cefu -o pipefail
 root="$(bazel info workspace)"
 cd "${root:?}" || exit
 
-log="$(mktemp)" || exit
-trap 'rm -f -- "${log}"' EXIT
-
-bazel coverage -- //... | tee -- "${log:?}" || exit
+bazel coverage -- //... | tee -- coverage.log || exit
 echo
 
-mapfile -t dat < <(sed -r -n -e 's|^  (/.+/coverage\.dat)$|\1|p' -- "${log:?}")
+mapfile -t dat < <(sed -r -n -e 's|^  (/.+/coverage\.dat)$|\1|p' -- coverage.log)
 
 if ((${#dat[@]} == 0)); then
   echo 'No coverage output found' >&2
