@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -Cefu -o pipefail
+set -efu -o pipefail
 
 root="$(bazel info workspace)"
 cd "${root:?}" || exit
@@ -22,7 +22,7 @@ cd "${root:?}" || exit
 log="$(mktemp)" || exit
 trap 'rm -f -- "${log}"' EXIT
 
-bazel coverage -- //... | tee -- "${log:?}" || exit
+bazel coverage -- //... > "${log:?}" || exit
 echo
 
 mapfile -t dat < <(sed -r -n -e 's|^  (/.+/coverage\.dat)$|\1|p' -- "${log:?}")
