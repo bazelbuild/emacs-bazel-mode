@@ -975,7 +975,7 @@ directories and BUILD files."
            (not (string-prefix-p "bazel-" filename))
            (file-regular-p filename)
            (push filename files)))
-    (nreverse files)))
+    (sort files #'string-lessp)))
 
 (defun bazel--rule-location (build-file name)
   "Return an ‘xref-location’ for a rule within a BUILD file.
