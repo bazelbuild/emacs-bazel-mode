@@ -1,0 +1,37 @@
+
+Bazel Mode
+==========
+
+Bazel Mode is a GNU Emacs major mode for editing Bazel BUILD, WORKSPACE, and
+bzl files, which are written in the Skylark language.
+
+To use Bazel Mode, add the following to your .emacs file after replacing
+"/path/to/bazel-mode/directory" with location where you installed Bazel Mode.
+
+    (add-to-list 'load-path "/path/to/bazel-mode/directory")
+    (autoload 'bazel-mode "bazel-mode" "Major mode for Bazel BUILD files." t)
+    (add-to-list 'auto-mode-alist '("/BUILD\\(\\..*\\)?\\'" . bazel-mode))
+    (add-to-list 'auto-mode-alist '("/WORKSPACE\\'" . bazel-mode))
+    (add-to-list 'auto-mode-alist '("\\.bzl\\'" . bazel-mode))
+
+Bazel Mode supports reformatting BUILD files with buildifier.  To use this
+feature, you'll need to download and install buildifier, which is part of
+Google's buildtools package:
+
+    git clone https://github.com/bazelbuild/buildtools.git
+    cd buildtools
+    bazel build //buildifier
+
+and then install buildifier in some directory that's in your PATH shell
+environment variable.
+
+Once buildifier is installed, you can use it in two different ways.  First,
+Bazel Mode supports reformatting BUILD buffers by running bazel-format, which
+is bound to the key sequence C-c C-f.  Additionally, you can configure Emacs to
+automatically format BUILD and BUILD.bazel files with buildifier before saving
+them by adding the following to your .emacs file:
+
+    (add-hook 'bazel-mode-hook
+              (lambda ()
+                (when (search "BUILD" (file-name-nondirectory (buffer-file-name)))
+                  (add-hook 'before-save-hook #'bazel-format nil t))))
