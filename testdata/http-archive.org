@@ -16,8 +16,19 @@
 
 ** Contents of the test repository archive
 
+We add a few quirks to the =WORKSPACE= file to ensure that the workspace name is
+correctly determined.
+
 #+begin_src bazel-workspace :tangle prefix/WORKSPACE :mkdirp yes
-workspace(name = "test_repository")
+"""
+workspace(name = "haha")
+"""
+
+# workspace(name = "haha")
+
+workspace(foo = 'name = "no",', name = "test_repository")
+
+# workspace(name = "haha")
 #+end_src
 
 #+begin_src bazel-build :tangle prefix/BUILD :mkdirp yes
