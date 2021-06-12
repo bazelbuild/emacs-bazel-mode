@@ -951,8 +951,6 @@ in ‘bazel-mode’."
       (with-temp-buffer
         (insert "input")
         (bazel-starlark-mode)
-        (add-hook 'temp-buffer-window-show-hook
-                   nil :local)
         (let ((tick-before (buffer-modified-tick))
               (temp-buffer-window-show-hook
                (list (lambda () (push (current-buffer) temp-buffers)))))
