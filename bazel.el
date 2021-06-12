@@ -113,14 +113,13 @@ If ‘local’, only do so for local files."
                 (const :tag "Only for local files" local))
   :group 'bazel)
 
-(defface bazel-covered-line '((default :extend t)
-                              ;; Various shades of green.
-                              (((background dark)) :background "#3D5C3A")
+(defface bazel-covered-line '((((background dark)) :background "#3D5C3A")
                               (t :background "#BEFFB8"))
+  ;; Various shades of green.
   "Face for lines covered by unit tests."
   :group 'bazel)
 
-(defface bazel-uncovered-line '((t :inherit testcover-nohits :extend t))
+(defface bazel-uncovered-line '((t :inherit testcover-nohits))
   "Face for lines not covered by unit tests."
   :group 'bazel)
 
