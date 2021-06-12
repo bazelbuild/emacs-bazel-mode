@@ -478,7 +478,8 @@ return its name.  See URL
   (save-excursion
     (goto-char (point-min))
     (cl-block nil
-      (let ((case-fold-search nil))
+      (let ((case-fold-search nil)
+            (search-spaces-regexp nil))
         (while (progn (forward-comment (buffer-size))
                       (re-search-forward (rx symbol-start "workspace(") nil t))
           (forward-comment (buffer-size))
@@ -549,6 +550,7 @@ and Info node ‘(elisp) Syntax Table Internals’."
   (save-excursion
     (goto-char start)
     (let ((case-fold-search nil)
+          (search-spaces-regexp nil)
           (inhibit-point-motion-hooks t))
       (while (re-search-forward (rx bol ?#) end t)
         ;; 11 = comment start, 12 = comment end
@@ -700,6 +702,7 @@ described in
 https://github.com/bazelbuild/buildtools/blob/master/buildifier/README.md#file-diagnostics-in-json."
   (cl-check-type warning hash-table)
   (let* ((case-fold-search nil)
+         (search-spaces-regexp nil)
          (start (gethash "start" warning))
          (end (gethash "end" warning))
          ;; Note: Both line and column are one-based in the Buildifier output.
@@ -873,7 +876,8 @@ Return nil if no consuming rule was found."
   ;; Prefer a buffer that’s already visiting BUILD-FILE.
   (bazel--with-file-buffer existing build-file
     (unless existing (bazel-build-mode))  ; for correct syntax tables
-    (let ((case-fold-search nil))
+    (let ((case-fold-search nil)
+          (search-spaces-regexp nil))
       (save-excursion
         ;; Don’t widen; if the rule isn’t found within the accessible portion of
         ;; the current buffer, that’s probably what the user wants.
@@ -993,7 +997,8 @@ The current buffer should visit a BUILD file.  If there’s a rule
 with the given NAME, return the location of the rule.  Otherwise,
 return nil."
   (cl-check-type name string)
-  (let ((case-fold-search nil))
+  (let ((case-fold-search nil)
+        (search-spaces-regexp nil))
     (save-excursion
       (save-restriction
         (widen)
@@ -1038,6 +1043,7 @@ restrict the returned rules to test targets."
   (cl-check-type prefix string)
   (when (derived-mode-p 'bazel-mode)
     (let ((case-fold-search nil)
+          (search-spaces-regexp nil)
           (rules ()))
       (save-excursion
         ;; We don’t widen here.  If the user has narrowed the buffer, it’s fair
@@ -1125,7 +1131,8 @@ This gets added to ‘ffap-alist’."
 Look for an imported file with the given NAME."
   (cl-check-type name string)
   ;; https://docs.bazel.build/versions/3.0.0/guide.html#imports
-  (let ((case-fold-search nil))
+  (let ((case-fold-search nil)
+        (search-spaces-regexp nil))
     (pcase name
       ((rx bos "%workspace%" (+ ?/) (let rest (+ nonl)))
        (when buffer-file-name
@@ -1186,6 +1193,7 @@ successfully.  This function is suitable for
              (string-equal message "finished\n"))
     (with-current-buffer buffer
       (let ((case-fold-search (file-name-case-insensitive-p default-directory))
+            (search-spaces-regexp nil)
             (remote (file-remote-p default-directory))
             (files ()))
         (when (or (not remote) (eq bazel-display-coverage t))
@@ -1245,7 +1253,8 @@ numbers ‘bazel--coverage’ structures.  The function walks over
 the coverage information in the current buffer and fills in
 COVERAGE."
   ;; See the manual page of ‘geninfo’ for a description of the coverage format.
-  (let ((case-fold-search nil))
+  (let ((case-fold-search nil)
+        (search-spaces-regexp nil))
     (while (re-search-forward (rx bol "SF:" (group (+ nonl)) eol) nil t)
       (let ((begin (line-beginning-position 2))
             (file (expand-file-name (match-string-no-properties 1) root))
@@ -1456,6 +1465,7 @@ This function is useful as ‘imenu-create-index-function’ for
       (widen)
       (goto-char (point-min))
       (let ((case-fold-search nil)
+            (search-spaces-regexp nil)
             (index ()))
         ;; Heuristic: We search for “name” attributes as they would show in
         ;; typical BUILD files.  That’s not 100% correct, but doesn’t rely on
@@ -1482,6 +1492,7 @@ This function is useful as ‘imenu-create-index-function’ for
   "Return the name of the Bazel rule at point.
 Return nil if not inside a Bazel rule."
   (let ((case-fold-search nil)
+        (search-spaces-regexp nil)
         (bound (save-excursion (python-nav-end-of-statement) (point))))
     (save-excursion
       (python-nav-beginning-of-statement)
@@ -1502,7 +1513,8 @@ Return nil if not inside a Bazel rule."
   "Return the name of the Starlark function at point.
 Return nil if no name was found.  This function is useful as
 ‘imenu-extract-index-name-function’ for ‘bazel-starlark-mode’."
-  (let ((case-fold-search nil))
+  (let ((case-fold-search nil)
+        (search-spaces-regexp nil))
     (and (looking-at python-nav-beginning-of-defun-regexp)
          (match-string-no-properties 1))))
 
@@ -1942,7 +1954,8 @@ restrict rule target completion to test targets."
   (lambda (string predicate action)
     (cl-check-type string string)
     (cl-check-type predicate (or function null))
-    (let ((case-fold-search completion-ignore-case))
+    (let ((case-fold-search completion-ignore-case)
+          (search-spaces-regexp nil))
       ;; We dynamically generate and use a helper completion table based on the
       ;; provided prefix pattern.
       (complete-with-action
@@ -2283,7 +2296,8 @@ name of LABEL.  See
 https://docs.bazel.build/versions/2.0.0/build-ref.html#lexi for
 the lexical syntax of labels."
   (cl-check-type label string)
-  (let ((case-fold-search nil))
+  (let ((case-fold-search nil)
+        (search-spaces-regexp nil))
     (pcase (substring-no-properties label)
       ((rx bos
            (or
@@ -2333,7 +2347,8 @@ the lexical syntax of labels."
   "Return the default target name for PACKAGE.
 For a package “foo/bar”, “bar” is the default target."
   (cl-check-type package string)
-  (let ((case-fold-search nil))
+  (let ((case-fold-search nil)
+        (search-spaces-regexp nil))
     (pcase-exhaustive package
       ((rx (or bos ?/) (let target (* (not (any ?/)))) eos)
        target))))
@@ -2376,7 +2391,8 @@ strings.  Return either @WORKSPACE//PACKAGE:TARGET or
 If a target name was found, return non-nil and set the match to
 the match text.  The second match group matches the name."
   (cl-check-type bound natnum)
-  (let ((case-fold-search nil))
+  (let ((case-fold-search nil)
+        (search-spaces-regexp nil))
     (and (re-search-forward
           (rx "name" (* blank) ?= (* blank)
               (group (any ?\" ?'))
@@ -2396,7 +2412,8 @@ the comment text."
   (cl-check-type bound natnum)
   ;; Buildifier's magic comment detection appears to be case-insensitive, but
   ;; isn't documented as such.  Reference in the source: https://git.io/JO6FG.
-  (let ((case-fold-search t))
+  (let ((case-fold-search t)
+        (search-spaces-regexp nil))
     (with-case-table ascii-case-table
       (and (re-search-forward bazel--magic-comment-regexp bound t)
            (nth 4 (syntax-ppss))))))
