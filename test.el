@@ -964,6 +964,37 @@ in ‘bazel-mode’."
         (ert-info ("Error buffer")
           (should (equal (buffer-string) "error\n")))))))
 
+(ert-deftest bazel-buildifier-before-save ()
+  (bazel-test--with-temp-directory dir nil
+    (let ((bash (executable-find "bash"))
+          (input-file (expand-file-name "input" dir))
+          (marker-file (expand-file-name "ok" dir))
+          (bazel-buildifier-command (expand-file-name "buildifier" dir)))
+      (skip-unless bash)
+      (make-empty-file input-file)
+      (with-temp-file bazel-buildifier-command
+        (insert "#!" (file-name-unquote bash) ?\n
+                "set -efu\n"
+                "cd " (shell-quote-argument (file-name-unquote dir)) ?\n
+                "cat > /dev/null\n"   ; don’t exit before reading input
+                "echo output\n"
+                "touch ok\n"))
+      (set-file-modes bazel-buildifier-command #o0500)
+      (dolist (case '((nil "input\n") (t "output\n")))
+        (cl-destructuring-bind (bazel-buildifier-before-save expected) case
+          (ert-info ((symbol-name bazel-buildifier-before-save)
+                     :prefix "Value of ‘bazel-buildifier-before-save’: ")
+            (delete-file marker-file)
+            (bazel-test--with-file-buffer input-file
+              (bazel-starlark-mode)
+              (insert "input\n")
+              (should (buffer-modified-p))
+              (save-buffer)
+              (should-not (buffer-modified-p))
+              (should (equal (buffer-string) expected)))
+            (should (eq bazel-buildifier-before-save
+                        (file-exists-p marker-file)))))))))
+
 (ert-deftest bazel-insert-http-archive ()
   (bazel-test--with-temp-directory dir "http-archive.org"
     (should (set-file-times (expand-file-name "prefix" dir)
