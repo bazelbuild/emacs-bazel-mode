@@ -1349,7 +1349,7 @@ structures.  Remove existing coverage overlays first."
         (overlay-recenter (point-max))
         ;; We first remove existing coverage overlays because they are likely
         ;; stale.
-        (bazel-remove-coverage-display)
+        (bazel--remove-coverage-overlays)
         (cl-loop for ((face branches) i j) in runs
                  ;; Choose overlay positions and stickiness so that inserting
                  ;; text before or after a run doesn’t appear to extend the
@@ -1369,9 +1369,7 @@ structures.  Remove existing coverage overlays first."
                    (setq some-branch-coverage t))))
       (when (and some-branch-coverage (< left-margin-width margin-width))
         (setq left-margin-width margin-width)
-        ;; Force margin update; see Info node ‘(elisp) Display Margins’.
-        (dolist (window (get-buffer-window-list buffer nil t))
-          (set-window-buffer window buffer))))))
+        (bazel--update-margin-display)))))
 
 (defun bazel--branch-coverage-string (block-table)
   "Return a branch coverage information string for BLOCK-TABLE.
@@ -1438,11 +1436,25 @@ See Info node ‘(elisp) Display Margins’."
 If the current buffer is narrowed, only act on the accessible
 portion."
   (interactive)
-  (remove-overlays (point-min) (point-max) 'category 'bazel-coverage))
+  (bazel--remove-coverage-overlays)
+  (unless (eq left-margin-width 0)
+    (kill-local-variable 'left-margin-width)
+    (bazel--update-margin-display)))
 
 ;; Default overlay properties.
 (put 'bazel-coverage 'priority 10)
 (put 'bazel-coverage 'evaporate t)
+
+(defun bazel--remove-coverage-overlays ()
+  "Remove line coverage overlays in the current buffer."
+  (remove-overlays (point-min) (point-max) 'category 'bazel-coverage))
+
+(defun bazel--update-margin-display ()
+  "Announce margin change in the current buffer to Emacs.
+See Info node ‘(elisp) Display Margins’."
+  (let ((buffer (current-buffer)))
+    (dolist (window (get-buffer-window-list buffer nil t))
+      (set-window-buffer window buffer))))
 
 ;;;; Imenu support
 
