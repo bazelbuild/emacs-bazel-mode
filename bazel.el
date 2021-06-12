@@ -277,6 +277,20 @@ mentioned in the Buildifier source code at URL
     (modify-syntax-entry ?\n ">" table)
     ;; strings using single quotes
     (modify-syntax-entry ?' "\"" table)
+    ;; Some characters are word or symbol constituents in
+    ;; ‘standard-syntax-table’, but should be punctuation characters in
+    ;; ‘bazel-mode’.
+    (modify-syntax-entry ?$ "." table)
+    (modify-syntax-entry ?% "." table)
+    (modify-syntax-entry ?& "." table)
+    (modify-syntax-entry ?* "." table)
+    (modify-syntax-entry ?+ "." table)
+    (modify-syntax-entry ?- "." table)
+    (modify-syntax-entry ?/ "." table)
+    (modify-syntax-entry ?< "." table)
+    (modify-syntax-entry ?= "." table)
+    (modify-syntax-entry ?> "." table)
+    (modify-syntax-entry ?| "." table)
     table)
   "Syntax table for `bazel-mode'.")
 
