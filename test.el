@@ -1011,6 +1011,65 @@ in ‘bazel-mode’."
                (buffer-substring-no-properties (point-min) (point)))))
         (should (equal actual expected))))))
 
+(ert-deftest bazel-insert-http-archive/empty ()
+  (bazel-test--with-temp-directory dir nil
+    (let* ((archive (file-name-unquote
+                     (expand-file-name "archive.tar.gz" dir)))
+           (url-unreserved-chars (cons ?/ url-unreserved-chars))
+           (url (concat "file://" (url-hexify-string archive)))
+           (tar (executable-find "tar"))
+           (default-directory dir))
+      (skip-unless tar)
+      ;; https://superuser.com/a/448624
+      (process-lines tar "-c" "-z" "-f" archive "-T" "/dev/null")
+      (with-temp-buffer
+        (let ((tick-before (buffer-modified-tick)))
+          (bazel-workspace-mode)
+          (when (version< emacs-version "26.2")
+            ;; Work around Bug#31950.
+            (set-window-buffer nil (current-buffer)))
+          (should-error (bazel-insert-http-archive url) :type 'user-error)
+          (should (eql (buffer-modified-tick) tick-before))  ; no change
+          (should (eq (buffer-size) 0)))))))
+
+(ert-deftest bazel-insert-http-archive/no-unique-prefix ()
+  (bazel-test--with-temp-directory dir "http-archive-no-unique-prefix.org"
+    (let* ((archive (file-name-unquote
+                     (expand-file-name "archive.tar.gz" dir)))
+           (url-unreserved-chars (cons ?/ url-unreserved-chars))
+           (url (concat "file://" (url-hexify-string archive)))
+           (tar (executable-find "tar"))
+           (default-directory dir))
+      (skip-unless tar)
+      (process-lines tar "-c" "-z" "-f" archive "--" "prefix-1" "prefix-2")
+      (with-temp-buffer
+        (let ((tick-before (buffer-modified-tick)))
+          (bazel-workspace-mode)
+          (when (version< emacs-version "26.2")
+            ;; Work around Bug#31950.
+            (set-window-buffer nil (current-buffer)))
+          (should-error (bazel-insert-http-archive url) :type 'user-error)
+          (should (eql (buffer-modified-tick) tick-before))  ; no change
+          (should (eq (buffer-size) 0)))))))
+
+(ert-deftest bazel-insert-http-archive/invalid-archive ()
+  ;; Don’t let ‘jka-compr’ interfere with writing the invalid archive file.
+  (let ((jka-compr-inhibit t))
+    (bazel-test--with-temp-directory dir "http-archive-invalid.org"
+      (let* ((archive (file-name-unquote
+                       (expand-file-name "archive.tar.gz" dir)))
+             (url-unreserved-chars (cons ?/ url-unreserved-chars))
+             (url (concat "file://" (url-hexify-string archive))))
+        (with-temp-buffer
+          (let ((tick-before (buffer-modified-tick)))
+            (bazel-workspace-mode)
+            (when (version< emacs-version "26.2")
+              ;; Work around Bug#31950.
+              (set-window-buffer nil (current-buffer)))
+            (should-error (bazel-insert-http-archive url))
+            (should (eql (buffer-modified-tick) tick-before))  ; no change
+            (should (eq (buffer-size) 0))))))))
+
 (ert-deftest bazelrc-mode ()
   (let ((text (ert-propertized-string
                '(face font-lock-keyword-face) "import"
