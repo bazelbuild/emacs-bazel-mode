@@ -466,9 +466,10 @@ the rule."
             (should (eq (face-at-point) 'bazel-uncovered-line)))
           (ert-info ("Removing coverage")
             (bazel-remove-coverage-display)
-            ;; Now there shouldn’t be any faces left in the buffer.
+            ;; Now there shouldn’t be any faces or margins left in the buffer.
             (should (eql (next-single-char-property-change (point-min) 'face)
-                         (point-max)))))))))
+                         (point-max)))
+            (should (eq left-margin-width 0))))))))
 
 (ert-deftest bazel--target-completion-table/root-package ()
   "Test target completion in the root package."
