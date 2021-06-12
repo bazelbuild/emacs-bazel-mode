@@ -189,7 +189,8 @@ MESSAGE is a message for ‘ert-info’."
   (let ((definitions ()))
     (bazel-test--with-temp-directory dir "xref.org"
       (bazel-test--with-file-buffer (expand-file-name "root/BUILD" dir)
-        (let ((case-fold-search nil))
+        (let ((case-fold-search nil)
+              (search-spaces-regexp nil))
           (forward-comment (point-max))
           ;; Search for all sources and dependencies.  These are strings that
           ;; stand on their own in a line.
@@ -261,7 +262,8 @@ MESSAGE is a message for ‘ert-info’."
   "Unit test for ‘find-file-at-point’ support."
   (bazel-test--with-temp-directory dir "find-file-at-point.org"
     (bazel-test--with-file-buffer (expand-file-name "root/pkg/aaa.c" dir)
-      (let ((case-fold-search nil))
+      (let ((case-fold-search nil)
+            (search-spaces-regexp nil))
         (search-forward "\"" (line-end-position))
         (should (equal (ffap-file-at-point)
                        (file-name-unquote (expand-file-name "root/aaa.h" dir))))
@@ -316,6 +318,7 @@ the rule."
                       line (buffer-substring-no-properties
                             (line-beginning-position) (line-end-position)))))
              (case-fold-search nil)
+             (search-spaces-regexp nil)
              (compilation-skip-to-next-location nil))
         (insert-file-contents (expand-file-name "bazel.out" dir))
         (compilation-minor-mode)
@@ -362,7 +365,8 @@ the rule."
     (with-temp-buffer
       (speedbar-default-directory-list dir 0)
       (goto-char (point-min))
-      (let ((case-fold-search nil))
+      (let ((case-fold-search nil)
+            (search-spaces-regexp nil))
         (search-forward "BUILD")))))
 
 (ert-deftest bazel-mode/triple-quoted-strings ()
@@ -434,7 +438,8 @@ the rule."
     (let* ((package-dir (expand-file-name "src/main/java/example" dir))
            (library (expand-file-name "Example.java" package-dir)))
       (bazel-test--with-file-buffer library
-        (let ((case-fold-search nil))
+        (let ((case-fold-search nil)
+              (search-spaces-regexp nil))
           (with-temp-buffer
             (let ((default-directory dir)
                   (bazel-display-coverage 'local))
@@ -697,7 +702,8 @@ in ‘bazel-mode’."
   (bazel-test--with-temp-directory dir "xref.org"
     (bazel-test--with-file-buffer (expand-file-name "root/BUILD" dir)
       (bazel-mode)
-      (let ((case-fold-search nil))
+      (let ((case-fold-search nil)
+            (search-spaces-regexp nil))
         (dolist (case '(("name = \"lib\"" "lib")
                         ("aaa.cc" "lib")
                         ("name = \"bin\"" "bin")
@@ -792,6 +798,7 @@ in ‘bazel-mode’."
   (bazel-test--with-temp-directory dir "completion-at-point.org"
     (bazel-test--with-file-buffer (expand-file-name "BUILD" dir)
       (let* ((case-fold-search nil)
+             (search-spaces-regexp nil)
              (got-args ())
              (completion-in-region-function
               (lambda (start end collection predicate)
@@ -826,12 +833,14 @@ in ‘bazel-mode’."
 (ert-deftest bazel-test-at-point ()
   (bazel-test--with-temp-directory dir "test-at-point-elisp.org"
     (bazel-test--with-file-buffer (expand-file-name "foo.el" dir)
-      (let ((case-fold-search nil))
+      (let ((case-fold-search nil)
+            (search-spaces-regexp nil))
         (re-search-forward (rx bol "(ert-deftest foo/not-really-a-test ()"))
         ;; Point is on a test case, but the consuming rule is not a test rule.
         (should-error (bazel-test-at-point) :type 'user-error)))
     (bazel-test--with-file-buffer (expand-file-name "foo-test.el" dir)
       (cl-letf* ((case-fold-search nil)
+                 (search-spaces-regexp nil)
                  (commands ())
                  ((symbol-function #'compile)
                   (lambda (command &optional _comint)
@@ -848,6 +857,7 @@ in ‘bazel-mode’."
   (bazel-test--with-temp-directory dir "test-at-point-python.org"
     (bazel-test--with-file-buffer (expand-file-name "py_test.py" dir)
       (cl-letf* ((case-fold-search nil)
+                 (search-spaces-regexp nil)
                  (commands ())
                  ((symbol-function #'compile)
                   (lambda (command &optional _comint)
@@ -867,6 +877,7 @@ in ‘bazel-mode’."
   (bazel-test--with-temp-directory dir "test-at-point-c++.org"
     (bazel-test--with-file-buffer (expand-file-name "cc_test.cc" dir)
       (cl-letf* ((case-fold-search nil)
+                 (search-spaces-regexp nil)
                  (commands ())
                  ((symbol-function #'compile)
                   (lambda (command &optional _comint)
@@ -886,6 +897,7 @@ in ‘bazel-mode’."
   (bazel-test--with-temp-directory dir "test-at-point-go.org"
     (bazel-test--with-file-buffer (expand-file-name "go_test.go" dir)
       (cl-letf* ((case-fold-search nil)
+                 (search-spaces-regexp nil)
                  (commands ())
                  ((symbol-function #'compile)
                   (lambda (command &optional _comint)
@@ -895,7 +907,8 @@ in ‘bazel-mode’."
           ;; best as possible.
           (setq-local beginning-of-defun-function
                       (lambda (&optional arg)
-                        (let ((case-fold-search nil))
+                        (let ((case-fold-search nil)
+                              (search-spaces-regexp nil))
                           (re-search-backward (rx bol "func" blank)
                                               nil t arg))))
           (run-hooks 'go-mode-hook))
@@ -1037,7 +1050,8 @@ in ‘bazel-mode’."
              (with-temp-buffer
                (insert-file-contents
                 (expand-file-name "WORKSPACE.expected" dir))
-               (let ((case-fold-search nil))
+               (let ((case-fold-search nil)
+                     (search-spaces-regexp nil))
                  (pcase (process-lines sha256sum "-b" "--" archive)
                    ;; “sha256sum” should print exactly one line, the hash
                    ;; followed by a space and the filename.
@@ -1135,7 +1149,8 @@ in ‘bazel-mode’."
 (ert-deftest bazelrc-ffap ()
   (bazel-test--with-temp-directory dir "bazelrc.org"
     (bazel-test--with-file-buffer (expand-file-name ".bazelrc" dir)
-      (let ((case-fold-search nil))
+      (let ((case-fold-search nil)
+            (search-spaces-regexp nil))
         (should (derived-mode-p 'bazelrc-mode))
         (search-forward "import %workspace%/")
         (let ((file-at-point (ffap-file-at-point)))
@@ -1292,7 +1307,8 @@ See Info node ‘(org) Extracting Source Code’."
                    ;; Replace the %ROOTDIR% placeholder added by
                    ;; testdata/make_*_out by our temporary root.
                    (save-excursion
-                     (let ((case-fold-search nil))
+                     (let ((case-fold-search nil)
+                           (search-spaces-regexp nil))
                        (goto-char (point-min))
                        (while (search-forward "%ROOTDIR%" nil t)
                          (replace-match
