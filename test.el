@@ -741,7 +741,11 @@ in ‘bazel-mode’."
                '(face font-lock-constant-face) "True" nil ",\n"
                nil")\n\n"
                nil "some_rule(name = "
-               '(face font-lock-string-face) "\"foo\"" nil " + SUFFIX)\n\n")))
+               '(face font-lock-string-face) "\"foo\"" nil " + SUFFIX)\n\n"
+               nil "some_rule(\n"
+               nil "    filename = "
+               '(face font-lock-string-face) "\"file.txt\"" nil ",\n"
+               nil ")\n\n")))
     (with-temp-buffer
       (bazel-build-mode)
       (insert (substring-no-properties text))
