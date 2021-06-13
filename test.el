@@ -150,6 +150,8 @@ MESSAGE is a message for ‘ert-info’."
             (warning-minimum-log-level :debug)
             (diagnostics ()))
         (skip-unless (file-executable-p bazel-buildifier-command))
+        ;; Make the fake Buildifier report immediately.
+        (make-empty-file (expand-file-name "signal" dir))
         (flymake-mode)
         (should (flymake-is-running))
         (should (equal (flymake-running-backends) '(bazel-mode-flymake)))
@@ -183,6 +185,32 @@ MESSAGE is a message for ‘ert-info’."
                                    "is deprecated in favor of \"//\". "
                                    "[integer-division] "
                                    "(https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md#integer-division)")))))))))
+
+(ert-deftest bazel-mode-flymake/source-buffer-killed ()
+  "Unit test for the ‘bazel-mode-flymake’ Flymake backend.
+Check that the Flymake backend behaves well if the source buffer
+gets killed early."
+  (ert-with-message-capture messages
+    (bazel-test--with-temp-directory dir "flymake.org"
+      (let ((bazel-buildifier-command (expand-file-name "buildifier" dir))
+            (warning-minimum-log-level :debug))
+        (skip-unless (file-executable-p bazel-buildifier-command))
+        (bazel-test--with-file-buffer (expand-file-name "buildifier.bzl" dir)
+          (let ((flymake-diagnostic-functions '(bazel-mode-flymake)))
+            (flymake-mode)
+            (should (flymake-is-running))
+            (should (equal (flymake-running-backends) '(bazel-mode-flymake))))
+          ;; Wait for a Buildifier process to start before killing the buffer.
+          (bazel-test--wait-for "Waiting for Buildifier process to start"
+            (bazel-test--buildifier-running-p)))
+        ;; Now allow the fake Buildifier to proceed.
+        (make-empty-file (expand-file-name "signal" dir))
+        ;; Wait for fake Buildifier to finish.
+        (bazel-test--wait-for "Waiting for Buildifier process to finish"
+          (not (bazel-test--buildifier-running-p)))))
+    ;; This shouldn’t have caused any warnings or errors.
+    (should-not (string-match-p (rx bol (or "Emergency" "Error" "Warning"))
+                                messages))))
 
 (ert-deftest bazel-mode/xref ()
   "Unit test for XRef support."
@@ -1319,6 +1347,14 @@ See Info node ‘(org) Extracting Source Code’."
                           (file-name-unquote (directory-file-name directory))
                           :fixedcase :literal))))))))
       (org-babel-tangle))))
+
+(defun bazel-test--buildifier-running-p ()
+  "Return whether we have a running Buildifier process.
+This relies on the variable ‘bazel-buildifier-command’"
+  (cl-some (lambda (process)
+             (file-equal-p (car (process-command process))
+                           bazel-buildifier-command))
+           (process-list)))
 
 ;; In Emacs 26, ‘file-equal-p’ is buggy and doesn’t work correctly on quoted
 ;; filenames.  We can drop this hack once we stop supporting Emacs 26.
