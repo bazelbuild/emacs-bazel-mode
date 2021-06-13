@@ -143,7 +143,6 @@ Otherwise, just evaluate BODY."
             (diagnostics ()))
         (skip-unless (file-executable-p bazel-buildifier-command))
         (flymake-mode)
-        (flymake-start)
         (should (flymake-is-running))
         (should (equal (flymake-running-backends) '(bazel-mode-flymake)))
         ;; Wait for the backend to start reporting.
