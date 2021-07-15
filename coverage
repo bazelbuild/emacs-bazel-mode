@@ -19,13 +19,10 @@ set -efu -o pipefail
 root="$(bazel info workspace)"
 cd "${root:?}" || exit
 
-log="$(mktemp)" || exit
-trap 'rm -f -- "${log}"' EXIT
-
-bazel coverage -- //... > "${log:?}" || exit
+bazel coverage -- //... > coverage.log || exit
 echo
 
-sed -r -n -e 's|^  (/.+/coverage\.dat)$|\1|p' -- "${log:?}" \
+sed -r -n -e 's|^  (/.+/coverage\.dat)$|\1|p' -- coverage.log \
   | tr '\n' '\0' \
   | xargs -0 -r -t -- \
   genhtml --output-directory=coverage-report --branch-coverage -- || exit
