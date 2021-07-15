@@ -2451,7 +2451,7 @@ the match text.  The second match group matches the name."
   (let ((case-fold-search nil)
         (search-spaces-regexp nil))
     (and (re-search-forward
-          (rx "name" (* blank) ?= (* blank)
+          (rx symbol-start "name" (* blank) ?= (* blank)
               (group (any ?\" ?'))
               (group (+ (any "a-z" "A-Z" "0-9" ?-
                              "!%@^_` #$&()*+,;<=>?[]{|}~/.")))
