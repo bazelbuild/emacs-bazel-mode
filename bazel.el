@@ -1368,30 +1368,37 @@ structures.  Remove existing coverage overlays first."
                finally (push (list f i (1- k)) runs) (setq pairs tail)))
     (cl-callf nreverse runs)
     (with-current-buffer buffer
-      (save-restriction
-        (widen)
-        ;; See remark at the bottom of Info node ‘(elisp) Managing Overlays’.
-        (overlay-recenter (point-max))
-        ;; We first remove existing coverage overlays because they are likely
-        ;; stale.
-        (bazel--remove-coverage-overlays)
-        (cl-loop for ((face branches) i j) in runs
-                 ;; Choose overlay positions and stickiness so that inserting
-                 ;; text before or after a run doesn’t appear to extend the
-                 ;; covered region.
-                 for o = (make-overlay (line-beginning-position i)
-                                       (line-end-position j)
-                                       buffer :front-advance)
-                 do
-                 ;; Add ‘category’ property to find the overlays later (see
-                 ;; ‘bazel-remove-coverage-display’).
-                 (overlay-put o 'category 'bazel-coverage)
-                 (overlay-put o 'face face)
-                 (when branches
-                   (bazel--add-left-margin
-                    (truncate-string-to-width branches margin-width nil nil "…")
-                    o)
-                   (setq some-branch-coverage t))))
+      (save-excursion
+        (save-restriction
+          (widen)
+          ;; ‘line-beginning-position’ and ‘line-end-position’ below count lines
+          ;; starting from the current line, so to be able to use absolute line
+          ;; numbers from ‘coverage.dat’, we need to go to the very beginning of
+          ;; the buffer.
+          (goto-char (point-min))
+          ;; See remark at the bottom of Info node ‘(elisp) Managing Overlays’.
+          (overlay-recenter (point-max))
+          ;; We first remove existing coverage overlays because they are likely
+          ;; stale.
+          (bazel--remove-coverage-overlays)
+          (cl-loop for ((face branches) i j) in runs
+                   ;; Choose overlay positions and stickiness so that inserting
+                   ;; text before or after a run doesn’t appear to extend the
+                   ;; covered region.
+                   for o = (make-overlay (line-beginning-position i)
+                                         (line-end-position j)
+                                         buffer :front-advance)
+                   do
+                   ;; Add ‘category’ property to find the overlays later (see
+                   ;; ‘bazel-remove-coverage-display’).
+                   (overlay-put o 'category 'bazel-coverage)
+                   (overlay-put o 'face face)
+                   (when branches
+                     (bazel--add-left-margin
+                      (truncate-string-to-width branches margin-width
+                                                nil nil "…")
+                      o)
+                     (setq some-branch-coverage t)))))
       (when (and some-branch-coverage (< left-margin-width margin-width))
         (setq left-margin-width margin-width)
         (bazel--update-margin-display)))))
