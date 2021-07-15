@@ -2143,8 +2143,14 @@ function for ‘bazel--target-completion-table’."
               ('t
                (cl-remove-if-not predicate
                                  (file-name-all-completions string root)))
-              ;; We always return nil for the ‘lambda’ action because a
-              ;; workspace prefix is never a complete target pattern.
+              ('lambda
+                ;; The target ‘@foo’ is a shorthand for ‘@foo//:foo’.  We don’t
+                ;; check for the existence of the ‘foo’ target here.
+                (and (not (string-empty-p string))
+                     (not (directory-name-p string))
+                     (file-accessible-directory-p
+                      (expand-file-name string root))
+                     (funcall predicate string)))
               (`(boundaries . ,suffix)
                `(boundaries 0 . ,(string-match-p (rx (any ?/ ?:)) suffix))))
           (file-error nil))))))
@@ -2316,6 +2322,12 @@ the lexical syntax of labels."
             ;; @workspace//package
             (seq "@" (let workspace (+ (not (any ?: ?/))))
                  "//" (let package (+ (not (any ?:)))))
+            ;; @workspace
+            ;; This syntax isn’t documented in
+            ;; https://docs.bazel.build/versions/4.1.0/build-ref.html#labels,
+            ;; but follows from
+            ;; https://github.com/bazelbuild/buildtools/blob/4890966c38b910fd5bd1ad78a3dd88538d09854f/build/rewrite.go#L217-L218.
+            (seq ?@ (let workspace (+ (not (any ?: ?/)))))
             ;; //package:target
             (seq "//" (let package (* (not (any ?:))))
                  ?: (let target (+ (not (any ?:)))))
@@ -2326,7 +2338,7 @@ the lexical syntax of labels."
             ;; target
             (seq (let target (not (any ?: ?/ ?@)) (* (not (any ?:))))))
            eos)
-       (unless target (setq target (bazel--default-target package)))
+       (unless target (setq target (bazel--default-target workspace package)))
        (and (or (null workspace)
                 ;; https://docs.bazel.build/versions/4.0.0/skylark/lib/globals.html#parameters-36
                 ;; claims that workspace names may only contain letters,
@@ -2351,14 +2363,19 @@ the lexical syntax of labels."
                             target)
             (list workspace package target))))))
 
-(defun bazel--default-target (package)
-  "Return the default target name for PACKAGE.
-For a package “foo/bar”, “bar” is the default target."
+(defun bazel--default-target (workspace package)
+  "Return the default target name for WORKSPACE and PACKAGE.
+For a package “foo/bar”, “bar” is the default target.  For a
+workspace “foo”, “foo” in the root package is the default
+target."
+  (cl-check-type workspace (or null string))
   (cl-check-type package string)
-  (let ((case-fold-search nil))
-    (pcase-exhaustive package
-      ((rx (or bos ?/) (let target (* (not (any ?/)))) eos)
-       target))))
+  (if (and (stringp workspace) (string-empty-p package))
+      workspace
+    (let ((case-fold-search nil))
+      (pcase-exhaustive package
+        ((rx (or bos ?/) (let target (* (not (any ?/)))) eos)
+         target)))))
 
 (defun bazel--canonical (workspace package target)
   "Return a canonical label.
