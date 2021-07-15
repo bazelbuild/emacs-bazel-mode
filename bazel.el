@@ -610,13 +610,12 @@ this function to ‘flymake-diagnostic-functions’.  See Info node
 ‘(Flymake) Backend functions’ for details about Flymake
 backends."
   (cl-check-type report-fn function)
-  (let ((process bazel--flymake-process))
-    (when process
-      ;; The order here is important: ‘delete-process’ will trigger the
-      ;; sentinel, and then ‘bazel--flymake-process’ already has to be nil to
-      ;; avoid an obsolete report.
-      (setq bazel--flymake-process nil)
-      (delete-process process)))
+  (when-let ((process bazel--flymake-process))
+    ;; The order here is important: ‘delete-process’ will trigger the sentinel,
+    ;; and then ‘bazel--flymake-process’ already has to be nil to avoid an
+    ;; obsolete report.
+    (setq bazel--flymake-process nil)
+    (delete-process process))
   (let* ((non-essential t)
          (command `(,bazel-buildifier-command
                     ,@(bazel--buildifier-file-flags bazel--buildifier-type
@@ -931,9 +930,8 @@ valid file target is indeed a file target."
         (bazel--file-location filename)
       ;; A label that likely refers to a rule.  Try to find the rule in the
       ;; BUILD file of the package.
-      (let ((build-file (bazel--locate-build-file directory)))
-        (when build-file
-          (bazel--rule-location build-file target))))))
+      (when-let ((build-file (bazel--locate-build-file directory)))
+        (bazel--rule-location build-file target)))))
 
 ;;;; Completion support
 
@@ -1145,10 +1143,10 @@ Look for an imported file with the given NAME."
   (let ((case-fold-search nil))
     (pcase name
       ((rx bos "%workspace%" (+ ?/) (let rest (+ nonl)))
-       (when buffer-file-name
-         (when-let ((workspace (bazel--workspace-root buffer-file-name)))
-           (let ((file-name (expand-file-name rest workspace)))
-             (and (file-exists-p file-name) file-name))))))))
+       (when-let* ((source-file buffer-file-name)
+                   (workspace (bazel--workspace-root source-file)))
+         (let ((file-name (expand-file-name rest workspace)))
+           (and (file-exists-p file-name) file-name)))))))
 
 ;;;; Compilation support
 
