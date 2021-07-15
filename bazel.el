@@ -1015,13 +1015,16 @@ return nil."
         ;; Heuristic: we search for a “name” attribute as it would show up
         ;; in typical BUILD files.  That’s not 100% correct, but doesn’t
         ;; rely on external processes and should work fine in common cases.
-        (when (re-search-forward
-               (rx-to-string
-                `(seq bol (* blank) "name" (* blank) ?= (* blank)
-                      (group (any ?\" ?')) (group ,name) (backref 1))
-                :no-group)
-               nil t)
-          (match-beginning 2))))))
+        (cl-block nil
+          (while (re-search-forward
+                  (rx-to-string
+                   `(seq symbol-start "name" (* blank) ?= (* blank)
+                         (group (any ?\" ?')) (group ,name) (backref 1))
+                   :no-group)
+                  nil t)
+            (let ((position (match-beginning 2)))
+              (unless (python-syntax-comment-or-string-p)
+                (cl-return position)))))))))
 
 (defun bazel--xref-location (filename find-function)
   "Return an ‘xref-location’ for some entity within FILENAME.
@@ -1059,15 +1062,16 @@ restrict the returned rules to test targets."
         (goto-char (point-min))
         (while (re-search-forward
                 (rx-to-string
-                 `(seq bol (* blank) "name" (* blank) ?= (* blank)
+                 `(seq symbol-start "name" (* blank) ?= (* blank)
                        (group (any ?\" ?'))
                        (group ,prefix (* (not (any ?\" ?' ?\n))))
                        (backref 1))
                  :no-group)
                 nil t)
           (let ((name (match-string-no-properties 2)))
-            (when (or (not only-tests) (bazel--in-test-rule-p))
-              (push name rules)))))
+            (and (not (python-syntax-comment-or-string-p))
+                 (or (not only-tests) (bazel--in-test-rule-p))
+                 (push name rules)))))
       (nreverse rules))))
 
 (defun bazel--in-test-rule-p ()
@@ -1479,17 +1483,18 @@ This function is useful as ‘imenu-create-index-function’ for
                 ;; https://docs.bazel.build/versions/3.1.0/build-ref.html#name
                 ;; (we don’t allow quotation marks in target names), but should
                 ;; be good enough here.
-                (rx bol (* blank) "name" (* blank) ?= (* blank)
+                (rx symbol-start "name" (* blank) ?= (* blank)
                     (group (any ?\" ?'))
                     (group (+ (any "a-z" "A-Z" "0-9"
                                    ?- "!%@^_` #$&()*+,;<=>?[]{|}~/.")))
                     (backref 1))
                 nil t)
-          (let ((name (match-string-no-properties 2))
-                (pos (save-excursion
-                       (python-nav-beginning-of-statement)
-                       (if imenu-use-markers (point-marker) (point)))))
-            (push (cons name pos) index)))
+          (let ((name (match-string-no-properties 2)))
+            (unless (python-syntax-comment-or-string-p)
+              (let ((pos (save-excursion
+                            (python-nav-beginning-of-statement)
+                            (if imenu-use-markers (point-marker) (point)))))
+                (push (cons name pos) index)))))
         (nreverse index)))))
 
 (defun bazel-mode-current-rule-name ()
@@ -1499,18 +1504,21 @@ Return nil if not inside a Bazel rule."
         (bound (save-excursion (python-nav-end-of-statement) (point))))
     (save-excursion
       (python-nav-beginning-of-statement)
-      (when (re-search-forward
-             ;; The target pattern isn’t the same as
-             ;; https://docs.bazel.build/versions/3.1.0/build-ref.html#name (we
-             ;; don’t allow quotation marks in target names), but should be good
-             ;; enough here.
-             (rx bol (* blank) "name" (* blank) ?= (* blank)
-                 (group (any ?\" ?'))
-                 (group (+ (any "a-z" "A-Z" "0-9"
-                                ?- "!%@^_` #$&()*+,;<=>?[]{|}~/.")))
-                 (backref 1))
-             bound t)
-        (match-string-no-properties 2)))))
+      (cl-block nil
+        (while (re-search-forward
+               ;; The target pattern isn’t the same as
+               ;; https://docs.bazel.build/versions/3.1.0/build-ref.html#name
+               ;; (we don’t allow quotation marks in target names), but should
+               ;; be good enough here.
+               (rx symbol-start "name" (* blank) ?= (* blank)
+                   (group (any ?\" ?'))
+                   (group (+ (any "a-z" "A-Z" "0-9"
+                                  ?- "!%@^_` #$&()*+,;<=>?[]{|}~/.")))
+                   (backref 1))
+               bound t)
+          (let ((name (match-string-no-properties 2)))
+            (unless (python-syntax-comment-or-string-p)
+              (cl-return name))))))))
 
 (defun bazel-mode-extract-function-name ()
   "Return the name of the Starlark function at point.

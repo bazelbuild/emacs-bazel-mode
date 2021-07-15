@@ -40,6 +40,12 @@ cc_binary(
         "//pkg:lib",
     ],
 )
+
+# Commented-out rule; should be ignored.
+# cc_binary(
+#     name = "bin",
+#     srcs = "bin.cc",
+# )
 #+end_src
 
 Create empty files that the labels in the test BUILD file refer to.
