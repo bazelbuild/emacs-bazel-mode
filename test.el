@@ -921,25 +921,29 @@ in ‘bazel-mode’."
       (skip-unless bash)
       (with-temp-file bazel-buildifier-command
         (insert "#!" (file-name-unquote bash) ?\n
-                "set -Cefu\n"
+                "set -efu\n"
                 "cd " (shell-quote-argument (file-name-unquote dir)) ?\n
                 "cat > input\n"
                 "echo \"$*\" > args\n"
                 "echo output\n"
                 "echo error >&2\n"))
       (set-file-modes bazel-buildifier-command #o0500)
-      (with-temp-buffer
-        (insert "input")
-        (bazel-starlark-mode)
-        (bazel-buildifier)
-        (should (equal (buffer-string) "output\n")))
-      (dolist (elem '(("input" "input")
-                      ("args" "-type=bzl\n")))
-        (cl-destructuring-bind (file expected) elem
-          (ert-info (file :prefix "File: ")
+      (dolist (elem '((nil "-type=bzl")
+                      (workspace "-type=workspace")))
+        (cl-destructuring-bind (type args) elem
+          (ert-info ((symbol-name type) :prefix "Explicit type: ")
             (with-temp-buffer
-              (insert-file-contents (expand-file-name file dir))
-              (should (equal (buffer-string) expected)))))))))
+              (insert "input")
+              (bazel-starlark-mode)
+              (bazel-buildifier type)
+              (should (equal (buffer-string) "output\n")))
+            (dolist (elem `(("input" "input")
+                            ("args" ,(concat args "\n"))))
+              (cl-destructuring-bind (file expected) elem
+                (ert-info (file :prefix "File: ")
+                  (with-temp-buffer
+                    (insert-file-contents (expand-file-name file dir))
+                    (should (equal (buffer-string) expected))))))))))))
 
 (ert-deftest bazel-buildifier/failure ()
   (bazel-test--with-temp-directory dir nil
