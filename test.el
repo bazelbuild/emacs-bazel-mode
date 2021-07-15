@@ -139,9 +139,7 @@ MESSAGE is a message for ‘ert-info’."
 (ert-deftest bazel-mode/indent-region ()
   (bazel-test--with-temp-directory dir "indent.org"
     (bazel-test--with-file-buffer (expand-file-name "BUILD" dir)
-      (let ((before (buffer-string)))
-        (indent-region (point-min) (point-max))
-        (should (equal (buffer-string) before))))))
+      (should (equal (buffer-string) (ert-buffer-string-reindented))))))
 
 (ert-deftest bazel-mode-flymake ()
   "Unit test for the ‘bazel-mode-flymake’ Flymake backend."
