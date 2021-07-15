@@ -115,7 +115,17 @@ Otherwise, just evaluate BODY."
     (declare (indent 1) (debug (sexp body)))
     (if (macrop 'with-suppressed-warnings)
         `(with-suppressed-warnings ,warnings ,@body)
-      (macroexp-progn body))))
+      (macroexp-progn body)))
+
+  (defmacro bazel-test--wait-for (message condition)
+    "Busy wait for CONDITION to become non-nil.
+MESSAGE is a message for ‘ert-info’."
+    (declare (indent 1) (debug t))
+    `(ert-info (,message)
+       (ert-info (,(prin1-to-string condition) :prefix "Condition: ")
+         (with-timeout (10 (ert-fail "Timed out waiting for condition"))
+           (while (not ,condition)
+             (sleep-for 0.1)))))))
 
 ;;;; Unit tests
 
@@ -146,11 +156,11 @@ Otherwise, just evaluate BODY."
         (should (flymake-is-running))
         (should (equal (flymake-running-backends) '(bazel-mode-flymake)))
         ;; Wait for the backend to start reporting.
-        (while (not (memq #'bazel-mode-flymake (flymake-reporting-backends)))
-          (sleep-for 0.1))
-        ;; Give the backend some time to report.  This isn’t 100% robust, but
-        ;; should be good enough in typical cases.
-        (sleep-for 1)
+        (bazel-test--wait-for "Waiting for backend to start reporting"
+          (memq #'bazel-mode-flymake (flymake-reporting-backends)))
+        ;; Give the backend some time to report.
+        (bazel-test--wait-for "Waiting for diagnostics to arrive"
+          (flymake-diagnostics))
         (dolist (diag (flymake-diagnostics))
           (ert-info ((prin1-to-string diag))
             (should (eq (flymake-diagnostic-buffer diag) (current-buffer)))
