@@ -25,4 +25,4 @@ jobs:
       - name: Install Bazelisk
         uses: bazelbuild/setup-bazelisk@v1
       - name: Run Bazel tests
-        run: ./test
+        run: make
