@@ -182,7 +182,7 @@ the file types documented at URL
                   (apply #'process-file
                          bazel-buildifier-command
                          (maybe-unquote buildifier-input-file)
-                         `(t ,buildifier-error-file) nil
+                         `(t ,(maybe-unquote buildifier-error-file)) nil
                          (bazel--buildifier-file-flags type input-file))))
             (if (eq return-code 0)
                 (progn
