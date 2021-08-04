@@ -357,7 +357,11 @@ the rule."
       (bazel-build-mode)
       (let ((imenu-use-markers nil))
         (should (equal (funcall imenu-create-index-function)
-                       '(("lib" . 1) ("bin" . 185))))))))
+                       '(("lib" . 1) ("bin" . 185)))))
+      (let ((imenu-use-markers t))
+        (should (equal (funcall imenu-create-index-function)
+                       `(("lib" . ,(copy-marker 1))
+                         ("bin" . ,(copy-marker 185)))))))))
 
 (ert-deftest bazel-mode/speedbar ()
   "Check that \\[speedbar] detects BUILD files."
