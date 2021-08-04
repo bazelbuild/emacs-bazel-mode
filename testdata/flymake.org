@@ -96,10 +96,17 @@ EOF
 #+end_src
 
 We also provide a “fake” Buildifier binary that only emits our canned output.
+It waits for the file =signal= to exist; you can use this to simulate a “slow”
+Buildifier.
 
 #+begin_src sh :tangle buildifier :shebang "#!/bin/bash" :var dir=(file-name-unquote (expand-file-name default-directory))
 # Fake waiting for file input.
 cat > /dev/null
+
+# Wait for signal file to exist.
+while [[ ! -e "${dir:?}/signal" ]]; do
+  sleep 1
+done
 
 # Fake some Buildifier output.
 cat -- "${dir:?}/buildifier.json"
