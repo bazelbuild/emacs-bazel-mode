@@ -693,14 +693,14 @@ attached to the current buffer.  Return a list of Flymake
 diagnostics; see Info node ‘(Flymake) Backend functions’ for
 details."
   (cl-check-type output-buffer buffer-live)
-  (cl-loop with case-fold-search = nil
-           with report = (with-current-buffer output-buffer
+  (cl-loop with report = (with-current-buffer output-buffer
                            (save-excursion
                              (save-restriction
                                (widen)
                                (goto-char (point-min))
                                ;; Skip over standard error messages if possible.
-                               (let ((search-spaces-regexp nil))
+                               (let ((case-fold-search nil)
+                                     (search-spaces-regexp nil))
                                  (when (re-search-forward (rx bol ?{) nil t)
                                    (backward-char)
                                    (bazel--json-parse-buffer))))))
