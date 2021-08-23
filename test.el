@@ -151,7 +151,7 @@ MESSAGE is a message for ‘ert-info’."
             (diagnostics ()))
         (skip-unless (file-executable-p bazel-buildifier-command))
         ;; Make the fake Buildifier report immediately.
-        (make-empty-file (expand-file-name "signal" dir))
+        (write-region "" nil (expand-file-name "signal" dir) nil nil nil 'excl)
         (flymake-mode)
         (should (flymake-is-running))
         (should (equal (flymake-running-backends) '(bazel-mode-flymake)))
@@ -204,7 +204,7 @@ gets killed early."
           (bazel-test--wait-for "Waiting for Buildifier process to start"
             (bazel-test--buildifier-running-p)))
         ;; Now allow the fake Buildifier to proceed.
-        (make-empty-file (expand-file-name "signal" dir))
+        (write-region "" nil (expand-file-name "signal" dir) nil nil nil 'excl)
         ;; Wait for fake Buildifier to finish.
         (bazel-test--wait-for "Waiting for Buildifier process to finish"
           (not (bazel-test--buildifier-running-p)))))
