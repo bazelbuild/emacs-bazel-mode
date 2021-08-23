@@ -1036,7 +1036,7 @@ in ‘bazel-mode’."
           (marker-file (expand-file-name "ok" dir))
           (bazel-buildifier-command (expand-file-name "buildifier" dir)))
       (skip-unless bash)
-      (make-empty-file input-file)
+      (write-region "" nil input-file nil nil nil 'excl)
       (with-temp-file bazel-buildifier-command
         (insert "#!" (file-name-unquote bash) ?\n
                 "set -efu\n"
