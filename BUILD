@@ -15,7 +15,7 @@
 # Note: all files starting with "bazel-" have to be in a subdirectory due to
 # https://github.com/bazelbuild/bazel/issues/10560.
 
-load("@phst_rules_elisp//elisp:defs.bzl", "elisp_library", "elisp_test")
+load("@phst_rules_elisp//elisp:defs.bzl", "elisp_library", "elisp_manual", "elisp_test")
 
 elisp_library(
     name = "bazel",
@@ -32,4 +32,18 @@ elisp_test(
     ],
     data = glob(["testdata/*"]),
     deps = [":bazel"],
+)
+
+elisp_manual(
+    name = "manual",
+    src = "manual.org",
+    out = "manual.texi",
+)
+
+# This rule assumes that Texinfo is installed locally.
+genrule(
+    name = "info",
+    srcs = ["manual.texi"],
+    outs = ["bazel.el.info"],
+    cmd = "makeinfo --no-split --output=$@ -- $<",
 )
