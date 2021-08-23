@@ -1356,8 +1356,9 @@ See Info node ‘(org) Extracting Source Code’."
   "Return whether we have a running Buildifier process.
 This relies on the variable ‘bazel-buildifier-command’"
   (cl-some (lambda (process)
-             (file-equal-p (car (process-command process))
-                           bazel-buildifier-command))
+             (and (eq (process-type process) 'real)
+                  (file-equal-p (car (process-command process))
+                                bazel-buildifier-command)))
            (process-list)))
 
 ;; In Emacs 26, ‘file-equal-p’ is buggy and doesn’t work correctly on quoted
