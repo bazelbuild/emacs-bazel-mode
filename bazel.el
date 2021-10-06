@@ -159,16 +159,15 @@ If nil, don’t pass a -type flag to Buildifier.")
 Assume that each of the binding forms returns the name of a
 temporary file.  After BODY finishes, delete the temporary files."
     (declare (debug let*) (indent 1))
-    (if bindings
-        (cl-destructuring-bind ((var val) . rest) bindings
-          (cl-check-type var symbol)
-          (let ((file (make-symbol "file")))
-            `(let ((,file ,val))
-               (unwind-protect
-                   (let ((,var ,file))
-                     (bazel--with-temp-files ,rest ,@body))
-                 (delete-file ,file)))))
-      (macroexp-progn body))))
+    (pcase-exhaustive bindings
+      ('nil (macroexp-progn body))
+      (`((,(and (pred symbolp) var) ,val) . ,rest)
+       (let ((file (make-symbol "file")))
+         `(let ((,file ,val))
+            (unwind-protect
+                (let ((,var ,file))
+                  (bazel--with-temp-files ,rest ,@body))
+              (delete-file ,file))))))))
 
 (defun bazel-buildifier (&optional type)
   "Format current buffer using Buildifier.
@@ -815,26 +814,26 @@ IDENTIFIER should be an XRef identifier returned by
   (cl-check-type identifier string)
   ;; Reparse the identifier so that users can invoke ‘xref-find-definitions’
   ;; and enter a label directly.
-  (when-let ((parsed-label (bazel--parse-label identifier)))
-    (cl-destructuring-bind (workspace package target) parsed-label
-      (when-let* ((this-workspace
-                   (or (get-text-property 0 'bazel-mode-workspace identifier)
-                       (and buffer-file-name
-                            (bazel--workspace-root buffer-file-name))))
-                  (package
-                   (or package
-                       (and buffer-file-name
-                            (when-let ((directory
-                                        (bazel--package-directory
-                                         buffer-file-name this-workspace)))
-                              (bazel--package-name directory
-                                                   this-workspace)))))
-                  (location
-                   (bazel--target-location
-                    (bazel--external-workspace workspace this-workspace)
-                    package target)))
-        (list (xref-make (bazel--canonical workspace package target)
-                         location))))))
+  (pcase (bazel--parse-label identifier)
+    (`(,workspace ,package ,target)
+     (when-let* ((this-workspace
+                  (or (get-text-property 0 'bazel-mode-workspace identifier)
+                      (and buffer-file-name
+                           (bazel--workspace-root buffer-file-name))))
+                 (package
+                  (or package
+                      (and buffer-file-name
+                           (when-let ((directory
+                                       (bazel--package-directory
+                                        buffer-file-name this-workspace)))
+                             (bazel--package-name directory
+                                                  this-workspace)))))
+                 (location
+                  (bazel--target-location
+                   (bazel--external-workspace workspace this-workspace)
+                   package target)))
+       (list (xref-make (bazel--canonical workspace package target)
+                        location))))))
 
 (cl-defmethod xref-backend-identifier-completion-table
   ((_backend (eql bazel-mode)))
