@@ -51,7 +51,28 @@
   'bazel-command "2021-04-13")
 
 (defcustom bazel-command '("bazel")
-  "Command and arguments that should be used to invoke Bazel."
+  "Command and arguments that should be used to invoke Bazel.
+The arguments are used as startup options; see URL
+‘https://docs.bazel.build/user-manual.html#startup_options’.  To
+add command options, use the option ‘bazel-command-options’
+instead.  Instead of specifying startup options here, it’s
+typically preferable to use a ‘.bazelrc’ file instead; see URL
+‘https://docs.bazel.build/guide.html#bazelrc-the-bazel-configuration-file’."
+  :type '(repeat string)
+  :risky t
+  :group 'bazel)
+
+(defcustom bazel-command-options nil
+  "Command-line options for all Bazel commands.
+The commands ‘bazel-build’, ‘bazel-test’ etc. insert these
+options after the command (‘build’, ‘test’, etc.); see URL
+‘https://docs.bazel.build/user-manual.html#options’.
+To add startup options, use the option ‘bazel-command’ instead.
+Instead of specifying startup options here, it’s typically
+preferable to use a ‘.bazelrc’ file instead; see URL
+‘https://docs.bazel.build/guide.html#bazelrc-the-bazel-configuration-file’.
+Use this option only for Bazel options that are really
+Emacs-specific, such as ‘--tool_tag=emacs’."
   :type '(repeat string)
   :risky t
   :group 'bazel)
@@ -1738,9 +1759,14 @@ COMMAND is a Bazel command such as \"build\" or \"run\"."
   (cl-check-type target-pattern string)
   (bazel--compile command "--" target-pattern))
 
-(defun bazel--compile (&rest args)
-  "Run Bazel in a Compilation buffer with the given ARGS."
-  (compile (mapconcat #'shell-quote-argument (append bazel-command args) " ")))
+(defun bazel--compile (command &rest args)
+  "Run Bazel in a Compilation buffer with the given COMMAND and ARGS.
+Insert command options from ‘bazel-command-options’ between
+COMMAND and ARGS."
+  (compile (mapconcat #'shell-quote-argument
+                      (append bazel-command (list command)
+                              bazel-command-options args)
+                      " ")))
 
 (defvar bazel-target-history nil
   "History for Bazel target pattern completion.

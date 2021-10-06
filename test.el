@@ -763,6 +763,15 @@ in ‘bazel-mode’."
     (bazel-build "//foo:bar")
     (should (equal commands '("bazel build -- //foo\\:bar")))))
 
+(ert-deftest bazel-run/options ()
+  (cl-letf* ((commands ())
+             ((symbol-function #'compile)
+              (lambda (command &optional _comint)
+                (push command commands)))
+             (bazel-command-options '("--tool_tag=emacs")))
+    (bazel-run "//foo:bar")
+    (should (equal commands '("bazel run --tool_tag\\=emacs -- //foo\\:bar")))))
+
 (ert-deftest bazel-build-mode/font-lock ()
   "Test Font Locking in ‘bazel-build-mode’."
   (let ((text (ert-propertized-string
