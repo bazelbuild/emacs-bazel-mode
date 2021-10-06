@@ -438,7 +438,9 @@ Return a list (NAME SHA-256 PREFIX TIME) for
 ‘bazel-insert-http-archive’."
   (cl-check-type url string)
   (let* ((temp-dir (make-temp-file "bazel-http-archive-" :directory))
-         (archive-file (expand-file-name (url-file-nondirectory url) temp-dir))
+         (name (url-file-nondirectory url))
+         (archive-file (expand-file-name
+                        (if (string-empty-p name) "archive" name) temp-dir))
          (reporter (make-progress-reporter
                     (format-message "Downloading %s into %s..." url temp-dir)))
          (coding-system-for-read 'no-conversion)
