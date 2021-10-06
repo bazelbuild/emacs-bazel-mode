@@ -18,7 +18,7 @@
 #+export_file_name: bazel.el.texi
 #+texinfo_filename: bazel.el.info
 #+texinfo_dir_category: Emacs
-#+texinfo_dir_title: bazel.el
+#+texinfo_dir_title: bazel.el: (bazel.el)
 #+texinfo_dir_desc: Working with the Bazel build system
 
 * Introduction
