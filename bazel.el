@@ -379,12 +379,14 @@ This is the parent mode for the more specific modes
 
 (defun bazel--is-buffer-workspace-file-p ()
   "Determines whether the buffer file is a workspace file."
-  (when-let (buffer-file-base-name (file-name-nondirectory(buffer-file-name (buffer-base-buffer))))
+  (when-let (buffer-file-base-name
+             (file-name-nondirectory (buffer-file-name (buffer-base-buffer))))
     (bazel--is-workspace-file-p buffer-file-base-name)))
 
 (defun bazel--is-buffer-build-file-p ()
   "Determines whether the buffer file is a build file."
-  (when-let (buffer-file-base-name (file-name-nondirectory(buffer-file-name (buffer-base-buffer))))
+  (when-let (buffer-file-base-name
+             (file-name-nondirectory (buffer-file-name (buffer-base-buffer))))
     (bazel--is-build-file-p buffer-file-base-name)))
 
 ;;;###autoload
