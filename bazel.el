@@ -375,7 +375,7 @@ This is the parent mode for the more specific modes
   (and (or (string-equal "BUILD" filename)
            (string-equal "BUILD.bazel" filename)
            (and (string-suffix-p ".bazel" filename)
-                (not (bazel--is-workspace-file-p filename))))))
+                (not (string-equal "WORKSPACE.bazel" filename))))))
 
 (defun bazel--is-buffer-workspace-file-p ()
   "Determines whether the buffer file is a workspace file."
