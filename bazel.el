@@ -366,12 +366,12 @@ This is the parent mode for the more specific modes
             nil :local))
 
 (defun bazel--is-workspace-file-p (filename)
-  "Determines whether a file is a workspace file."
+  "Determines whether a file is a workspace file given its filename."
   (or (string-equal "WORKSPACE" filename)
       (string-equal "WORKSPACE.bazel" filename)))
 
 (defun bazel--is-build-file-p (filename)
-  "Determines whether a file is a build file."
+  "Determines whether a file is a build file given its filename."
   (and (not (bazel--is-workspace-file-p filename))
        (or (string-equal "BUILD" filename)
            (string-equal "BUILD.bazel" filename)
