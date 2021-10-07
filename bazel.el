@@ -372,10 +372,10 @@ This is the parent mode for the more specific modes
 
 (defun bazel--is-build-file-p (filename)
   "Determines whether a file is a build file given its filename."
-  (and (not (bazel--is-workspace-file-p filename))
-       (or (string-equal "BUILD" filename)
+  (and (or (string-equal "BUILD" filename)
            (string-equal "BUILD.bazel" filename)
-           (string-suffix-p ".bazel" filename))))
+           (and (string-suffix-p ".bazel" filename)
+                (not (bazel--is-workspace-file-p filename))))))
 
 (defun bazel--is-buffer-workspace-file-p ()
   "Determines whether the buffer file is a workspace file."
