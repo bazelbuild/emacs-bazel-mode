@@ -373,7 +373,6 @@ This is the parent mode for the more specific modes
 (defun bazel--is-build-file-p (filename)
   "Determines whether a file is a build file given its filename."
   (and (or (string-equal "BUILD" filename)
-           (string-equal "BUILD.bazel" filename)
            (and (string-suffix-p ".bazel" filename)
                 (not (string-equal "WORKSPACE.bazel" filename))))))
 
