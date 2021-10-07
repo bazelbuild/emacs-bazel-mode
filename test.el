@@ -135,6 +135,10 @@ MESSAGE is a message for ‘ert-info’."
     ;; Special case where we want bazel-workspace-mode.
     (should (eq (bazel--is-workspace-file-p "WORKSPACE.bazel") t))
 
+    ;; This extension conflicts with other build systems, so we
+    ;; stick to using .bazel as an unambiguous extension instead.
+    (should (eq (bazel--is-workspace-file-p "foo.BUILD") nil))
+
     (should (eq (bazel--is-workspace-file-p "BUILD.bzl") nil))
     (should (eq (bazel--is-workspace-file-p "BUILD.bazel") nil))
     (should (eq (bazel--is-workspace-file-p "BUILD") nil))
@@ -148,6 +152,10 @@ MESSAGE is a message for ‘ert-info’."
     (should (eq (bazel--is-build-file-p "BUILD.bazel") t))
     (should (eq (bazel--is-build-file-p "BUILD") t))
     (should (eq (bazel--is-build-file-p "foo.bazel") t))
+
+    ;; This extension conflicts with other build systems, so we
+    ;; stick to using .bazel as an unambiguous extension instead.
+    (should (eq (bazel--is-build-file-p "foo.BUILD") nil))
 
     ;; Special case where we want bazel-workspace-mode.
     (should (eq (bazel--is-build-file-p "WORKSPACE.bazel") nil))
