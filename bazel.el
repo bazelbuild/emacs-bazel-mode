@@ -51,7 +51,28 @@
   'bazel-command "2021-04-13")
 
 (defcustom bazel-command '("bazel")
-  "Command and arguments that should be used to invoke Bazel."
+  "Command and arguments that should be used to invoke Bazel.
+The arguments are used as startup options; see URL
+‘https://docs.bazel.build/user-manual.html#startup_options’.  To
+add command options, use the option ‘bazel-command-options’
+instead.  Instead of specifying startup options here, it’s
+typically preferable to use a ‘.bazelrc’ file instead; see URL
+‘https://docs.bazel.build/guide.html#bazelrc-the-bazel-configuration-file’."
+  :type '(repeat string)
+  :risky t
+  :group 'bazel)
+
+(defcustom bazel-command-options nil
+  "Command-line options for all Bazel commands.
+The commands ‘bazel-build’, ‘bazel-test’ etc. insert these
+options after the command (‘build’, ‘test’, etc.); see URL
+‘https://docs.bazel.build/user-manual.html#options’.
+To add startup options, use the option ‘bazel-command’ instead.
+Instead of specifying startup options here, it’s typically
+preferable to use a ‘.bazelrc’ file instead; see URL
+‘https://docs.bazel.build/guide.html#bazelrc-the-bazel-configuration-file’.
+Use this option only for Bazel options that are really
+Emacs-specific, such as ‘--tool_tag=emacs’."
   :type '(repeat string)
   :risky t
   :group 'bazel)
@@ -138,16 +159,15 @@ If nil, don’t pass a -type flag to Buildifier.")
 Assume that each of the binding forms returns the name of a
 temporary file.  After BODY finishes, delete the temporary files."
     (declare (debug let*) (indent 1))
-    (if bindings
-        (cl-destructuring-bind ((var val) . rest) bindings
-          (cl-check-type var symbol)
-          (let ((file (make-symbol "file")))
-            `(let ((,file ,val))
-               (unwind-protect
-                   (let ((,var ,file))
-                     (bazel--with-temp-files ,rest ,@body))
-                 (delete-file ,file)))))
-      (macroexp-progn body))))
+    (pcase-exhaustive bindings
+      ('nil (macroexp-progn body))
+      (`((,(and (pred symbolp) var) ,val) . ,rest)
+       (let ((file (make-symbol "file")))
+         `(let ((,file ,val))
+            (unwind-protect
+                (let ((,var ,file))
+                  (bazel--with-temp-files ,rest ,@body))
+              (delete-file ,file))))))))
 
 (defun bazel-buildifier (&optional type)
   "Format current buffer using Buildifier.
@@ -438,7 +458,9 @@ Return a list (NAME SHA-256 PREFIX TIME) for
 ‘bazel-insert-http-archive’."
   (cl-check-type url string)
   (let* ((temp-dir (make-temp-file "bazel-http-archive-" :directory))
-         (archive-file (expand-file-name (url-file-nondirectory url) temp-dir))
+         (name (url-file-nondirectory url))
+         (archive-file (expand-file-name
+                        (if (string-empty-p name) "archive" name) temp-dir))
          (reporter (make-progress-reporter
                     (format-message "Downloading %s into %s..." url temp-dir)))
          (coding-system-for-read 'no-conversion)
@@ -813,26 +835,26 @@ IDENTIFIER should be an XRef identifier returned by
   (cl-check-type identifier string)
   ;; Reparse the identifier so that users can invoke ‘xref-find-definitions’
   ;; and enter a label directly.
-  (when-let ((parsed-label (bazel--parse-label identifier)))
-    (cl-destructuring-bind (workspace package target) parsed-label
-      (when-let* ((this-workspace
-                   (or (get-text-property 0 'bazel-mode-workspace identifier)
-                       (and buffer-file-name
-                            (bazel--workspace-root buffer-file-name))))
-                  (package
-                   (or package
-                       (and buffer-file-name
-                            (when-let ((directory
-                                        (bazel--package-directory
-                                         buffer-file-name this-workspace)))
-                              (bazel--package-name directory
-                                                   this-workspace)))))
-                  (location
-                   (bazel--target-location
-                    (bazel--external-workspace workspace this-workspace)
-                    package target)))
-        (list (xref-make (bazel--canonical workspace package target)
-                         location))))))
+  (pcase (bazel--parse-label identifier)
+    (`(,workspace ,package ,target)
+     (when-let* ((this-workspace
+                  (or (get-text-property 0 'bazel-mode-workspace identifier)
+                      (and buffer-file-name
+                           (bazel--workspace-root buffer-file-name))))
+                 (package
+                  (or package
+                      (and buffer-file-name
+                           (when-let ((directory
+                                       (bazel--package-directory
+                                        buffer-file-name this-workspace)))
+                             (bazel--package-name directory
+                                                  this-workspace)))))
+                 (location
+                  (bazel--target-location
+                   (bazel--external-workspace workspace this-workspace)
+                   package target)))
+       (list (xref-make (bazel--canonical workspace package target)
+                        location))))))
 
 (cl-defmethod xref-backend-identifier-completion-table
   ((_backend (eql bazel-mode)))
@@ -1759,9 +1781,14 @@ COMMAND is a Bazel command such as \"build\" or \"run\"."
   (cl-check-type target-pattern string)
   (bazel--compile command "--" target-pattern))
 
-(defun bazel--compile (&rest args)
-  "Run Bazel in a Compilation buffer with the given ARGS."
-  (compile (mapconcat #'shell-quote-argument (append bazel-command args) " ")))
+(defun bazel--compile (command &rest args)
+  "Run Bazel in a Compilation buffer with the given COMMAND and ARGS.
+Insert command options from ‘bazel-command-options’ between
+COMMAND and ARGS."
+  (compile (mapconcat #'shell-quote-argument
+                      (append bazel-command (list command)
+                              bazel-command-options args)
+                      " ")))
 
 (defvar bazel-target-history nil
   "History for Bazel target pattern completion.
