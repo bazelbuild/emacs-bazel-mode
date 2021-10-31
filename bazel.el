@@ -173,11 +173,11 @@ temporary file.  After BODY finishes, delete the temporary files."
   "Format current buffer using Buildifier.
 If TYPE is nil, detect the file type from the current major mode
 and visited filename, if available.  Otherwise, TYPE must be one
-of the symbols ‘build’, ‘bzl’, or ‘workspace’, corresponding to
-the file types documented at URL
+of the symbols ‘build’, ‘bzl’, ‘workspace’, or ‘default’,
+corresponding to the file types documented at URL
 ‘https://github.com/bazelbuild/buildtools/tree/master/buildifier#usage’."
   (interactive "*")
-  (cl-check-type type (member nil build bzl workspace))
+  (cl-check-type type (member nil build bzl workspace default))
   (let ((input-buffer (current-buffer))
         (directory default-directory)
         (input-file buffer-file-name)
