@@ -1021,7 +1021,8 @@ in ‘bazel-mode’."
       (set-file-modes bazel-buildifier-command #o0500)
       (pcase-dolist (`(,type ,args)
                      '((nil "-type=bzl")
-                       (workspace "-type=workspace")))
+                       (workspace "-type=workspace")
+                       (default "-type=default")))
         (ert-info ((symbol-name type) :prefix "Explicit type: ")
           (with-temp-buffer
             (insert "input")
