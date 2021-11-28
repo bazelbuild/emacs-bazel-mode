@@ -1,0 +1,61 @@
+#!/bin/bash
+
+# Copyright 2020, 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Run this script to regenerate the Bazel output in fix-visibility.org.
+
+set -eu
+
+# Bazel formats output differently when invoked from Emacs.
+export INSIDE_EMACS='27.2,compile'
+
+workspace="$(bazel info workspace)" || exit
+testdata="${workspace:?}/testdata"
+org="${testdata:?}/fix-visibility.org"
+
+dir="$(mktemp -d)" || exit
+trap 'rm -r -f -- "${dir}"' EXIT
+
+# Canonicalize the directory so that the textual replacement below doesn’t
+# choke on symbolic links.
+dir="$(realpath -e -- "${dir:?}")" || exit
+
+# Set up a basic workspace layout in the temporary directory.
+emacs --quick --batch --visit="${org:?}" \
+  --eval="(let ((default-directory \"${dir:?}/\")) (org-babel-tangle))" || exit
+
+execroot="$(cd "${dir:?}" && bazel --bazelrc=/dev/null info execution_root)"
+
+# We explicitly compile with the current directory set to a subdirectory to
+# ensure that workspace-relative filenames still work as expected.  Invert the
+# exit status of “bazel build” because we expect it to fail.
+out="$(cd "${dir:?}/lib" && ! bazel --bazelrc=/dev/null build //... 2>&1)"
+
+# Replace the arbitrary temporary directory in the output with placeholders.
+out="${out//${dir}/%ROOTDIR%}"
+
+# The execution root is somewhere else, but since we only access source files,
+# we can virtually merge it with the workspace root.
+out="${out//${execroot}/%ROOTDIR%}"
+
+# We can’t use ‘org-babel-detangle’ because there are no links in the tangled
+# files.
+awk -v out=bazel.out -v src=<(echo "${out:?}") \
+  -f "${testdata:?}/detangle.awk" \
+  -- "${org:?}" > "${dir:?}/org.tmp" || exit
+
+cp -- "${dir:?}/org.tmp" "${org:?}" || exit
+
+echo 'Successfully refreshed fix-visibility.org'

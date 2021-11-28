@@ -146,6 +146,18 @@ instrumented but never executed will be marked with the face
 ~bazel-uncovered-line~.  To remove these markings, run the command
 ~bazel-remove-coverage-display~.
 
+#+cindex: Visibility
+#+vindex: bazel-fix-visibility
+#+vindex: bazel-buildozer-command
+If you set the user option ~bazel-fix-visibility~ to ~t~, Emacs will
+automatically attempt to make targets visible to dependent packages as needed.
+You can also set the option to ~ask~ if you prefer Emacs to first prompt you to
+confirm each such change.  To edit =BUILD= files, Emacs will use the Buildozer
+program (see
+[[https://github.com/bazelbuild/buildtools/blob/master/buildozer/README.md][Buildozer]]).
+If you don’t have BUILDOZER in your ~PATH~, you can customize the location of
+the Buildozer program though the user option ~bazel-buildozer-command~.
+
 * Files in Bazel workspaces
 
 #+cindex: FFAP, for files in workspaces
