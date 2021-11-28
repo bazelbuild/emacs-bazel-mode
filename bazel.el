@@ -1203,7 +1203,7 @@ Look for an imported file with the given NAME."
                       ;; non-ASCII alphanumeric characters, because they could
                       ;; be part of the workspace directory name.
                       ;;
-                      ;; This also needs to account for Windows-style paths,
+                      ;; This also needs to account for Windows-style file names,
                       ;; which might need to account for the current drive, and
                       ;; will start with something like "C:/".
                       (group (optional (any (?A . ?Z) (?a . ?z)) ":/")
