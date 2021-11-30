@@ -1202,7 +1202,12 @@ Look for an imported file with the given NAME."
                       ;; don’t include spaces here either.  We do allow
                       ;; non-ASCII alphanumeric characters, because they could
                       ;; be part of the workspace directory name.
-                      (group (+ (any alnum ?/ ?- ?. ?_))
+                      ;;
+                      ;; This also needs to account for Windows-style file names,
+                      ;; which might need to account for the current drive, and
+                      ;; will start with something like "C:/".
+                      (group (optional (any (?A . ?Z) (?a . ?z)) ":/")
+                             (+ (any alnum ?/ ?- ?. ?_))
                              (or (seq "/BUILD" (? ".bazel"))
                                  (seq (+ (any alnum ?- ?. ?_)) ".bzl")))
                       ?: (group (+ digit)) ?: (group (+ digit)) ": ")
