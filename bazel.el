@@ -44,6 +44,7 @@
 (defgroup bazel nil
   "Package for editing, building, and running code using Bazel."
   :group 'languages
+  :link '(custom-manual "(bazel.el) Top")
   :link '(url-link "https://bazel.build")
   :link '(url-link "https://github.com/bazelbuild/emacs-bazel-mode"))
 
@@ -60,7 +61,8 @@ typically preferable to use a ‘.bazelrc’ file instead; see URL
 ‘https://docs.bazel.build/guide.html#bazelrc-the-bazel-configuration-file’."
   :type '(repeat string)
   :risky t
-  :group 'bazel)
+  :group 'bazel
+  :link '(custom-manual "(bazel.el) Customization"))
 
 (defcustom bazel-command-options nil
   "Command-line options for all Bazel commands.
@@ -75,7 +77,8 @@ Use this option only for Bazel options that are really
 Emacs-specific, such as ‘--tool_tag=emacs’."
   :type '(repeat string)
   :risky t
-  :group 'bazel)
+  :group 'bazel
+  :link '(custom-manual "(bazel.el) Customization"))
 
 (define-obsolete-variable-alias 'bazel-mode-buildifier-command
   'bazel-buildifier-command "2021-04-13")
@@ -85,6 +88,7 @@ Emacs-specific, such as ‘--tool_tag=emacs’."
   :type 'string
   :risky t
   :group 'bazel
+  :link '(custom-manual "(bazel.el) Customization")
   :link '(url-link
           "https://github.com/bazelbuild/buildtools/tree/master/buildifier"))
 
@@ -105,6 +109,7 @@ Emacs-specific, such as ‘--tool_tag=emacs’."
   :type 'boolean
   :risky t
   :group 'bazel
+  :link '(custom-manual "(bazel.el) Buildifier")
   :link '(url-link
           "https://github.com/bazelbuild/buildtools/tree/master/buildifier"))
 
@@ -128,6 +133,7 @@ priority."
   :initialize #'bazel--initialize-test-at-point-functions
   :risky t
   :group 'bazel
+  :link '(custom-manual "(bazel.el) Extending")
   :link '(url-link
           "https://docs.bazel.build/user-manual.html#flag--test_filter")
   :link '(url-link "https://docs.bazel.build/test-encyclopedia.html"))
@@ -141,17 +147,20 @@ If ‘local’, only do so for local files."
   :type '(radio (const :tag "Never" nil)
                 (const :tag "Always" t)
                 (const :tag "Only for local files" local))
-  :group 'bazel)
+  :group 'bazel
+  :link '(custom-manual "(bazel.el) Running Bazel"))
 
 (defface bazel-covered-line '((((background dark)) :background "#3D5C3A")
                               (t :background "#BEFFB8"))
   ;; Various shades of green.
   "Face for lines covered by unit tests."
-  :group 'bazel)
+  :group 'bazel
+  :link '(custom-manual "(bazel.el) Running Bazel"))
 
 (defface bazel-uncovered-line '((t :inherit testcover-nohits))
   "Face for lines not covered by unit tests."
-  :group 'bazel)
+  :group 'bazel
+  :link '(custom-manual "(bazel.el) Running Bazel"))
 
 (defcustom bazel-fix-visibility nil
   "Specifies whether to attempt to automatically add missing target visibility.
