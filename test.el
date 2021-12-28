@@ -472,13 +472,13 @@ the rule."
       (bazel-test--with-file-buffer library
         (let ((case-fold-search nil)
               (search-spaces-regexp nil))
+          ;; The coverage overlays don’t logically change the buffer contents.
+          ;; Ensure that the code works even if the buffer is read-only.
+          (setq buffer-read-only t)
           (with-temp-buffer
             (let ((default-directory dir)
                   (bazel-display-coverage 'local))
               (insert-file-contents (expand-file-name "bazel.out" dir))
-              ;; The coverage overlays don’t logically change the buffer contents.
-              ;; Ensure that the code works even if the buffer is read-only.
-              (setq buffer-read-only t)
               ;; Simulate successful exit of the Bazel process.
               (compilation-handle-exit 'exit 0 "finished\n")))
           (ert-info ("Comment line")
