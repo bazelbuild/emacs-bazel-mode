@@ -363,7 +363,10 @@ This is the parent mode for the more specific modes
   (add-hook 'flymake-diagnostic-functions #'bazel-mode-flymake nil :local)
   (add-hook 'xref-backend-functions #'bazel-mode-xref-backend nil :local)
   (add-hook 'completion-at-point-functions #'bazel-completion-at-point
-            nil :local))
+            nil :local)
+  (when-let ((filename buffer-file-name))
+    ;; Initialize filename cache.
+    (bazel--workspace-relative-name filename)))
 
 ;;;###autoload
 (define-derived-mode bazel-build-mode bazel-mode "Bazel BUILD"
@@ -701,8 +704,8 @@ list."
   (cl-check-type filename (or string null))
   (append
    (and filename
-        (when-let ((workspace (bazel--workspace-root filename)))
-          (list (concat "-path=" (file-relative-name filename workspace)))))
+        (when-let ((name (bazel--workspace-relative-name filename)))
+          (list (concat "-path=" name))))
    (and type (list (concat "-type=" (symbol-name type))))))
 
 (defun bazel--make-diagnostics (output-buffer)
@@ -1891,6 +1894,25 @@ the return value is a directory name."
   "Return non-nil if DIRECTORY is a Bazel workspace root directory."
   (and (file-directory-p directory)
        (bazel--locate-workspace-file directory)))
+
+(defvar bazel--workspace-relative-name (make-hash-table :test #'equal)
+  "Cache for the function ‘bazel--workspace-relative-name’.
+Maps filenames to their equivalents relative to the Bazel
+workspace root.")
+
+(defun bazel--workspace-relative-name (file)
+  "Return FILE as relative to its Bazel workspace root.
+Return nil if FILE is not in a Bazel workspace.  If
+‘non-essential’ is non-nil, avoid hitting the filesystem;
+instead, look up FILE in a cache, so the results might be stale."
+  (cl-check-type file string)
+  (let ((cache bazel--workspace-relative-name))
+    (if non-essential
+        (gethash file cache)
+      (puthash file
+               (when-let ((root (bazel--workspace-root file)))
+                 (file-relative-name file root))
+               cache))))
 
 (defun bazel-util-package-name (file-name workspace-root)
   "Return the nearest Bazel package for FILE-NAME under WORKSPACE-ROOT.
