@@ -981,8 +981,30 @@ See Info node ‘(elisp) Completion in Buffers’ for context."
                                   'syntax-table)
               (let ((end (1- (point))))
                 (when (>= end start)
-                  (list start end (bazel--target-completion-table
-                                   file-name nil nil)))))))))))
+                  (when-let ((table (bazel--completion-at-point-table start)))
+                    (list start end table)))))))))))
+
+(defun bazel--completion-at-point-table (start)
+  "Return a completion table for ‘completion-at-point-functions’.
+This is a helper function for ‘bazel-completion-at-point’.
+Provide completions for the Bazel file that the current buffer
+visits.  START should be the buffer position of the beginning of
+the target name to complete.  If ‘non-essential’ is non-nil and
+the buffer visits a remote file, avoid hitting the filesystem and
+only complete rules within the current buffer."
+  (cl-check-type start natnum)
+  (when-let ((file-name buffer-file-name))
+    (if (and non-essential (file-remote-p file-name))
+        ;; Completing files or rules in other packages would require filesystem
+        ;; access.  Only complete local rules starting with a colon.
+        (when (eql (char-after start) ?:)
+          (bazel--completion-table-with-prefix ":"
+            (completion-table-with-cache
+             (lambda (prefix)
+               (cl-check-type prefix string)
+               (bazel--complete-rules prefix nil))
+             completion-ignore-case)))
+      (bazel--target-completion-table file-name nil nil))))
 
 (defun bazel--file-location (filename)
   "Return an ‘xref-location’ for the source file FILENAME."
