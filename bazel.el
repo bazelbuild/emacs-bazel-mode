@@ -1884,8 +1884,9 @@ the return value is a directory name."
 If FILE-NAME is not in a Bazel workspace, return nil.  Otherwise,
 the return value is a directory name."
   (cl-check-type file-name string)
-  (let ((result (locate-dominating-file file-name #'bazel--workspace-root-p)))
-    (and result (file-name-as-directory result))))
+  (when-let ((result (locate-dominating-file file-name
+                                             #'bazel--workspace-root-p)))
+    (file-name-as-directory result)))
 
 (defun bazel--workspace-root-p (directory)
   "Return non-nil if DIRECTORY is a Bazel workspace root directory."
