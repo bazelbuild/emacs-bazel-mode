@@ -88,6 +88,15 @@ Emacs-specific, such as ‘--tool_tag=emacs’."
   :link '(url-link
           "https://github.com/bazelbuild/buildtools/tree/master/buildifier"))
 
+(defcustom bazel-buildozer-command '("buildozer")
+  "Command and options to run Buildozer."
+  :type '(repeat string)
+  :risky t
+  :group 'bazel
+  :link '(custom-manual "(bazel.el) Running Bazel")
+  :link '(url-link
+          "https://github.com/bazelbuild/buildtools/blob/master/buildozer/README.md"))
+
 (define-obsolete-variable-alias 'bazel-mode-buildifier-before-save
   'bazel-buildifier-before-save "2021-04-13")
 
@@ -143,6 +152,19 @@ If ‘local’, only do so for local files."
 (defface bazel-uncovered-line '((t :inherit testcover-nohits))
   "Face for lines not covered by unit tests."
   :group 'bazel)
+
+(defcustom bazel-fix-visibility nil
+  "Specifies whether to attempt to automatically add missing target visibility.
+If nil, never attempt to fix target visibility.  If t, always
+search compilation output for visibility errors and attempt to
+fix them by calling Buildozer via ‘bazel-buildozer-command’.  If
+‘ask’, prompt the user first for confirmation."
+  :type '(radio (const :tag "Never" nil)
+                (const :tag "Always" t)
+                (const :tag "Ask" ask))
+  :risky t
+  :group 'bazel
+  :link '(custom-manual "(bazel.el) Running Bazel"))
 
 ;;;; Commands to run Buildifier
 
@@ -1216,10 +1238,11 @@ Look for an imported file with the given NAME."
 If the option ‘bazel-display-coverage’ is non-nil and there are
 references to coverage results in BUFFER, attempt to display the
 line coverage status in buffers that are visiting files with
-coverage information.  MESSAGE is the status message for the
-Bazel process exit; \"finished\\n\" if Bazel completed
-successfully.  This function is suitable for
-‘compilation-finish-functions’."
+coverage information.  If the option ‘bazel-fix-visibility’ is
+non-nil, attempt to add missing target visibility attributes
+using Buildozer.  MESSAGE is the status message for the Bazel
+process exit; \"finished\\n\" if Bazel completed successfully.
+This function is suitable for ‘compilation-finish-functions’."
   (cl-check-type buffer buffer)
   (cl-check-type message string)
   (when (and bazel-display-coverage (buffer-live-p buffer)
@@ -1264,7 +1287,35 @@ successfully.  This function is suitable for
                             (insert-file-contents file)
                           (file-missing nil))
                     (bazel--parse-coverage root coverage))))
-              (maphash #'bazel--display-coverage coverage))))))))
+              (maphash #'bazel--display-coverage coverage)))))))
+  (when (and bazel-fix-visibility (string-prefix-p "exited abnormally" message))
+    (with-current-buffer buffer
+      ;; Only continue if we’re in a Bazel workspace.
+      (when-let ((root (bazel--workspace-root default-directory)))
+        (let ((case-fold-search nil)
+              (search-spaces-regexp nil))
+          (save-excursion
+            (goto-char (point-min))
+            (while (re-search-forward
+                    (rx bol "ERROR: " (+ (any alnum ?/ ?- ?. ?_)) ?:
+                        (+ digit) ?: (+ digit) ": "
+                        (group
+                         (+ nonl)
+                         "target '"
+                         (group (+ (any "a-z" "A-Z" "0-9"
+                                        ?- "!%@^_` #$&()*+,;<=>?[]{|}~/.:")))
+                         "' is not visible from target '"
+                         (group (+ (any "a-z" "A-Z" "0-9"
+                                        ?- "!%@^_` #$&()*+,;<=>?[]{|}~/.:")))
+                         "'."))
+                    nil t)
+              (bazel--add-visibility root
+                                     (match-string-no-properties 3)
+                                     (match-string-no-properties 2)
+                                     (match-beginning 1)
+                                     (match-end 1)
+                                     (eq bazel-fix-visibility 'ask))))))))
+  nil)
 
 (cl-defstruct (bazel--coverage (:constructor bazel--make-coverage)
                                (:copier nil))
@@ -1504,6 +1555,59 @@ See Info node ‘(elisp) Display Margins’."
   (let ((buffer (current-buffer)))
     (dolist (window (get-buffer-window-list buffer nil t))
       (set-window-buffer window buffer))))
+
+(defun bazel--add-visibility (root source destination begin end ask)
+  "Make SOURCE visible to DESTINATION.
+SOURCE and DESTINATION should be absolute Bazel labels.  ROOT
+identifies the root directory of the current workspace.  The
+current buffer should contain Bazel compilation outputs.  If ASK
+is non-nil, prompt the user first using ‘y-or-n-p’, and
+temporarily highlight the region between BEGIN and END in the
+current buffer.  Use Buildozer (the ‘bazel-buildozer-command’) to
+change the visibility of the affected BUILD file."
+  (cl-check-type root string)
+  (cl-check-type source string)
+  (cl-check-type destination string)
+  (cl-check-type begin natnum)
+  (cl-check-type end natnum)
+  (pcase (bazel--parse-label source)
+    (`(,src-workspace ,(and (pred stringp) src-package) ,_)
+     (pcase (bazel--parse-label destination)
+       (`(,(and (or 'nil "") dest-workspace)
+          ,(and (pred stringp) dest-package) ,_)
+        (let ((value (bazel--canonical src-workspace src-package "__pkg__")))
+          (when (or (not ask)
+                    (progn
+                      (pulse-momentary-highlight-region begin end)
+                      (y-or-n-p (format-message "Make %s visible to %s? "
+                                                value destination))))
+            ;; We need to save the BUILD file first so that Buildozer doesn’t
+            ;; stomp over unsaved changes.
+            (bazel--save-build-file root dest-workspace dest-package)
+            (let ((output (get-buffer-create "*Buildozer*"))
+                  (command `(,@bazel-buildozer-command
+                             "--" ,(concat "add visibility " value)
+                             ,destination)))
+              (if (eq 0 (apply #'process-file
+                               (car command) nil output nil (cdr command)))
+                  (message "Made %s visible to %s" value destination)
+                (temp-buffer-window-show output)))))))))
+  nil)
+
+(defun bazel--save-build-file (root workspace package)
+  "Save the buffer visiting the BUILD file for PACKAGE.
+ROOT is the workspace root directory of the current workspace,
+and WORKSPACE is the workspace containing PACKAGE."
+  (cl-check-type root string)
+  (cl-check-type workspace (or null string))
+  (cl-check-type package string)
+  (let ((external-root (bazel--external-workspace workspace root)))
+    (when-let* ((build-file (bazel--locate-build-file
+                             (expand-file-name package external-root))))
+      (save-some-buffers nil (lambda ()
+                               (when-let ((file-name buffer-file-truename))
+                                 (file-equal-p file-name build-file))))))
+  nil)
 
 ;;;; Imenu support
 

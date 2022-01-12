@@ -1315,6 +1315,22 @@ pkg/BUILD # reformat
                              completing-read-args))))
         (should (equal compile-commands '("bazel test -- \\:test")))))))
 
+(ert-deftest bazel-fix-visibility ()
+  (bazel-test--with-temp-directory workspace "fix-visibility.org"
+    (cl-letf* ((commands ())
+               ((symbol-function #'process-file)
+                (lambda (program &optional _infile _buffer _display &rest args)
+                  (push (cons program args) commands)
+                  0)))
+      (with-temp-buffer
+        (insert-file-contents (expand-file-name "bazel.out" workspace))
+        (let ((bazel-fix-visibility t)
+              (default-directory (expand-file-name "lib/" workspace)))
+          (compilation-handle-exit 'exit 1 "exited abnormally with code 1\n")))
+      (should
+       (equal commands
+              '(("buildozer" "--" "add visibility //:__pkg__" "//lib:lib")))))))
+
 ;;;; Test helpers
 
 (put #'looking-at-p 'ert-explainer #'bazel-test--explain-looking-at-p)
