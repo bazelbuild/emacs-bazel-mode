@@ -1,0 +1,42 @@
+# Copyright 2021, 2022 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+#+property: header-args :mkdirp yes :main no
+
+* Test data for ~bazel-buildifier~
+
+#+begin_src bazel-workspace :tangle WORKSPACE
+workspace(name = "test")
+#+end_src
+
+#+name: build
+#+begin_src bazel-build :tangle pkg/BUILD
+cc_library(
+#+end_src
+
+To make the Buildifier test hermetic, we generate Buildifier output statically
+and tangle the output when running the test.  Execute this code block to
+regenerate the Buildifier output:
+
+#+begin_src sh :noweb yes :results output scalar :wrap "src fundamental :tangle buildifier.err"
+! buildifier -type=build -path=pkg/BUILD 2>&1 <<'EOF'
+<<build>>
+EOF
+#+end_src
+
+#+RESULTS:
+#+begin_src fundamental :tangle buildifier.err
+pkg/BUILD:3:1: syntax error
+pkg/BUILD # reformat
+#+end_src

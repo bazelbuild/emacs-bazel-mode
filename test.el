@@ -1,6 +1,6 @@
 ;;; test.el --- unit tests for bazel.el  -*- lexical-binding: t; -*-
 
-;; Copyright 2020, 2021 Google LLC
+;; Copyright 2020, 2021, 2022 Google LLC
 ;;
 ;; Licensed under the Apache License, Version 2.0 (the "License");
 ;; you may not use this file except in compliance with the License.
@@ -999,9 +999,10 @@ in ‘bazel-mode’."
                 (should (equal (buffer-string) expected))))))))))
 
 (ert-deftest bazel-buildifier/failure ()
-  (bazel-test--with-temp-directory dir nil
+  (bazel-test--with-temp-directory dir "buildifier.org"
     (let* ((bash (executable-find "bash"))
            (bazel-buildifier-command (expand-file-name "buildifier" dir))
+           (error-file (expand-file-name "buildifier.err" dir))
            (temp-buffers nil))
       (skip-unless bash)
       (with-temp-file bazel-buildifier-command
@@ -1009,22 +1010,25 @@ in ‘bazel-mode’."
                 "set -Cefu\n"
                 "cat > /dev/null\n"  ; don’t exit before reading input
                 "echo output\n"
-                "echo error >&2\n"
+                "cat -- " (shell-quote-argument (file-name-unquote error-file))
+                " >&2\n"
                 "exit 1\n"))
       (set-file-modes bazel-buildifier-command #o0500)
       (with-temp-buffer
-        (insert "input")
+        (insert-file-contents (expand-file-name "pkg/BUILD" dir) :visit)
         (bazel-starlark-mode)
         (let ((tick-before (buffer-modified-tick))
               (temp-buffer-window-show-hook
                (list (lambda () (push (current-buffer) temp-buffers)))))
           (bazel-buildifier)
-          (should (equal (buffer-string) "input"))  ; no change
+          (should (equal (buffer-string) "cc_library(\n"))  ; no change
           (should (eql (buffer-modified-tick) tick-before))))
       (should (eql (length temp-buffers) 1))
       (with-current-buffer (car temp-buffers)
         (ert-info ("Error buffer")
-          (should (equal (buffer-string) "error\n")))))))
+          (should (equal (buffer-string) "pkg/BUILD:3:1: syntax error
+pkg/BUILD # reformat
+")))))))
 
 (ert-deftest bazel-buildifier-before-save ()
   (bazel-test--with-temp-directory dir nil
