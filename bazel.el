@@ -1016,8 +1016,17 @@ See Info node ‘(elisp) Completion in Buffers’ for context."
                                   'syntax-table)
               (let ((end (1- (point))))
                 (when (>= end start)
-                  (when-let ((table (bazel--completion-at-point-table start)))
-                    (list start end table)))))))))))
+                  ;; A somewhat crude method to determine whether this operation
+                  ;; is deemed essential.  If it comes from a timer, assume it’s
+                  ;; something like Company idle completion.
+                  ;; https://github.com/company-mode/company-mode/pull/1288
+                  ;; should make this mostly obsolete.
+                  (let ((non-essential
+                         (or non-essential
+                             (and (backtrace-frame 0 #'timer-event-handler)
+                                  t))))
+                    (when-let ((table (bazel--completion-at-point-table start)))
+                      (list start end table))))))))))))
 
 (defun bazel--completion-at-point-table (start)
   "Return a completion table for ‘completion-at-point-functions’.
