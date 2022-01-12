@@ -43,9 +43,9 @@
 
 (defgroup bazel nil
   "Package for editing, building, and running code using Bazel."
+  :group 'languages
   :link '(url-link "https://bazel.build")
-  :link '(url-link "https://github.com/bazelbuild/emacs-bazel-mode")
-  :group 'languages)
+  :link '(url-link "https://github.com/bazelbuild/emacs-bazel-mode"))
 
 (define-obsolete-variable-alias 'bazel-build-bazel-command
   'bazel-command "2021-04-13")
@@ -103,10 +103,10 @@ Emacs-specific, such as ‘--tool_tag=emacs’."
 (defcustom bazel-buildifier-before-save nil
   "Specifies whether to run Buildifier in `before-save-hook'."
   :type 'boolean
+  :risky t
   :group 'bazel
   :link '(url-link
-          "https://github.com/bazelbuild/buildtools/tree/master/buildifier")
-  :risky t)
+          "https://github.com/bazelbuild/buildtools/tree/master/buildifier"))
 
 (defun bazel--initialize-test-at-point-functions (option value)
   "Initialize the option ‘bazel-test-at-point-functions’.
@@ -126,11 +126,11 @@ priority."
   :type 'hook
   :options '(which-function)
   :initialize #'bazel--initialize-test-at-point-functions
+  :risky t
   :group 'bazel
   :link '(url-link
           "https://docs.bazel.build/user-manual.html#flag--test_filter")
-  :link '(url-link "https://docs.bazel.build/test-encyclopedia.html")
-  :risky t)
+  :link '(url-link "https://docs.bazel.build/test-encyclopedia.html"))
 
 (defcustom bazel-display-coverage nil
   "Specifies whether to parse compilation buffers for coverage information.
