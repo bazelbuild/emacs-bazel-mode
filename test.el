@@ -585,7 +585,7 @@ the rule."
            ("//...:" t "//...:" ("all" "all-targets" "*") nil 6)))
       (dolist (pattern (if (eq pattern '*) '(nil t) (list pattern)))
         (ert-info ((if pattern "yes" "no") :prefix "Pattern completion: ")
-          (let ((table (bazel--target-completion-table dir "" pattern nil)))
+          (let ((table (bazel--target-completion-table dir pattern nil)))
             (ert-info ((prin1-to-string string) :prefix "Input: ")
               (should (equal (try-completion string table) try))
               (should (equal (all-completions string table) all))
@@ -619,7 +619,7 @@ the rule."
            (":a" * ":all" ("all" "all-targets") nil 1)))
       (dolist (only-tests (if (eq only-tests '*) '(nil t) (list only-tests)))
         (ert-info ((if only-tests "yes" "no") :prefix "Only tests: ")
-          (let ((table (bazel--target-completion-table dir "" :pattern
+          (let ((table (bazel--target-completion-table dir :pattern
                                                        only-tests)))
             (ert-info ((prin1-to-string string) :prefix "Input: ")
               (should (equal (try-completion string table) try))
@@ -707,8 +707,9 @@ the rule."
           (should (consp packages))
           (dolist (package packages)
             (ert-info ((prin1-to-string package) :prefix "Package: ")
-              (let ((table (bazel--target-completion-table dir package
-                                                           :pattern nil)))
+              (let ((table (bazel--target-completion-table
+                            (expand-file-name package dir)
+                            :pattern nil)))
                 (should (equal (try-completion string table) try))
                 (should (equal (all-completions string table) all))
                 (should (eq (test-completion string table) test))

@@ -838,11 +838,8 @@ IDENTIFIER should be an XRef identifier returned by
 (cl-defmethod xref-backend-identifier-completion-table
   ((_backend (eql bazel-mode)))
   "Return a completion table for Bazel targets."
-  (when-let* ((file-name (or buffer-file-name default-directory))
-              (root (bazel--workspace-root file-name))
-              (directory (bazel--package-directory file-name root))
-              (package (bazel--package-name directory root)))
-    (bazel--target-completion-table root package nil nil)))
+  (when-let ((file-name (or buffer-file-name default-directory)))
+    (bazel--target-completion-table file-name nil nil)))
 
 (defun bazel-show-consuming-rule ()
   "Find the definition of the rule consuming the current file.
@@ -984,12 +981,8 @@ See Info node ‘(elisp) Completion in Buffers’ for context."
                                   'syntax-table)
               (let ((end (1- (point))))
                 (when (>= end start)
-                  (when-let* ((root (bazel--workspace-root buffer-file-name))
-                              (directory
-                               (bazel--package-directory file-name root))
-                              (package (bazel--package-name directory root)))
-                    (list start end (bazel--target-completion-table
-                                     root package nil nil))))))))))))
+                  (list start end (bazel--target-completion-table
+                                   file-name nil nil)))))))))))
 
 (defun bazel--file-location (filename)
   "Return an ‘xref-location’ for the source file FILENAME."
@@ -1788,8 +1781,7 @@ prompt.  If ONLY-TESTS is non-nil, look only for test rules."
                            (user-error "File is not in a Bazel package")))
          (prompt (combine-and-quote-strings
                   `(,@bazel-command "--" ,command "")))
-         (table (bazel--target-completion-table workspace-root package-name
-                                                :pattern only-tests))
+         (table (bazel--target-completion-table file-name :pattern only-tests))
          (default (bazel--target-completion-default
                    buffer-file-name workspace-root package-name only-tests)))
     (completing-read prompt table nil nil nil 'bazel-target-history default)))
@@ -2001,34 +1993,46 @@ MAIN-ROOT should be the main workspace root as returned by
       ;; If there’s no external workspace directory, don’t signal an error.
       (file-missing nil))))
 
-(defun bazel--target-completion-table (root package pattern only-tests)
+(defun bazel--target-completion-table (file-name pattern only-tests)
   "Return a completion table for Bazel targets and target patterns.
 See URL
 ‘https://docs.bazel.build/versions/4.0.0/guide.html#specifying-targets-to-build’
-for a description of target patterns.  ROOT is the workspace root
-directory, and PACKAGE is the current package name.  Return a
-completion table that can be passed to ‘completing-read’.  See
-Info node ‘(elisp) Basic Completion’ for more information about
-completion tables.  The completion is not exact and only includes
-potential packages and rules.  If PATTERN is non-nil, complete
-target patterns and skip files.  If ONLY-TESTS is non-nil,
-restrict rule target completion to test targets."
-  (cl-check-type root string)
-  (cl-check-type package string)
+for a description of target patterns.  FILE-NAME should be the
+name of a file or directory to use as starting point for
+completing relative target names.  Return a completion table that
+can be passed to ‘completing-read’.  See Info node ‘(elisp) Basic
+Completion’ for more information about completion tables.  The
+completion is not exact and only includes potential packages and
+rules.  If PATTERN is non-nil, complete target patterns and skip
+files.  If ONLY-TESTS is non-nil, restrict rule target completion
+to test targets.  This function should always be fast and not
+access the filesystem, but the returned completion table can
+access the filesystem."
+  (cl-check-type file-name string)
   ;; We return a completion function so that we don’t have to find all targets
   ;; eagerly.  See Info node ‘(elisp) Programmed Completion’.
   (lambda (string predicate action)
     (cl-check-type string string)
     (cl-check-type predicate (or function null))
-    (let ((case-fold-search completion-ignore-case)
-          (search-spaces-regexp nil))
-      ;; We dynamically generate and use a helper completion table based on the
-      ;; provided prefix pattern.
-      (complete-with-action
-       action
-       (bazel--target-completion-table-1 root package pattern only-tests
-                                         string)
-       string predicate))))
+    (when-let ((root (bazel--workspace-root file-name)))
+      (let* ((case-fold-search completion-ignore-case)
+             (search-spaces-regexp nil)
+             (directory (or (bazel--package-directory file-name root)
+                            ;; If FILE-NAME isn’t in a package, we still want to
+                            ;; generate a completion table to complete
+                            ;; subpackages.  Fall back to the directory that
+                            ;; contains FILE-NAME.
+                            (if (file-directory-p file-name)
+                                (file-name-as-directory file-name)
+                              (file-name-directory file-name))))
+             (package (bazel--package-name directory root)))
+        ;; We dynamically generate and use a helper completion table based on the
+        ;; provided prefix pattern.
+        (complete-with-action
+         action
+         (bazel--target-completion-table-1 root package pattern only-tests
+                                           string)
+         string predicate)))))
 
 (defun bazel--target-completion-table-1
     (root package pattern only-tests string)
