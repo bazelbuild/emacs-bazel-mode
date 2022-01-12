@@ -553,7 +553,7 @@ the rule."
            ("package/" * nil () nil 0)
            ("package:" nil nil () nil 0)
            ("package:" t nil () nil 8)
-           ("@" * nil () nil 1)
+           ("@" * "@//" ("//") nil 1)
            ("@w" * nil () nil 1)
            ("/" * "//" ("//") nil 0)
            ("//" nil "//:" (":") nil 2)
@@ -673,7 +673,7 @@ the rule."
            ("package" ":all" ":all" ("all" "all-targets") t 1)
            ("package" ":all-targets" t ("all-targets") t 1)
            ("package" ":*" t ("*") t 1)
-           (t "@" nil () nil 1)
+           (t "@" "@//" ("//") nil 1)
            (t "@w" nil () nil 1)
            (t "/" "//" ("//") nil 0)
            (t "//" "//" (":" "package" "...") nil 2)
@@ -713,6 +713,54 @@ the rule."
                 (should (eq (test-completion string table) test))
                 (should (equal (completion-boundaries string table nil "suffix")
                                (cons bound 6)))))))))))
+
+(ert-deftest bazel--target-completion-table/workspace ()
+  "Test workspace name completion."
+  (bazel-test--with-temp-directory dir "target-completion-workspace.org"
+    (make-symbolic-link dir (expand-file-name "bazel-out" dir))
+    ;; The test cases are of the form (STRING TRY ALL TEST BOUND).  STRING is
+    ;; the input string.  TRY, ALL, and TEST are the expected results of
+    ;; ‘try-completion’, ‘all-completions’, and ‘test-completion’, respectively.
+    ;; BOUND is the expected prefix completion bound returned by
+    ;; ‘completion-bounds’.
+    (pcase-dolist
+        (`(,string ,try ,all ,test ,bound)
+         '(("@" "@" ("ext" "//") nil 1)
+           ("@/" "@//" ("//") nil 1)
+           ("@//" "@//" (":" "main-pkg" "...") nil 3)
+           ("@//:" "@//:" ("all" "all-targets" "*") nil 4)
+           ("@//:all" "@//:all" ("all" "all-targets") t 4)
+           ("@//." "@//..." ("...") nil 3)
+           ("@//..." "@//..." ("..." "...:") t 3)
+           ("@//...:*" t ("*") t 7)
+           ("@//m" "@//main-pkg" ("main-pkg") nil 3)
+           ("@//main-pkg" "@//main-pkg" ("main-pkg") t 3)
+           ("@e" "@ext" ("ext") nil 1)
+           ("@ext" t ("ext" "ext//") t 1)
+           ("@ext/" "@ext//" ("//") nil 4)
+           ("@ext//" "@ext//" (":" "ext-pkg" "...") nil 6)
+           ("@ext//:" "@ext//:" ("all" "all-targets" "*") nil 7)
+           ("@ext//:a" "@ext//:all" ("all" "all-targets") nil 7)
+           ("@ext//:all" "@ext//:all" ("all" "all-targets") t 7)
+           ("@ext//." "@ext//..." ("...") nil 6)
+           ("@ext//..." "@ext//..." ("..." "...:") t 6)
+           ("@ext//...:*" t ("*") t 10)
+           ("@ext//e" "@ext//ext-pkg" ("ext-pkg") nil 6)
+           ("@ext//ext-pkg" "@ext//ext-pkg" ("ext-pkg") t 6)
+           ("@ext//ext-pkg/" "@ext//ext-pkg/..." ("...") nil 14)
+           ("@ext//ext-pkg:" "@ext//ext-pkg:" ("all" "all-targets" "*") nil 14)
+           ("@q" nil () nil 1)
+           ("@qux" nil () nil 1)
+           ("@qux//:" nil () nil 7)
+           ("@qux//p" nil () nil 6)))
+      (ert-info ((prin1-to-string string) :prefix "Input: ")
+        (let* ((root (expand-file-name "main/" dir))
+               (table (bazel--target-completion-table root :pattern nil)))
+          (should (equal (try-completion string table) try))
+          (should (equal (all-completions string table) all))
+          (should (eq (test-completion string table) test))
+          (should (equal (completion-boundaries string table nil "suffix")
+                         (cons bound 6))))))))
 
 (ert-deftest bazel-mode/which-function ()
   "Verify that ‘which-function’ and ‘add-log-current-defun’ work
