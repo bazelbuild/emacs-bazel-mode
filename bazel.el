@@ -1874,14 +1874,16 @@ the return value is a directory name."
 (defun bazel--workspace-root (file-name)
   "Find the root of the Bazel workspace containing FILE-NAME.
 If FILE-NAME is not in a Bazel workspace, return nil.  Otherwise,
-the return value is a directory name."
+the return value is a directory name.  FILE-NAME can be a file or
+directory name."
   (cl-check-type file-name string)
   (when-let ((result (locate-dominating-file file-name
                                              #'bazel--workspace-root-p)))
     (file-name-as-directory result)))
 
 (defun bazel--workspace-root-p (directory)
-  "Return non-nil if DIRECTORY is a Bazel workspace root directory."
+  "Return non-nil if DIRECTORY is a Bazel workspace root directory.
+DIRECTORY can be a directory or file name."
   (cl-check-type directory string)
   (and (file-directory-p directory)
        (bazel--locate-workspace-file directory)))
@@ -1898,7 +1900,8 @@ If FILE-NAME is not in a Bazel package, return nil."
 
 (defun bazel--package-directory (file-name workspace-root)
   "Return the Bazel package directory for FILE-NAME under WORKSPACE-ROOT.
-If FILE-NAME is not in a Bazel package, return nil."
+If FILE-NAME is not in a Bazel package, return nil.  FILE-NAME
+and WORKSPACE-ROOT can be file or directory names."
   (cl-check-type file-name string)
   (cl-check-type workspace-root string)
   (let* ((parent (file-name-directory (directory-file-name workspace-root)))
@@ -1915,7 +1918,8 @@ If FILE-NAME is not in a Bazel package, return nil."
   "Return the Bazel package name for BUILD-FILE-DIRECTORY.
 BUILD-FILE-DIRECTORY must be a Bazel package, i.e., it must
 contain a BUILD file.  WORKSPACE-ROOT is the Bazel workspace root
-directory."
+directory.  BUILD-FILE-DIRECTORY and WORKSPACE-ROOT can be
+directory or file names."
   (cl-check-type build-file-directory string)
   (cl-check-type workspace-root string)
   (when (< emacs-major-version 27)
@@ -1936,7 +1940,8 @@ directory."
 
 (defun bazel--package-directory-p (directory)
   "Return non-nil if DIRECTORY is a Bazel package directory.
-This doesn’t check whether DIRECTORY is within a Bazel workspace."
+This doesn’t check whether DIRECTORY is within a Bazel workspace.
+DIRECTORY can be a directory or file name."
   (cl-check-type directory string)
   (and (file-directory-p directory)
        (bazel--locate-build-file directory)))
@@ -1945,9 +1950,9 @@ This doesn’t check whether DIRECTORY is within a Bazel workspace."
   "Return the workspace root of an external workspace.
 WORKSPACE-NAME should be either a string naming an external
 workspace, or nil to refer to the current workspace.
-THIS-WORKSPACE-ROOT should be the name of the current workspace
-root directory, as returned by ‘bazel--workspace-root’.  The
-return value is a directory name."
+THIS-WORKSPACE-ROOT should be the name or file name of the
+current workspace root directory, as returned by
+‘bazel--workspace-root’.  The return value is a directory name."
   (cl-check-type workspace-name (or null string))
   (cl-check-type this-workspace-root string)
   (file-name-as-directory
@@ -1967,8 +1972,8 @@ return value is a directory name."
 
 (defun bazel--external-workspace-dir (root)
   "Return a directory name for the parent directory of the external workspaces.
-ROOT should be the main workspace root as returned by
-‘bazel--workspace-root’."
+ROOT should be the name or file name of the main workspace root
+directory as returned by ‘bazel--workspace-root’."
   (cl-check-type root string)
   ;; See the commentary in ‘bazel--external-workspace’ for how to find external
   ;; workspaces.
@@ -1979,8 +1984,8 @@ ROOT should be the main workspace root as returned by
 
 (defun bazel--external-workspace-roots (main-root)
   "Return the directory names of the external workspace roots.
-MAIN-ROOT should be the main workspace root as returned by
-‘bazel--workspace-root’."
+MAIN-ROOT should be the name or file name of the main workspace
+root directory as returned by ‘bazel--workspace-root’."
   (cl-check-type main-root string)
   (let ((case-fold-search nil)
         (search-spaces-regexp nil))
