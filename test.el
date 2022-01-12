@@ -416,7 +416,9 @@ the rule."
           (should (eq depth 0))
           (when (< 4 (point) (- (point-max) 5)) (should in-string-p))
           (should-not in-comment-p)
-          (should (eq string-start (and in-string-p 1))))
+          ;; The syntactic start of a triple-quoted string could be on the first
+          ;; (Emacs 26 and 27) or the last (Emacs 28) quote, cf. Bug#49518.
+          (should (eq (not in-string-p) (not string-start))))
         (should (eq (face-at-point)
                     (and (< (point) (1- (point-max))) 'font-lock-string-face)))
         (forward-char)))))
