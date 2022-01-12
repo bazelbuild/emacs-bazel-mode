@@ -1881,6 +1881,7 @@ the return value is a directory name."
 
 (defun bazel--workspace-root-p (directory)
   "Return non-nil if DIRECTORY is a Bazel workspace root directory."
+  (cl-check-type directory string)
   (and (file-directory-p directory)
        (bazel--locate-workspace-file directory)))
 
@@ -1935,6 +1936,7 @@ directory."
 (defun bazel--package-directory-p (directory)
   "Return non-nil if DIRECTORY is a Bazel package directory.
 This doesn’t check whether DIRECTORY is within a Bazel workspace."
+  (cl-check-type directory string)
   (and (file-directory-p directory)
        (bazel--locate-build-file directory)))
 
@@ -1978,6 +1980,7 @@ ROOT should be the main workspace root as returned by
   "Return the directory names of the external workspace roots.
 MAIN-ROOT should be the main workspace root as returned by
 ‘bazel--workspace-root’."
+  (cl-check-type main-root string)
   (let ((case-fold-search nil)
         (search-spaces-regexp nil))
     (condition-case nil
@@ -2189,8 +2192,11 @@ nil, which is interpreted as an always-true predicate."
 ROOT is the parent directory of the external workspaces as
 returned by ‘bazel--external-workspace-dir’.  This is a helper
 function for ‘bazel--target-completion-table’."
+  (cl-check-type root string)
   (bazel--completion-table-with-terminator "/"
     (lambda (string predicate action)
+      (cl-check-type string string)
+      (cl-check-type predicate (or null function))
       ;; Restrict completions to valid workspace names.
       (let ((completion-regexp-list
              (cons (rx bos (+ (any "A-Z" "a-z" "0-9" ?_ ?- ?.)) eos)
@@ -2256,6 +2262,8 @@ This is a helper function for
 ‘bazel--target-package-completion-table’."
   (cl-check-type directory string)
   (lambda (string predicate action)
+    (cl-check-type string string)
+    (cl-check-type predicate (or null function))
     (let ((completion-regexp-list
            ;; Restrict completions to valid package names.
            (cons (rx bos (+ (any "A-Z" "a-z" "0-9" ?_ ?- ?.)) eos)
@@ -2337,6 +2345,7 @@ wildcards with a colon.  This is a helper function for
 Assume that STRING comes from ‘file-name-completion’ or
 ‘file-name-all-completions’.  This is a helper function for
 ‘bazel--target-completion-table’."
+  (cl-check-type string string)
   ;; No thorough check here, since this is only used for completion.  Filename
   ;; completion always returns directory names for directories, so this
   ;; syntactic check suffices.  See the code for ‘completion-file-name-table’
