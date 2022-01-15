@@ -208,12 +208,12 @@ corresponding to the file types documented at URL
   (cl-check-type type (member nil build bzl workspace default))
   (let ((directory default-directory)
         (input-file buffer-file-name)
-        (buildifier-buffer (temp-buffer-window-setup "*buildifier*"))
+        (temp-buffer (temp-buffer-window-setup "*buildifier*"))
         (type (or type bazel--buildifier-type)))
     ;; Run Buildifier on a file to support remote BUILD files.
-    (bazel--with-temp-file buildifier-input-file
+    (bazel--with-temp-file temp-file
         (make-nearby-temp-file "buildifier-input-")
-      (write-region (point-min) (point-max) buildifier-input-file nil :silent)
+      (write-region (point-min) (point-max) temp-file nil :silent)
       (let* ((default-directory directory)
              (temporary-file-directory
               (if (< emacs-major-version 28)
@@ -222,18 +222,14 @@ corresponding to the file types documented at URL
              (inhibit-read-only t)
              (process-file-side-effects t)
              (return-code
-              (apply #'process-file
-                     bazel-buildifier-command
-                     nil buildifier-buffer nil
+              (apply #'process-file bazel-buildifier-command nil temp-buffer nil
                      `(,@(bazel--buildifier-file-flags type input-file)
-                       "--"
-                       ,(file-name-unquote
-                         (file-local-name buildifier-input-file))))))
+                       "--" ,(file-name-unquote (file-local-name temp-file))))))
         (if (eq return-code 0)
             (progn
-              (insert-file-contents buildifier-input-file nil nil nil :replace)
-              (kill-buffer buildifier-buffer))
-          (with-current-buffer buildifier-buffer
+              (insert-file-contents temp-file nil nil nil :replace)
+              (kill-buffer temp-buffer))
+          (with-current-buffer temp-buffer
             (when-let ((root (bazel--workspace-root (or input-file directory))))
               ;; Files in Buildifier error messages are local to the workspace
               ;; root.  Make sure that ‘next-error’ finds them.
@@ -246,7 +242,7 @@ corresponding to the file types documented at URL
                     ?\n)
             (goto-char (point-min))
             (compilation-minor-mode))
-          (temp-buffer-window-show buildifier-buffer)))))
+          (temp-buffer-window-show temp-buffer)))))
   nil)
 
 (define-obsolete-function-alias 'bazel-mode-buildifier
