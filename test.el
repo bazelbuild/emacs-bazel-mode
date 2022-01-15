@@ -1076,6 +1076,8 @@ in ‘bazel-mode’."
         (ert-info ("Error buffer")
           (should (equal (buffer-string) "pkg/BUILD:3:1: syntax error
 pkg/BUILD # reformat
+
+Process buildifier exited abnormally with code 1
 ")))))))
 
 (ert-deftest bazel-buildifier-before-save ()
