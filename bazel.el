@@ -209,51 +209,49 @@ corresponding to the file types documented at URL
 ‘https://github.com/bazelbuild/buildtools/tree/master/buildifier#usage’."
   (interactive "*")
   (cl-check-type type (member nil build bzl workspace default))
-  (let ((input-buffer (current-buffer))
-        (directory default-directory)
+  (let ((directory default-directory)
         (input-file buffer-file-name)
-        (buildifier-buffer (get-buffer-create "*buildifier*"))
+        (buildifier-buffer (temp-buffer-window-setup "*buildifier*"))
         (type (or type bazel--buildifier-type)))
     ;; Run Buildifier on a file to support remote BUILD files.
     (bazel--with-temp-files ((buildifier-input-file
-                              (make-nearby-temp-file "buildifier-input-"))
-                             (buildifier-error-file
-                              (make-nearby-temp-file "buildifier-error-")))
+                              (make-nearby-temp-file "buildifier-input-")))
       (write-region (point-min) (point-max) buildifier-input-file nil :silent)
-      (with-current-buffer buildifier-buffer
-        (setq-local inhibit-read-only t)
-        (erase-buffer)
-        (when-let ((root (bazel--workspace-root (or input-file directory))))
-          ;; Files in Buildifier error messages are local to the workspace root.
-          ;; Make sure that ‘next-error’ finds them.
-          (setq-local default-directory root))
-        (cl-flet ((maybe-unquote (if (< emacs-major-version 28)
-                                     #'file-name-unquote  ; Bug#48177
-                                   #'identity)))
-          (let* ((default-directory directory)
-                 (temporary-file-directory
-                  (maybe-unquote temporary-file-directory))
-                 (return-code
-                  (apply #'process-file
-                         bazel-buildifier-command
-                         (maybe-unquote buildifier-input-file)
-                         `(t ,(maybe-unquote buildifier-error-file)) nil
-                         (bazel--buildifier-file-flags type input-file))))
-            (if (eq return-code 0)
-                (progn
-                  (set-buffer input-buffer)
-                  (replace-buffer-contents buildifier-buffer)
-                  (kill-buffer buildifier-buffer))
-              (with-temp-buffer-window buildifier-buffer nil nil
-                (insert-file-contents buildifier-error-file)
-                (goto-char (point-max))
-                (insert ?\n "Process buildifier "
-                        (if (stringp return-code)
-                            (downcase return-code)  ; signal name
-                          (format "exited abnormally with code %d" return-code))
-                        ?\n)
-                (goto-char (point-min))
-                (compilation-minor-mode))))))))
+      (cl-flet ((maybe-unquote (if (< emacs-major-version 28)
+                                   #'file-name-unquote  ; Bug#48177
+                                 #'identity)))
+        (let* ((default-directory directory)
+               (temporary-file-directory
+                (maybe-unquote temporary-file-directory))
+               (inhibit-read-only t)
+               (process-file-side-effects t)
+               (return-code
+                (apply #'process-file
+                       bazel-buildifier-command
+                       nil buildifier-buffer nil
+                       `(,@(bazel--buildifier-file-flags type input-file)
+                         "--"
+                         ,(file-name-unquote
+                           (file-local-name buildifier-input-file))))))
+          (if (eq return-code 0)
+              (progn
+                (insert-file-contents buildifier-input-file nil nil nil :repl)
+                (kill-buffer buildifier-buffer))
+            (with-current-buffer buildifier-buffer
+              (when-let ((root (bazel--workspace-root
+                                (or input-file directory))))
+                ;; Files in Buildifier error messages are local to the workspace
+                ;; root.  Make sure that ‘next-error’ finds them.
+                (setq-local default-directory root))
+              (goto-char (point-max))
+              (insert ?\n "Process buildifier "
+                      (if (stringp return-code)
+                          (downcase return-code)  ; signal name
+                        (format "exited abnormally with code %d" return-code))
+                      ?\n)
+              (goto-char (point-min))
+              (compilation-minor-mode))
+            (temp-buffer-window-show buildifier-buffer))))))
   nil)
 
 (define-obsolete-function-alias 'bazel-mode-buildifier

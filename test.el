@@ -1024,14 +1024,16 @@ in ‘bazel-mode’."
                 "set -efu\n"
                 "cd " (shell-quote-argument (file-name-unquote dir)) ?\n
                 "cat > input\n"
-                "echo \"$*\" > args\n"
-                "echo output\n"
+                ;; We don’t care about the name of the temporary file (last
+                ;; argument).
+                "echo \"${@:1:$# - 1}\" tempfile > args\n"
+                "echo output > \"${@: -1}\"\n"
                 "echo error >&2\n"))
       (set-file-modes bazel-buildifier-command #o0500)
       (pcase-dolist (`(,type ,args)
-                     '((nil "-type=bzl")
-                       (workspace "-type=workspace")
-                       (default "-type=default")))
+                     '((nil "-type=bzl -- tempfile")
+                       (workspace "-type=workspace -- tempfile")
+                       (default "-type=default -- tempfile")))
         (ert-info ((symbol-name type) :prefix "Explicit type: ")
           (with-temp-buffer
             (insert "input")
@@ -1039,7 +1041,7 @@ in ‘bazel-mode’."
             (bazel-buildifier type)
             (should (equal (buffer-string) "output\n")))
           (pcase-dolist (`(,file ,expected)
-                         `(("input" "input")
+                         `(("input" "")
                            ("args" ,(concat args "\n"))))
             (ert-info (file :prefix "File: ")
               (with-temp-buffer
@@ -1055,9 +1057,9 @@ in ‘bazel-mode’."
       (skip-unless bash)
       (with-temp-file bazel-buildifier-command
         (insert "#!" (file-name-unquote bash) ?\n
-                "set -Cefu\n"
+                "set -efu\n"
                 "cat > /dev/null\n"  ; don’t exit before reading input
-                "echo output\n"
+                "echo output > \"${@: -1}\"\n"
                 "cat -- " (shell-quote-argument (file-name-unquote error-file))
                 " >&2\n"
                 "exit 1\n"))
@@ -1094,7 +1096,7 @@ Process buildifier exited abnormally with code 1
                 "set -efu\n"
                 "cd " (shell-quote-argument (file-name-unquote dir)) ?\n
                 "cat > /dev/null\n"   ; don’t exit before reading input
-                "echo output\n"
+                "echo output > \"${@: -1}\"\n"
                 "touch ok\n"))
       (set-file-modes bazel-buildifier-command #o0500)
       (pcase-dolist (`(,bazel-buildifier-before-save ,expected)
