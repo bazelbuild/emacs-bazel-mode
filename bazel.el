@@ -441,6 +441,24 @@ This is the parent mode for the more specific modes
                    #'bazel-workspace-mode))
 
 ;;;###autoload
+(define-derived-mode bazel-module-mode bazel-mode "MODULE.bazel"
+  "Major mode for editing Bazel module files."
+  ;; Buildifier doesn’t support MODULE.bazel files
+  ;; (https://github.com/bazelbuild/buildtools/issues/1031), so use the
+  ;; ‘default’ type for now.
+  (setq bazel--buildifier-type 'default)
+    ;; In MODULE.bazel files, we don’t have function definitions.  Instead,
+  ;; treat rules (= Python statements) as functions.
+  (setq-local beginning-of-defun-function #'python-nav-beginning-of-statement)
+  (setq-local end-of-defun-function #'python-nav-end-of-statement)
+  (setq-local imenu-create-index-function #'bazel-mode-create-index))
+
+;;;###autoload
+(add-to-list 'auto-mode-alist
+             ;; https://docs.bazel.build/versions/5.0.0/bzlmod.html#modulebazel
+             (cons (rx "/MODULE.bazel" eos) #'bazel-module-mode))
+
+;;;###autoload
 (define-derived-mode bazel-starlark-mode bazel-mode "Starlark"
   "Major mode for editing Bazel Starlark files."
   (setq bazel--buildifier-type 'bzl)
