@@ -401,7 +401,7 @@ This is the parent mode for the more specific modes
     (bazel--workspace-relative-name filename)))
 
 ;;;###autoload
-(define-derived-mode bazel-build-mode bazel-mode "Bazel BUILD"
+(define-derived-mode bazel-build-mode bazel-mode "BUILD.bazel"
   "Major mode for editing Bazel BUILD files."
   (setq bazel--buildifier-type 'build)
   ;; In BUILD files, we don’t have function definitions.  Instead, treat rules
@@ -416,7 +416,7 @@ This is the parent mode for the more specific modes
              (cons (rx ?/ (or "BUILD" "BUILD.bazel") eos) #'bazel-build-mode))
 
 ;;;###autoload
-(define-derived-mode bazel-workspace-mode bazel-mode "Bazel WORKSPACE"
+(define-derived-mode bazel-workspace-mode bazel-mode "WORKSPACE.bazel"
   "Major mode for editing Bazel WORKSPACE files."
   (setq bazel--buildifier-type 'workspace)
   ;; In WORKSPACE files, we don’t have function definitions.  Instead, treat
