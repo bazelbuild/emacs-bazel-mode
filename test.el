@@ -1378,6 +1378,24 @@ pkg/BUILD # reformat
        (equal commands
               '(("buildozer" "--" "add visibility //:__pkg__" "//lib:lib")))))))
 
+(ert-deftest bazel/set-auto-mode ()
+  "Test that ‘set-auto-mode’ finds the expected modes."
+  (with-temp-buffer
+    (pcase-dolist (`(,file ,mode)
+                   '(("BUILD" bazel-build-mode)
+                     ("BUILD.bazel" bazel-build-mode)
+                     ("WORKSPACE" bazel-workspace-mode)
+                     ("WORKSPACE.bazel" bazel-workspace-mode)
+                     ("def.bzl" bazel-starlark-mode)
+                     (".bazelrc" bazelrc-mode)
+                     (".bazelignore" bazelignore-mode)))
+      (ert-info (file :prefix "File name: ")
+        (let ((enable-local-variables nil)
+              (auto-mode-case-fold nil)
+              (buffer-file-name (expand-file-name file)))
+          (set-auto-mode)
+          (should (eq major-mode mode)))))))
+
 ;;;; Test helpers
 
 (put #'looking-at-p 'ert-explainer #'bazel-test--explain-looking-at-p)
