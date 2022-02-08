@@ -1329,31 +1329,37 @@ This function is suitable for ‘compilation-finish-functions’."
               (maphash #'bazel--display-coverage coverage)))))))
   (when (and bazel-fix-visibility (string-prefix-p "exited abnormally" message))
     (with-current-buffer buffer
-      ;; Only continue if we’re in a Bazel workspace.
-      (when-let ((root (bazel--workspace-root default-directory)))
-        (let ((case-fold-search nil)
-              (search-spaces-regexp nil))
-          (save-excursion
-            (goto-char (point-min))
-            (while (re-search-forward
-                    (rx bol "ERROR: " (+ (any alnum ?/ ?- ?. ?_)) ?:
-                        (+ digit) ?: (+ digit) ": "
-                        (group
-                         (+ nonl)
-                         "target '"
-                         (group (+ (any "a-z" "A-Z" "0-9"
-                                        ?- "!%@^_` #$&()*+,;<=>?[]{|}~/.:")))
-                         "' is not visible from target '"
-                         (group (+ (any "a-z" "A-Z" "0-9"
-                                        ?- "!%@^_` #$&()*+,;<=>?[]{|}~/.:")))
-                         "'."))
-                    nil t)
-              (bazel--add-visibility root
-                                     (match-string-no-properties 3)
-                                     (match-string-no-properties 2)
-                                     (match-beginning 1)
-                                     (match-end 1)
-                                     (eq bazel-fix-visibility 'ask))))))))
+      (let ((case-fold-search nil)
+            (search-spaces-regexp nil)
+            (infos ())
+            (ask (eq bazel-fix-visibility 'ask)))
+        (save-excursion
+          ;; First search for error messages concerning visibility.  If there
+          ;; are none (typical case), we don’t have to hit the filesystem.
+          (goto-char (point-min))
+          (while (re-search-forward
+                  (rx bol "ERROR: " (+ (any alnum ?/ ?- ?. ?_)) ?:
+                      (+ digit) ?: (+ digit) ": "
+                      (group
+                       (+ nonl)
+                       "target '"
+                       (group (+ (any "a-z" "A-Z" "0-9"
+                                      ?- "!%@^_` #$&()*+,;<=>?[]{|}~/.:")))
+                       "' is not visible from target '"
+                       (group (+ (any "a-z" "A-Z" "0-9"
+                                      ?- "!%@^_` #$&()*+,;<=>?[]{|}~/.:")))
+                       "'."))
+                  nil t)
+            (push (list (match-string-no-properties 3)
+                        (match-string-no-properties 2)
+                        (match-beginning 1)
+                        (match-end 1))
+                  infos)))
+        (when infos
+          ;; Only continue if we’re in a Bazel workspace.
+          (when-let (root (bazel--workspace-root default-directory))
+            (pcase-dolist (`(,source ,dest ,begin ,end) (nreverse infos))
+              (bazel--add-visibility root source dest begin end ask)))))))
   nil)
 
 (cl-defstruct (bazel--coverage (:constructor bazel--make-coverage)
