@@ -242,6 +242,13 @@ corresponding to the file types documented at URL
                   (kill-buffer buildifier-buffer))
               (with-temp-buffer-window buildifier-buffer nil nil
                 (insert-file-contents buildifier-error-file)
+                (goto-char (point-max))
+                (insert ?\n "Process buildifier "
+                        (if (stringp return-code)
+                            (downcase return-code)  ; signal name
+                          (format "exited abnormally with code %d" return-code))
+                        ?\n)
+                (goto-char (point-min))
                 (compilation-minor-mode))))))))
   nil)
 
