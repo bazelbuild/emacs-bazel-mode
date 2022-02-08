@@ -1160,11 +1160,14 @@ restrict the returned rules to test targets."
 (defun bazel--in-test-rule-p ()
   "Return non-nil if point is probably in a test rule."
   (save-excursion
-    ;; A rule is a test rule if and only if its class name ends in “_test”.  See
-    ;; https://docs.bazel.build/versions/4.1.0/skylark/rules.html#executable-rules-and-test-rules.
-    (python-nav-beginning-of-statement)
-    (looking-at-p (rx symbol-start (+ (or (syntax word) (syntax symbol)))
-                      "_test" (* blank) ?\())))
+    (let ((case-fold-search nil)
+          (search-spaces-regexp nil))
+      ;; A rule is a test rule if and only if its class name ends in “_test”.
+      ;; See
+      ;; https://docs.bazel.build/versions/4.1.0/skylark/rules.html#executable-rules-and-test-rules.
+      (python-nav-beginning-of-statement)
+      (looking-at-p (rx symbol-start (+ (or (syntax word) (syntax symbol)))
+                        "_test" (* blank) ?\()))))
 
 ;;;; Finding BUILD and WORKSPACE files
 
@@ -1972,18 +1975,20 @@ Added to ‘c++-mode-hook’."
 Useful for ‘bazel-test-at-point-functions’.
 See URL ‘https://google.github.io/googletest/primer.html’."
   (save-excursion
-    (and (beginning-of-defun)
-         ;; Right now we only support Googletest.  See
-         ;; https://google.github.io/googletest/primer.html.
-         (looking-at (rx bol (or "TEST" "TEST_F") (* (syntax whitespace)) ?\(
-                         (* (syntax whitespace))
-                         (group (+ (or (syntax word) (syntax symbol))))
-                         (* (syntax whitespace)) ?, (* (syntax whitespace))
-                         (group (+ (or (syntax word) (syntax symbol))))
-                         (* (syntax whitespace)) ?\)))
-         ;; https://google.github.io/googletest/advanced.html#running-a-subset-of-the-tests.
-         (concat (match-string-no-properties 1) "."
-                 (match-string-no-properties 2)))))
+    (let ((case-fold-search nil)
+          (search-spaces-regexp nil))
+      (and (beginning-of-defun)
+           ;; Right now we only support Googletest.  See
+           ;; https://google.github.io/googletest/primer.html.
+           (looking-at (rx bol (or "TEST" "TEST_F") (* (syntax whitespace)) ?\(
+                           (* (syntax whitespace))
+                           (group (+ (or (syntax word) (syntax symbol))))
+                           (* (syntax whitespace)) ?, (* (syntax whitespace))
+                           (group (+ (or (syntax word) (syntax symbol))))
+                           (* (syntax whitespace)) ?\)))
+           ;; https://google.github.io/googletest/advanced.html#running-a-subset-of-the-tests.
+           (concat (match-string-no-properties 1) "."
+                   (match-string-no-properties 2))))))
 
 (add-hook 'go-mode-hook #'bazel-go-mode-hook)
 
@@ -1999,18 +2004,20 @@ Added to ‘go-mode-hook’."
 Useful for ‘bazel-test-at-point-functions’.
 See URL ‘https://pkg.go.dev/testing’."
   (save-excursion
-    (and (beginning-of-defun)
-         (looking-at (rx bol "func" (+ blank)
-                         (group (or "Test" "Benchmark" "Example")
-                                ;; https://golang.org/ref/spec#Identifiers
-                                (* (any alnum ?_)))
-                         (* blank) ?\())
-         ;; Go interprets the filter as unanchored regular expression,
-         ;; cf. https://pkg.go.dev/testing#hdr-Subtests_and_Sub_benchmarks.  So
-         ;; we anchor and quote the function name.  Don’t use ‘regexp-quote’,
-         ;; since the Emacs and Go regular expression syntaxes aren’t
-         ;; compatible.
-         (concat "^\\Q" (match-string-no-properties 1) "\\E$"))))
+    (let ((case-fold-search nil)
+          (search-spaces-regexp nil))
+      (and (beginning-of-defun)
+           (looking-at (rx bol "func" (+ blank)
+                           (group (or "Test" "Benchmark" "Example")
+                                  ;; https://golang.org/ref/spec#Identifiers
+                                  (* (any alnum ?_)))
+                           (* blank) ?\())
+           ;; Go interprets the filter as unanchored regular expression,
+           ;; cf. https://pkg.go.dev/testing#hdr-Subtests_and_Sub_benchmarks.
+           ;; So we anchor and quote the function name.  Don’t use
+           ;; ‘regexp-quote’, since the Emacs and Go regular expression syntaxes
+           ;; aren’t compatible.
+           (concat "^\\Q" (match-string-no-properties 1) "\\E$")))))
 
 ;;;; Utility functions to work with Bazel workspaces
 
