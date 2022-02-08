@@ -223,6 +223,10 @@ corresponding to the file types documented at URL
       (with-current-buffer buildifier-buffer
         (setq-local inhibit-read-only t)
         (erase-buffer)
+        (when-let ((root (bazel--workspace-root (or input-file directory))))
+          ;; Files in Buildifier error messages are local to the workspace root.
+          ;; Make sure that ‘next-error’ finds them.
+          (setq-local default-directory root))
         (cl-flet ((maybe-unquote (if (< emacs-major-version 28)
                                      #'file-name-unquote  ; Bug#48177
                                    #'identity)))

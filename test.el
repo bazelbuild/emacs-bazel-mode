@@ -1074,6 +1074,7 @@ in ‘bazel-mode’."
       (should (eql (length temp-buffers) 1))
       (with-current-buffer (car temp-buffers)
         (ert-info ("Error buffer")
+          (should (bazel-test--file-equal-p default-directory dir))
           (should (equal (buffer-string) "pkg/BUILD:3:1: syntax error
 pkg/BUILD # reformat
 
