@@ -438,8 +438,8 @@ This is the parent mode for the more specific modes
   ;; (https://github.com/bazelbuild/buildtools/issues/1031), so use the
   ;; ‘default’ type for now.
   (setq bazel--buildifier-type 'default)
-    ;; In MODULE.bazel files, we don’t have function definitions.  Instead,
-  ;; treat rules (= Python statements) as functions.
+  ;; In MODULE.bazel files, we don’t have function definitions.  Instead, treat
+  ;; rules (= Python statements) as functions.
   (setq-local beginning-of-defun-function #'python-nav-beginning-of-statement)
   (setq-local end-of-defun-function #'python-nav-end-of-statement)
   (setq-local imenu-create-index-function #'bazel-mode-create-index))
