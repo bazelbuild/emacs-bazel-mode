@@ -390,7 +390,6 @@ This is the parent mode for the more specific modes
                          (regexp ,bazel--magic-comment-regexp))
                     (regexp ,paragraph-start))
                :no-group))
-  (setq-local add-log-current-defun-function #'bazel-mode-current-rule-name)
   (add-hook 'before-save-hook #'bazel--buildifier-before-save-hook nil :local)
   (add-hook 'flymake-diagnostic-functions #'bazel-mode-flymake nil :local)
   (add-hook 'xref-backend-functions #'bazel-mode-xref-backend nil :local)
@@ -408,6 +407,8 @@ This is the parent mode for the more specific modes
   ;; (= Python statements) as functions.
   (setq-local beginning-of-defun-function #'python-nav-beginning-of-statement)
   (setq-local end-of-defun-function #'python-nav-end-of-statement)
+  (add-hook 'which-func-functions #'bazel-mode-current-rule-name nil :local)
+  (setq-local add-log-current-defun-function #'bazel-mode-current-rule-name)
   (setq-local imenu-create-index-function #'bazel-mode-create-index))
 
 ;;;###autoload
@@ -423,6 +424,8 @@ This is the parent mode for the more specific modes
   ;; rules (= Python statements) as functions.
   (setq-local beginning-of-defun-function #'python-nav-beginning-of-statement)
   (setq-local end-of-defun-function #'python-nav-end-of-statement)
+  (add-hook 'which-func-functions #'bazel-mode-current-rule-name nil :local)
+  (setq-local add-log-current-defun-function #'bazel-mode-current-rule-name)
   (setq-local imenu-create-index-function #'bazel-mode-create-index))
 
 ;;;###autoload
@@ -442,6 +445,8 @@ This is the parent mode for the more specific modes
   ;; rules (= Python statements) as functions.
   (setq-local beginning-of-defun-function #'python-nav-beginning-of-statement)
   (setq-local end-of-defun-function #'python-nav-end-of-statement)
+  (add-hook 'which-func-functions #'bazel-mode-current-rule-name nil :local)
+  (setq-local add-log-current-defun-function #'bazel-mode-current-rule-name)
   (setq-local imenu-create-index-function #'bazel-mode-create-index))
 
 ;;;###autoload
@@ -457,6 +462,8 @@ This is the parent mode for the more specific modes
   ;; Python commands to navigate.
   (setq-local beginning-of-defun-function #'python-nav-beginning-of-defun)
   (setq-local end-of-defun-function #'python-nav-end-of-defun)
+  (add-hook 'which-func-functions #'python-info-current-defun nil :local)
+  (setq-local add-log-current-defun-function #'python-info-current-defun)
   (setq-local imenu-extract-index-name-function
               #'bazel-mode-extract-function-name))
 

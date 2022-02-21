@@ -787,6 +787,34 @@ gets killed early."
                   (should (equal (add-log-current-defun) expected-name))
                   (should (equal (which-function) expected-name)))))))))))
 
+(ert-deftest bazel-starlark-mode/which-function ()
+  "Check ‘which-function’ and ‘add-log-current-defun’ in ‘bazel-starlark-mode’."
+  (bazel-test--with-temp-directory dir "which-func-starlark.org"
+    (bazel-test--with-file-buffer (expand-file-name "defs.bzl" dir)
+      (let ((case-fold-search nil)
+            (search-spaces-regexp nil))
+        (pcase-dolist (`(,search-string . ,expected-names)
+                       '(("# Comment" nil)
+                         ("    name = " nil)
+                         ("in_foo = 1" "foo")
+                         ;; For inner functions the result depends on the Emacs
+                         ;; version.
+                         ("in_inner = 1" "foo.inner" "inner")
+                         ("in_foo = 2" "foo")))
+          (ert-info ((format "Search string: %s" search-string))
+            (goto-char (point-min))
+            (search-forward search-string)
+            (let ((begin (match-beginning 0))
+                  (end (match-end 0)))
+              (pcase-dolist (`(,symbol ,position)
+                             `((begin ,begin)
+                               (end ,end)
+                               (middle ,(/ (+ begin end) 2))))
+                (ert-info ((format "Location: %s" symbol))
+                  (goto-char position)
+                  (should (member (add-log-current-defun) expected-names))
+                  (should (member (which-function) expected-names)))))))))))
+
 (ert-deftest bazel-build ()
   (cl-letf* ((commands ())
              ((symbol-function #'compile)
