@@ -217,41 +217,39 @@ corresponding to the file types documented at URL
     (bazel--with-temp-files ((buildifier-input-file
                               (make-nearby-temp-file "buildifier-input-")))
       (write-region (point-min) (point-max) buildifier-input-file nil :silent)
-      (cl-flet ((maybe-unquote (if (< emacs-major-version 28)
-                                   #'file-name-unquote  ; Bug#48177
-                                 #'identity)))
-        (let* ((default-directory directory)
-               (temporary-file-directory
-                (maybe-unquote temporary-file-directory))
-               (inhibit-read-only t)
-               (process-file-side-effects t)
-               (return-code
-                (apply #'process-file
-                       bazel-buildifier-command
-                       nil buildifier-buffer nil
-                       `(,@(bazel--buildifier-file-flags type input-file)
-                         "--"
-                         ,(file-name-unquote
-                           (file-local-name buildifier-input-file))))))
-          (if (eq return-code 0)
-              (progn
-                (insert-file-contents buildifier-input-file nil nil nil :repl)
-                (kill-buffer buildifier-buffer))
-            (with-current-buffer buildifier-buffer
-              (when-let ((root (bazel--workspace-root
-                                (or input-file directory))))
-                ;; Files in Buildifier error messages are local to the workspace
-                ;; root.  Make sure that ‘next-error’ finds them.
-                (setq-local default-directory root))
-              (goto-char (point-max))
-              (insert ?\n "Process buildifier "
-                      (if (stringp return-code)
-                          (downcase return-code)  ; signal name
-                        (format "exited abnormally with code %d" return-code))
-                      ?\n)
-              (goto-char (point-min))
-              (compilation-minor-mode))
-            (temp-buffer-window-show buildifier-buffer))))))
+      (let* ((default-directory directory)
+             (temporary-file-directory
+              (if (< emacs-major-version 28)
+                  (file-name-unquote temporary-file-directory)  ; Bug#48177
+                temporary-file-directory))
+             (inhibit-read-only t)
+             (process-file-side-effects t)
+             (return-code
+              (apply #'process-file
+                     bazel-buildifier-command
+                     nil buildifier-buffer nil
+                     `(,@(bazel--buildifier-file-flags type input-file)
+                       "--"
+                       ,(file-name-unquote
+                         (file-local-name buildifier-input-file))))))
+        (if (eq return-code 0)
+            (progn
+              (insert-file-contents buildifier-input-file nil nil nil :replace)
+              (kill-buffer buildifier-buffer))
+          (with-current-buffer buildifier-buffer
+            (when-let ((root (bazel--workspace-root (or input-file directory))))
+              ;; Files in Buildifier error messages are local to the workspace
+              ;; root.  Make sure that ‘next-error’ finds them.
+              (setq-local default-directory root))
+            (goto-char (point-max))
+            (insert ?\n "Process buildifier "
+                    (if (stringp return-code)
+                        (downcase return-code)  ; signal name
+                      (format "exited abnormally with code %d" return-code))
+                    ?\n)
+            (goto-char (point-min))
+            (compilation-minor-mode))
+          (temp-buffer-window-show buildifier-buffer)))))
   nil)
 
 (define-obsolete-function-alias 'bazel-mode-buildifier
