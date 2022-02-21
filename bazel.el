@@ -185,20 +185,17 @@ https://github.com/bazelbuild/buildtools/blob/2.2.0/buildifier/utils/flags.go#L1
 If nil, don’t pass a -type flag to Buildifier.")
 
 (eval-when-compile
-  (defmacro bazel--with-temp-files (bindings &rest body)
-    "Evaluate BINDINGS as in ‘let*’ and evaluate BODY.
-Assume that each of the binding forms returns the name of a
-temporary file.  After BODY finishes, delete the temporary files."
-    (declare (debug let*) (indent 1))
-    (pcase-exhaustive bindings
-      ('nil (macroexp-progn body))
-      (`((,(and (pred symbolp) var) ,val) . ,rest)
-       (let ((file (make-symbol "file")))
-         `(let ((,file ,val))
-            (unwind-protect
-                (let ((,var ,file))
-                  (bazel--with-temp-files ,rest ,@body))
-              (delete-file ,file))))))))
+  (defmacro bazel--with-temp-file (var val &rest body)
+    "Evaluate VAL and bind it to VAR in BODY.
+Assume that VAL returns the name of a temporary file.  After BODY
+finishes, delete the temporary file."
+    (declare (debug (symbolp form body)) (indent 2))
+    (let ((file (make-symbol "file")))
+      `(let ((,file ,val))
+         (unwind-protect
+             (let ((,var ,file))
+               ,@body)
+           (delete-file ,file))))))
 
 (defun bazel-buildifier (&optional type)
   "Format current buffer using Buildifier.
@@ -214,8 +211,8 @@ corresponding to the file types documented at URL
         (buildifier-buffer (temp-buffer-window-setup "*buildifier*"))
         (type (or type bazel--buildifier-type)))
     ;; Run Buildifier on a file to support remote BUILD files.
-    (bazel--with-temp-files ((buildifier-input-file
-                              (make-nearby-temp-file "buildifier-input-")))
+    (bazel--with-temp-file buildifier-input-file
+        (make-nearby-temp-file "buildifier-input-")
       (write-region (point-min) (point-max) buildifier-input-file nil :silent)
       (let* ((default-directory directory)
              (temporary-file-directory
