@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2021, 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#+title: Emacs package for Bazel
-#+language: en
-#+options: author:nil date:nil
-#+export_file_name: bazel.el.texi
-#+texinfo_filename: bazel.el.info
-#+texinfo_dir_category: Emacs
-#+texinfo_dir_title: bazel.el: (bazel.el)
-#+texinfo_dir_desc: Working with the Bazel build system
+#+TITLE: Emacs package for Bazel
+#+LANGUAGE: en
+#+OPTIONS: author:nil date:nil
+#+EXPORT_FILE_NAME: bazel.el.texi
+#+TEXINFO_FILENAME: bazel.el.info
+#+TEXINFO_DIR_CATEGORY: Emacs
+#+TEXINFO_DIR_TITLE: bazel.el: (bazel.el)
+#+TEXINFO_DIR_DESC: Working with the Bazel build system
 
 * Introduction
 
@@ -28,15 +28,15 @@ This manual describes ~bazel.el~, a GNU Emacs package to work with the
 
 * Modes to edit Bazel files
 :PROPERTIES:
-:alt_title: Bazel modes
+:ALT_TITLE: Bazel modes
 :END:
-#+cindex: Bazel modes
+#+CINDEX: Bazel modes
 
-#+findex: bazel-build-mode
-#+findex: bazel-workspace-mode
-#+findex: bazelrc-mode
-#+findex: bazelignore-mode
-#+findex: bazel-starlark-mode
+#+FINDEX: bazel-build-mode
+#+FINDEX: bazel-workspace-mode
+#+FINDEX: bazelrc-mode
+#+FINDEX: bazelignore-mode
+#+FINDEX: bazel-starlark-mode
 The package provides five major modes for editing Bazel-related files:
 ~bazel-build-mode~ for BUILD files, ~bazel-workspace-mode~ for WORKSPACE files,
 ~bazelrc-mode~ for =.bazelrc= configuration files, ~bazelignore-mode~ for
@@ -48,51 +48,51 @@ the Starlark language.  These modes also extend Imenu and the
 [[https://docs.bazel.build/skylark/concepts.html][Starlark reference]] for
 background on these file types.
 
-#+findex: bazel-mode
+#+FINDEX: bazel-mode
 Since the syntax for BUILD files, WORKSPACE files, and Starlark files is
 closely related, the corresponding modes derive from a parent mode,
 ~bazel-mode~.  Collectively, these modes are called “Bazel modes” in the rest
 of this manual.
 
-#+findex: bazel-insert-http-archive
+#+FINDEX: bazel-insert-http-archive
 When editing a WORKSPACE file, you can use the command
 ~bazel-insert-http-archive~ to quickly insert an
 [[https://docs.bazel.build/repo/http.html#http_archive][~http_archive~ rule]].
 
-#+cindex: Xref
-#+kindex: M-.
+#+CINDEX: Xref
+#+KINDEX: M-.
 The Bazel modes integrate with Xref to support basic functionality to jump to
 the definition of Bazel targets using =M-.=.  For more information about Xref,
 see [[info:Emacs#Xref][Xref]].
 
-#+cindex: Speedbar
-#+findex: speedbar
+#+CINDEX: Speedbar
+#+FINDEX: speedbar
 When =bazel.el= is loaded, rules in Bazel BUILD and WORKSPACE files will show
 up in the Speedbar.  For more information about Speedbar, see
 [[info:Emacs#Speedbar][Speedbar]].
 
-#+cindex: FFAP, for @samp{.bazelrc} files
+#+CINDEX: FFAP, for @samp{.bazelrc} files
 In =.bazelrc= files, ~find-file-at-point~ will also interpret the virtual
 ~%workspace%~ directories.  For more information about ~find-file-at-point~,
 see [[info:Emacs#FFAP][FFAP]].
 
 ** Buildifier
-#+cindex: Buildifier
+#+CINDEX: Buildifier
 
 The Bazel modes integrate with the Buildifier program.  For more information
 about Buildifier, see
 [[https://github.com/bazelbuild/buildtools/tree/master/buildifier][the
 Buildifier documentation]].
 
-#+cindex: Flymake
-#+findex: bazel-mode-flymake
+#+CINDEX: Flymake
+#+FINDEX: bazel-mode-flymake
 If Buildifier is available, the ~bazel-mode-flymake~ backend for Flymake
 provides on-the-fly syntax checking for Bazel files.  For more information
 about Flymake, see [[info:Flymake][Flymake]].
 
-#+findex: bazel-buildifier
-#+vindex: bazel-buildifier-before-save
-#+kindex: C-c C-f
+#+FINDEX: bazel-buildifier
+#+VINDEX: bazel-buildifier-before-save
+#+KINDEX: C-c C-f
 You can also run Buildifier manually using the ~bazel-buildifier~ command to
 reformat a Bazel file buffer.  When editing a Bazel file in ~bazel-mode~, this
 command is bound to the =C-c C-f= key.  To automatically reformat files before
@@ -100,14 +100,14 @@ saving, customize the user option ~bazel-buildifier-before-save~ to ~t~.
 
 * Running Bazel
 
-#+findex: bazel-build
-#+findex: bazel-test
-#+findex: bazel-coverage
-#+findex: bazel-run
-#+kindex: C-c C-b
-#+kindex: C-c C-t
-#+kindex: C-c C-c
-#+kindex: C-c C-r
+#+FINDEX: bazel-build
+#+FINDEX: bazel-test
+#+FINDEX: bazel-coverage
+#+FINDEX: bazel-run
+#+KINDEX: C-c C-b
+#+KINDEX: C-c C-t
+#+KINDEX: C-c C-c
+#+KINDEX: C-c C-r
 To simplify running Bazel commands, the package provides the commands
 ~bazel-build~, ~bazel-test~, ~bazel-coverage~ and ~bazel-run~, which execute
 the corresponding Bazel commands in a compilation mode buffer.  In a
@@ -115,11 +115,11 @@ the corresponding Bazel commands in a compilation mode buffer.  In a
 =C-c C-r= to run these commands, respectively.  These commands provide
 minibuffer completion for Bazel target patterns.
 
-#+findex: bazel-test-at-point
+#+FINDEX: bazel-test-at-point
 In a buffer that visits a test file, you can also have Emacs try to detect and
 execute the test at point using ~bazel-test-at-point~.
 
-#+findex: bazel-compile-current-file
+#+FINDEX: bazel-compile-current-file
 The command ~bazel-compile-current-file~ tries to compile the file that the
 current buffer visits.  This uses the Bazel flag =--compile_one_dependency=;
 not all Bazel rules support that flag.
@@ -130,11 +130,11 @@ started with the commands described above (see [[Running Bazel]]), as well as
 for processes started with the ~compile~ command.  For more information about
 Compilation mode, see [[info:Emacs#Compilation Mode][Compilation Mode]].
 
-#+cindex: Code coverage
-#+vindex: bazel-display-coverage
-#+vindex: bazel-covered-line
-#+vindex: bazel-uncovered-line
-#+findex: bazel-remove-coverage-display
+#+CINDEX: Code coverage
+#+VINDEX: bazel-display-coverage
+#+VINDEX: bazel-covered-line
+#+VINDEX: bazel-uncovered-line
+#+FINDEX: bazel-remove-coverage-display
 For rule types integrated with Bazel’s code coverage framework, =bazel.el=
 provides support for displaying line coverage information in buffers that visit
 instrumented source files.  If you set the user option ~bazel-display-coverage~
@@ -146,9 +146,9 @@ instrumented but never executed will be marked with the face
 ~bazel-uncovered-line~.  To remove these markings, run the command
 ~bazel-remove-coverage-display~.
 
-#+cindex: Visibility
-#+vindex: bazel-fix-visibility
-#+vindex: bazel-buildozer-command
+#+CINDEX: Visibility
+#+VINDEX: bazel-fix-visibility
+#+VINDEX: bazel-buildozer-command
 If you set the user option ~bazel-fix-visibility~ to ~t~, Emacs will
 automatically attempt to make targets visible to dependent packages as needed.
 You can also set the option to ~ask~ if you prefer Emacs to first prompt you to
@@ -160,7 +160,7 @@ the Buildozer program though the user option ~bazel-buildozer-command~.
 
 * Files in Bazel workspaces
 
-#+cindex: FFAP, for files in workspaces
+#+CINDEX: FFAP, for files in workspaces
 If you visit a file in a Bazel workspace, loading =bazel.el= will extend
 ~find-file-at-point~ to search for files relative to the workspace root.  This
 allows you to use ~find-file-at-point~ to e.g. find included header files in C
@@ -168,18 +168,18 @@ or C++ files that are built with Bazel.  This functionality also attempts to
 cover files in external repositories loaded by the current workspace.  For more
 information about ~find-file-at-point~, see [[info:Emacs#FFAP][FFAP]].
 
-#+findex: bazel-find-build-file
-#+findex: bazel-find-workspace-file
+#+FINDEX: bazel-find-build-file
+#+FINDEX: bazel-find-workspace-file
 To visit the BUILD file that defines the package for the current file, run the
 command ~bazel-find-build-file~.  Similarly, to find the Bazel WORKSPACE file,
 run ~bazel-find-workspace-file~.
 
-#+findex: bazel-show-consuming-rule
+#+FINDEX: bazel-show-consuming-rule
 To find out which Bazel rule consumes the file that the current buffer visits,
 run the command ~bazel-show-consuming-rule~.  It will search the corresponding
 BUILD file that has the source file in its list of source files and jump there.
 
-#+cindex: Projects
+#+CINDEX: Projects
 =bazel.el= provides a project backend, ~bazel-find-project~.  By default, it
 will include all files in the Bazel workspace except the convenience symbolic
 links starting with =bazel-=.  You can exclude directories from the workspace
@@ -189,8 +189,8 @@ more information about projects, see [[info:emacs#Projects][Projects]].
 
 * Customization
 
-#+vindex: bazel-command
-#+vindex: bazel-buildifier-command
+#+VINDEX: bazel-command
+#+VINDEX: bazel-buildifier-command
 You can customize some aspects of this package using the ~bazel~ customization
 group.  By default, =bazel.el= will search for the Bazel and Buildifier
 programs using the names =bazel= and =buildifier=, respectively, but if you
@@ -200,7 +200,7 @@ locations by customizing the options ~bazel-command~ and
 
 * Extending
 
-#+vindex: bazel-test-at-point-functions
+#+VINDEX: bazel-test-at-point-functions
 The ~bazel-test-at-point~ command provides support for C++ (specifically, the
 GoogleTest C++ unit testing framework), Python, Emacs Lisp, and Go.  To extend
 the command to other languages, add a language-specific entry to the special
@@ -214,35 +214,35 @@ Target pattern completion is
 completion framework]].  To disable Ivy for the affected commands, add
 something like the following to your Emacs initialization file.
 
-#+begin_src emacs-lisp
+#+BEGIN_SRC emacs-lisp
 (dolist (function '(bazel-build bazel-run bazel-test bazel-coverage))
   (add-to-list 'ivy-completing-read-handlers-alist
                `(,function . completing-read-default)))
-#+end_src
+#+END_SRC
 
-#+texinfo: @noindent
+#+TEXINFO: @noindent
 This will cause Ivy to fall back to Emacs’s built-in completion support.
 
 * Indices
 
 ** Concept index
 :PROPERTIES:
-:index: cp
+:INDEX: cp
 :END:
 
 ** Command and function index
 :PROPERTIES:
-:index: fn
+:INDEX: fn
 :END:
 
 ** Variable index
 :PROPERTIES:
-:index: vr
+:INDEX: vr
 :END:
 
 ** Key index
 :PROPERTIES:
-:index: ky
+:INDEX: ky
 :END:
 
 # Local Variables:
