@@ -400,6 +400,29 @@ This is the parent mode for the more specific modes
     ;; Initialize filename cache.
     (bazel--workspace-relative-name filename)))
 
+(defun bazel--is-workspace-file-p (filename)
+  "Determines whether a file is a workspace file given its filename."
+  (or (string-equal "WORKSPACE" filename)
+      (string-equal "WORKSPACE.bazel" filename)))
+
+(defun bazel--is-build-file-p (filename)
+  "Determines whether a file is a build file given its filename."
+  (and (or (string-equal "BUILD" filename)
+           (and (string-suffix-p ".bazel" filename)
+                (not (string-equal "WORKSPACE.bazel" filename))))))
+
+(defun bazel--is-buffer-workspace-file-p ()
+  "Determines whether the buffer file is a workspace file."
+  (when-let (buffer-file-base-name
+             (file-name-nondirectory (or (buffer-file-name (buffer-base-buffer)) "")))
+    (bazel--is-workspace-file-p buffer-file-base-name)))
+
+(defun bazel--is-buffer-build-file-p ()
+  "Determines whether the buffer file is a build file."
+  (when-let (buffer-file-base-name
+             (file-name-nondirectory (or (buffer-file-name (buffer-base-buffer)) "")))
+    (bazel--is-build-file-p buffer-file-base-name)))
+
 ;;;###autoload
 (define-derived-mode bazel-build-mode bazel-mode "BUILD.bazel"
   "Major mode for editing Bazel BUILD files."
@@ -411,9 +434,9 @@ This is the parent mode for the more specific modes
   (setq-local imenu-create-index-function #'bazel-mode-create-index))
 
 ;;;###autoload
-(add-to-list 'auto-mode-alist
+(add-to-list 'magic-mode-alist
              ;; https://docs.bazel.build/versions/3.0.0/build-ref.html#packages
-             (cons (rx ?/ (or "BUILD" "BUILD.bazel") eos) #'bazel-build-mode))
+             '(bazel--is-buffer-build-file-p . bazel-build-mode))
 
 ;;;###autoload
 (define-derived-mode bazel-workspace-mode bazel-mode "WORKSPACE.bazel"
@@ -426,10 +449,9 @@ This is the parent mode for the more specific modes
   (setq-local imenu-create-index-function #'bazel-mode-create-index))
 
 ;;;###autoload
-(add-to-list 'auto-mode-alist
+(add-to-list 'magic-mode-alist
              ;; https://docs.bazel.build/versions/3.0.0/build-ref.html#workspace
-             (cons (rx ?/ (or "WORKSPACE" "WORKSPACE.bazel") eos)
-                   #'bazel-workspace-mode))
+             '(bazel--is-buffer-workspace-file-p . bazel-workspace-mode))
 
 ;;;###autoload
 (define-derived-mode bazel-module-mode bazel-mode "MODULE.bazel"

@@ -125,6 +125,45 @@ MESSAGE is a message for ‘ert-info’."
 
 ;;;; Unit tests
 
+(ert-deftest bazel--is-workspace-file-p-check ()
+    (should (eq (bazel--is-workspace-file-p "WORKSPACE") t))
+
+    ;; Special case where we want bazel-workspace-mode.
+    (should (eq (bazel--is-workspace-file-p "WORKSPACE.bazel") t))
+
+    ;; This extension conflicts with other build systems, so we
+    ;; stick to using .bazel as an unambiguous extension instead.
+    (should (eq (bazel--is-workspace-file-p "foo.BUILD") nil))
+
+    (should (eq (bazel--is-workspace-file-p "BUILD.bzl") nil))
+    (should (eq (bazel--is-workspace-file-p "BUILD.bazel") nil))
+    (should (eq (bazel--is-workspace-file-p "BUILD") nil))
+    (should (eq (bazel--is-workspace-file-p "defs.bzl") nil))
+    (should (eq (bazel--is-workspace-file-p "WORKSPACE.bzl") nil))
+    (should (eq (bazel--is-workspace-file-p "WORSPACE") nil))
+    (should (eq (bazel--is-workspace-file-p "fooWORKSPACE") nil))
+    (should (eq (bazel--is-workspace-file-p "WORKSPACEfoo") nil)))
+
+(ert-deftest bazel--is-build-file-p-check ()
+    (should (eq (bazel--is-build-file-p "BUILD.bazel") t))
+    (should (eq (bazel--is-build-file-p "BUILD") t))
+    (should (eq (bazel--is-build-file-p "foo.bazel") t))
+
+    ;; This extension conflicts with other build systems, so we
+    ;; stick to using .bazel as an unambiguous extension instead.
+    (should (eq (bazel--is-build-file-p "foo.BUILD") nil))
+
+    ;; Special case where we want bazel-workspace-mode.
+    (should (eq (bazel--is-build-file-p "WORKSPACE.bazel") nil))
+
+    (should (eq (bazel--is-build-file-p "WORKSPACE") nil))
+    (should (eq (bazel--is-build-file-p "BUILD.bzl") nil))
+    (should (eq (bazel--is-build-file-p "defs.bzl") nil))
+    (should (eq (bazel--is-build-file-p "WORKSPACE.bzl") nil))
+    (should (eq (bazel--is-build-file-p "WORSPACE") nil))
+    (should (eq (bazel--is-build-file-p "fooWORKSPACE") nil))
+    (should (eq (bazel--is-build-file-p "WORKSPACEfoo") nil)))
+
 (ert-deftest bazel-mode/indent-after-colon ()
   (with-temp-buffer
     (bazel-mode)
