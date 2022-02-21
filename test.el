@@ -1391,6 +1391,7 @@ Process buildifier exited abnormally with code 1
                      ("BUILD.bazel" bazel-build-mode)
                      ("WORKSPACE" bazel-workspace-mode)
                      ("WORKSPACE.bazel" bazel-workspace-mode)
+                     ("MODULE.bazel" bazel-module-mode)
                      ("def.bzl" bazel-starlark-mode)
                      (".bazelrc" bazelrc-mode)
                      (".bazelignore" bazelignore-mode)))
