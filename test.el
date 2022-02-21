@@ -312,8 +312,7 @@ gets killed early."
           (should (equal (buffer-string) before)))))))
 
 (ert-deftest bazel-build-mode/beginning-of-defun ()
-  "Check that ‘beginning-of-defun’ in BUILD buffers moves to the
-beginning of the rule."
+  "Check that ‘beginning-of-defun’ moves to the beginning of the rule."
   (bazel-test--with-temp-directory dir "defun-navigation.org"
     (bazel-test--with-file-buffer (expand-file-name "BUILD" dir)
       (search-forward "bazel.el")
@@ -322,8 +321,7 @@ beginning of the rule."
                                 "    name = \"bazel\","))))))
 
 (ert-deftest bazel-build-mode/end-of-defun ()
-  "Check that ‘end-of-defun’ in BUILD buffers moves to the end of
-the rule."
+  "Check that ‘end-of-defun’ moves to the end of the rule."
   (bazel-test--with-temp-directory dir "defun-navigation.org"
     (bazel-test--with-file-buffer (expand-file-name "BUILD" dir)
       (search-forward "bazel.el")
@@ -764,8 +762,7 @@ the rule."
                          (cons bound 6))))))))
 
 (ert-deftest bazel-mode/which-function ()
-  "Verify that ‘which-function’ and ‘add-log-current-defun’ work
-in ‘bazel-mode’."
+  "Verify ‘which-function’ and ‘add-log-current-defun’ in ‘bazel-mode’."
   (bazel-test--with-temp-directory dir "xref.org"
     (bazel-test--with-file-buffer (expand-file-name "root/BUILD" dir)
       (bazel-mode)
@@ -1003,8 +1000,7 @@ in ‘bazel-mode’."
                   "bazel test --test_filter\\=\\^\\\\QBenchmarkFoo_Bar\\\\E\\$ -- //\\:go_test")))))))
 
 (ert-deftest bazel-test-at-point-functions ()
-  "Test that ‘which-function’ is at the end of
-‘bazel-test-at-point-functions’."
+  "Test that ‘which-function’ is at the end of ‘bazel-test-at-point-functions’."
   (skip-unless (>= emacs-major-version 27))  ; older versions lack hook depths
   (let ((bazel-test-at-point-functions bazel-test-at-point-functions)
         (which-func-functions
