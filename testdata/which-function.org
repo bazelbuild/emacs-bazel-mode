@@ -20,6 +20,36 @@
 workspace(name = "test")
 #+end_src
 
+#+begin_src bazel-build :tangle BUILD
+cc_library(
+    name = "lib",
+    srcs = [
+        "aaa.cc",
+        "dir/bbb.cc",
+        ":aaa.cc",
+        "//:aaa.cc",
+        "//pkg:ccc.cc",
+        "@ws//pkg:ddd.cc",
+    ],
+)
+
+cc_binary(
+    name = "bin",
+    deps = [
+        ":lib",
+        "//:lib",
+        "//pkg",
+        "//pkg:lib",
+    ],
+)
+
+# Commented-out rule; should be ignored.
+# cc_binary(
+#     name = "bin",
+#     srcs = "bin.cc",
+# )
+#+end_src
+
 #+begin_src bazel-starlark :tangle defs.bzl
 # Comment
 
