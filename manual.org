@@ -100,6 +100,7 @@ saving, customize the user option ~bazel-buildifier-before-save~ to ~t~.
 
 * Running Bazel
 
+#+FINDEX: bazel
 #+FINDEX: bazel-build
 #+FINDEX: bazel-test
 #+FINDEX: bazel-coverage
@@ -113,7 +114,8 @@ To simplify running Bazel commands, the package provides the commands
 the corresponding Bazel commands in a compilation mode buffer.  In a
 ~bazel-mode~ buffer, you can use the keys =C-c C-b=, =C-c C-t=, =C-c C-c=, and
 =C-c C-r= to run these commands, respectively.  These commands provide
-minibuffer completion for Bazel target patterns.
+minibuffer completion for Bazel target patterns.  There’s also the generic
+command ~bazel~, which prompts for the command to run.
 
 #+FINDEX: bazel-test-at-point
 In a buffer that visits a test file, you can also have Emacs try to detect and
@@ -215,7 +217,7 @@ completion framework]].  To disable Ivy for the affected commands, add
 something like the following to your Emacs initialization file.
 
 #+BEGIN_SRC emacs-lisp
-(dolist (function '(bazel-build bazel-run bazel-test bazel-coverage))
+(dolist (function '(bazel bazel-build bazel-run bazel-test bazel-coverage))
   (add-to-list 'ivy-completing-read-handlers-alist
                `(,function . completing-read-default)))
 #+END_SRC
