@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2021, 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 We add a few quirks to the =WORKSPACE= file to ensure that the workspace name is
 correctly determined.
 
-#+begin_src bazel-workspace :tangle prefix/WORKSPACE :mkdirp yes
+#+BEGIN_SRC bazel-workspace :tangle prefix/WORKSPACE :mkdirp yes
 """
 workspace(name = "haha")
 """
@@ -29,17 +29,17 @@ workspace(name = "haha")
 workspace(foo = 'name = "no",', name = "test_repository")
 
 # workspace(name = "haha")
-#+end_src
+#+END_SRC
 
-#+begin_src bazel-build :tangle prefix/BUILD :mkdirp yes
+#+BEGIN_SRC bazel-build :tangle prefix/BUILD :mkdirp yes
 # Empty BUILD file
-#+end_src
+#+END_SRC
 
 ** Expected ~http_workspace~ snippet
 
 The ~bazel-insert-http-archive~ test fakes a date of 2019-05-02.
 
-#+begin_src bazel-workspace :tangle WORKSPACE.expected
+#+BEGIN_SRC bazel-workspace :tangle WORKSPACE.expected
 http_archive(
     name = "test_repository",
     sha256 = "%sha256%",
@@ -48,4 +48,4 @@ http_archive(
         "%url%",  # 2019-05-02
     ],
 )
-#+end_src
+#+END_SRC

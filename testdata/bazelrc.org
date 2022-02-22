@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2021, 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#+property: header-args :mkdirp yes :main no
+#+PROPERTY: header-args :mkdirp yes :main no
 
-#+begin_src bazel-workspace :tangle WORKSPACE
+#+BEGIN_SRC bazel-workspace :tangle WORKSPACE
 workspace(name = "root")
-#+end_src
+#+END_SRC
 
-#+begin_src bazelrc :tangle .bazelrc
+#+BEGIN_SRC bazelrc :tangle .bazelrc
 import %workspace%/other.bazelrc
-#+end_src
+#+END_SRC
 
-#+begin_src bazelrc :tangle other.bazelrc
+#+BEGIN_SRC bazelrc :tangle other.bazelrc
 build --verbose_failures
-#+end_src
+#+END_SRC

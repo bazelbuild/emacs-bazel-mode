@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2021, 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#+begin_src bazel-workspace :tangle WORKSPACE :main no
+#+BEGIN_SRC bazel-workspace :tangle WORKSPACE :main no
 workspace(name = "test")
-#+end_src
+#+END_SRC
 
-#+begin_src bazel-build :tangle BUILD
+#+BEGIN_SRC bazel-build :tangle BUILD
 cc_library(
     name = "test",
     srcs = ["test.cc"],
@@ -27,16 +27,16 @@ py_test(
     name = "foo_test",
     srcs = ["foo_test.py"],
 )
-#+end_src
+#+END_SRC
 
-#+begin_src C++ :tangle test.cc
+#+BEGIN_SRC C++ :tangle test.cc
 UnknownType foo;
-#+end_src
+#+END_SRC
 
-#+begin_src python :tangle foo_test.py
+#+BEGIN_SRC python :tangle foo_test.py
 import unittest
 
 class FooTest(unittest.TestCase):
     def testFoo(self):
         self.assertEquals(1, 2)
-#+end_src
+#+END_SRC

@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2021, 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,20 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#+property: header-args :mkdirp yes :main no
+#+PROPERTY: header-args :mkdirp yes :main no
 
-#+begin_src bazel-workspace :tangle WORKSPACE
+#+BEGIN_SRC bazel-workspace :tangle WORKSPACE
 workspace(name = "test")
-#+end_src
+#+END_SRC
 
-#+begin_src bazel-build :tangle package/BUILD
+#+BEGIN_SRC bazel-build :tangle package/BUILD
 cc_library(
     name = "test",
     srcs = ["test.cc"],
     deprecation = "Deprecated!",
 )
-#+end_src
+#+END_SRC
 
-#+begin_src C++ :tangle package/test.cc
+#+BEGIN_SRC C++ :tangle package/test.cc
 UnknownType foo;
-#+end_src
+#+END_SRC

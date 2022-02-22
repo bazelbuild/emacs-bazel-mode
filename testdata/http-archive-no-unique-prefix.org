@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2021, 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,10 +16,10 @@
 
 ** Contents of the test repository archive
 
-#+begin_src bazel-workspace :tangle prefix-1/WORKSPACE :mkdirp yes
+#+BEGIN_SRC bazel-workspace :tangle prefix-1/WORKSPACE :mkdirp yes
 workspace(name = "test_repository_1")
-#+end_src
+#+END_SRC
 
-#+begin_src bazel-workspace :tangle prefix-2/WORKSPACE :mkdirp yes
+#+BEGIN_SRC bazel-workspace :tangle prefix-2/WORKSPACE :mkdirp yes
 workspace(name = "test_repository_2")
-#+end_src
+#+END_SRC
