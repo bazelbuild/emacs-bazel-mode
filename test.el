@@ -125,9 +125,9 @@ MESSAGE is a message for ‘ert-info’."
 
 ;;;; Unit tests
 
-(ert-deftest bazel-mode/indent-after-colon ()
+(ert-deftest bazel-starlark-mode/indent-after-colon ()
   (with-temp-buffer
-    (bazel-mode)
+    (bazel-starlark-mode)
     (insert "def foo():")
     (newline-and-indent)
     (should (= (current-column) 4))))
@@ -299,12 +299,12 @@ gets killed early."
                         (expand-file-name "root/bazel-root/external/ws/bbb.h"
                                           dir))))))))
 
-(ert-deftest bazel-mode/fill ()
+(ert-deftest bazel-build-mode/fill ()
   "Check that magic comments are left alone."
   (with-temp-buffer
     (insert-file-contents
      (expand-file-name "testdata/fill.BUILD" bazel-test--directory))
-    (bazel-mode)
+    (bazel-build-mode)
     (let ((before (buffer-string)))
       (while (search-forward "# Test paragraph" nil t)
         (ert-info ((format "fill-paragraph on line %d" (line-number-at-pos)))
@@ -765,7 +765,7 @@ gets killed early."
   "Verify ‘which-function’ and ‘add-log-current-defun’ in ‘bazel-mode’."
   (bazel-test--with-temp-directory dir "xref.org"
     (bazel-test--with-file-buffer (expand-file-name "root/BUILD" dir)
-      (bazel-mode)
+      (bazel-build-mode)
       (let ((case-fold-search nil)
             (search-spaces-regexp nil))
         (pcase-dolist (`(,search-string ,expected-name)
