@@ -1,4 +1,4 @@
-# Copyright 2020, 2021 Google LLC
+# Copyright 2020, 2021, 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,10 +18,10 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
     name = "phst_rules_elisp",
-    sha256 = "a2c8a7729feec4aca0ac5b7d8846e03e1eb9815fe9210a325deb9e1df12b4d6c",
-    strip_prefix = "rules_elisp-d10c1a5e836732a0aa2f54a9aa4b2d58c752284c",
+    sha256 = "d00f311f893402fb864ec15d900f1591f7c90a0659e0d46e149d6809e3af0f27",
+    strip_prefix = "rules_elisp-0695d52efa44cb4a200f838095c095dde31f48cc",
     urls = [
-        "https://github.com/phst/rules_elisp/archive/d10c1a5e836732a0aa2f54a9aa4b2d58c752284c.zip",  # 2021-11-26
+        "https://github.com/phst/rules_elisp/archive/0695d52efa44cb4a200f838095c095dde31f48cc.zip",  # 2022-04-17
     ],
 )
 
