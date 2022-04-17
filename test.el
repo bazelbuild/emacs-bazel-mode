@@ -1122,7 +1122,7 @@ Process buildifier exited abnormally with code 1
 (ert-deftest bazel-insert-http-archive ()
   (bazel-test--with-temp-directory dir "http-archive.org"
     (should (set-file-times (expand-file-name "prefix" dir)
-                            (encode-time 0 0 0 2 5 2019 t)))
+                            (encode-time '(0 0 0 2 5 2019 nil nil t))))
     (let* ((archive (file-name-unquote
                      (expand-file-name "archive.tar.gz" dir)))
            (url-unreserved-chars (cons ?/ url-unreserved-chars))
