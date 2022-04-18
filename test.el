@@ -1010,7 +1010,6 @@ gets killed early."
 
 (ert-deftest bazel-test-at-point-functions ()
   "Test that ‘which-function’ is at the end of ‘bazel-test-at-point-functions’."
-  (skip-unless (>= emacs-major-version 27))  ; older versions lack hook depths
   (let ((bazel-test-at-point-functions bazel-test-at-point-functions)
         (which-func-functions
          (list (lambda () (ert-fail "‘which-function’ has been called")))))
