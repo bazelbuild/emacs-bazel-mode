@@ -1136,9 +1136,6 @@ Process buildifier exited abnormally with code 1
       (let ((actual
              (with-temp-buffer
                (bazel-workspace-mode)
-               (when (version< emacs-version "26.2")
-                 ;; Work around Bug#31950.
-                 (set-window-buffer nil (current-buffer)))
                (bazel-insert-http-archive url)
                (buffer-substring-no-properties (point-min) (point-max))))
             (expected
@@ -1181,9 +1178,6 @@ Process buildifier exited abnormally with code 1
       (with-temp-buffer
         (let ((tick-before (buffer-modified-tick)))
           (bazel-workspace-mode)
-          (when (version< emacs-version "26.2")
-            ;; Work around Bug#31950.
-            (set-window-buffer nil (current-buffer)))
           (should-error (bazel-insert-http-archive url) :type 'user-error)
           (should (eql (buffer-modified-tick) tick-before))  ; no change
           (should (eq (buffer-size) 0)))))))
@@ -1201,9 +1195,6 @@ Process buildifier exited abnormally with code 1
       (with-temp-buffer
         (let ((tick-before (buffer-modified-tick)))
           (bazel-workspace-mode)
-          (when (version< emacs-version "26.2")
-            ;; Work around Bug#31950.
-            (set-window-buffer nil (current-buffer)))
           (should-error (bazel-insert-http-archive url) :type 'user-error)
           (should (eql (buffer-modified-tick) tick-before))  ; no change
           (should (eq (buffer-size) 0)))))))
@@ -1219,9 +1210,6 @@ Process buildifier exited abnormally with code 1
         (with-temp-buffer
           (let ((tick-before (buffer-modified-tick)))
             (bazel-workspace-mode)
-            (when (version< emacs-version "26.2")
-              ;; Work around Bug#31950.
-              (set-window-buffer nil (current-buffer)))
             (should-error (bazel-insert-http-archive url))
             (should (eql (buffer-modified-tick) tick-before))  ; no change
             (should (eq (buffer-size) 0))))))))
