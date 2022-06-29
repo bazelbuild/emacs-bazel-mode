@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2021, 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,20 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#+property: header-args :mkdirp yes :main no
+#+PROPERTY: header-args :mkdirp yes :main no
 
-#+begin_src bazel-workspace :tangle WORKSPACE
+#+BEGIN_SRC bazel-workspace :tangle WORKSPACE
 workspace(name = "root")
-#+end_src
+#+END_SRC
 
-#+begin_src bazel-build :tangle BUILD
+#+BEGIN_SRC bazel-build :tangle BUILD
 go_test(
     name = "go_test",
     srcs = ["go_test.go"],
 )
-#+end_src
+#+END_SRC
 
-#+begin_src go :tangle go_test.go
+#+BEGIN_SRC go :tangle go_test.go
 // Comment
 func Test(t *testing.T) {
         t.Error("Failed!")
@@ -33,4 +33,4 @@ func Test(t *testing.T) {
 func BenchmarkFoo_Bar(b *testing.B) {
         b.Error("Failed!")
 }
-#+end_src
+#+END_SRC

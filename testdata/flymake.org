@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2021, 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,33 +12,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#+property: header-args :mkdirp yes :main no
+#+PROPERTY: header-args :mkdirp yes :main no
 
 * Test data for ~bazel-mode-flymake~
 
-#+begin_src bazel-workspace :tangle WORKSPACE
+#+BEGIN_SRC bazel-workspace :tangle WORKSPACE
 workspace(name = "test")
-#+end_src
+#+END_SRC
 
-#+name: starlark
-#+begin_src bazel-starlark :tangle buildifier.bzl
+#+NAME: starlark
+#+BEGIN_SRC bazel-starlark :tangle buildifier.bzl
 def foo(bar):
     """ """
     a = 1 / 2
-#+end_src
+#+END_SRC
 
 To make the Flymake test hermetic, we generate Buildifier output statically and
 tangle the output when running the test.  Execute this code block to regenerate
 the Buildifier output:
 
-#+begin_src sh :noweb yes :results output scalar :wrap "src js :tangle buildifier.json"
+#+BEGIN_SRC sh :noweb yes :results output scalar :wrap "src js :tangle buildifier.json"
 buildifier -mode=check -lint=warn -format=json -v -path=buildifier.bzl <<'EOF'
 <<starlark>>
 EOF
-#+end_src
+#+END_SRC
 
 #+RESULTS:
-#+begin_src js :tangle buildifier.json
+#+BEGIN_SRC js :tangle buildifier.json
 {
     "success": false,
     "files": [
@@ -93,13 +93,13 @@ EOF
         }
     ]
 }
-#+end_src
+#+END_SRC
 
 We also provide a “fake” Buildifier binary that only emits our canned output.
 It waits for the file =signal= to exist; you can use this to simulate a “slow”
 Buildifier.
 
-#+begin_src sh :tangle buildifier :shebang "#!/bin/bash" :var dir=(file-name-unquote (expand-file-name default-directory))
+#+BEGIN_SRC sh :tangle buildifier :shebang "#!/bin/bash" :var dir=(file-name-unquote (expand-file-name default-directory))
 # Fake waiting for file input.
 cat > /dev/null
 
@@ -110,4 +110,4 @@ done
 
 # Fake some Buildifier output.
 cat -- "${dir:?}/buildifier.json"
-#+end_src
+#+END_SRC

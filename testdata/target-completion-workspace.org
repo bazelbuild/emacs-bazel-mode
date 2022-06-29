@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2021, 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,30 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#+property: header-args :mkdirp yes :main no
+#+PROPERTY: header-args :mkdirp yes :main no
 
 * Test target completion for external workspaces
 
-#+begin_src bazel-workspace :tangle main/WORKSPACE
+#+BEGIN_SRC bazel-workspace :tangle main/WORKSPACE
 workspace(name = "main")
-#+end_src
+#+END_SRC
 
-#+begin_src bazel-build :tangle main/BUILD
+#+BEGIN_SRC bazel-build :tangle main/BUILD
 # Dummy BUILD file
-#+end_src
+#+END_SRC
 
-#+begin_src bazel-build :tangle main/main-pkg/BUILD
+#+BEGIN_SRC bazel-build :tangle main/main-pkg/BUILD
 # Dummy BUILD file
-#+end_src
+#+END_SRC
 
-#+begin_src bazel-workspace :tangle main/bazel-main/external/ext/WORKSPACE
+#+BEGIN_SRC bazel-workspace :tangle main/bazel-main/external/ext/WORKSPACE
 workspace(name = "ext")
-#+end_src
+#+END_SRC
 
-#+begin_src bazel-build :tangle main/bazel-main/external/ext/BUILD
+#+BEGIN_SRC bazel-build :tangle main/bazel-main/external/ext/BUILD
 # Dummy BUILD file
-#+end_src
+#+END_SRC
 
-#+begin_src bazel-build :tangle main/bazel-main/external/ext/ext-pkg/BUILD
+#+BEGIN_SRC bazel-build :tangle main/bazel-main/external/ext/ext-pkg/BUILD
 # Dummy BUILD file
-#+end_src
+#+END_SRC

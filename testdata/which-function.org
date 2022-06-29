@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#+property: header-args :mkdirp yes :main no
+#+PROPERTY: header-args :mkdirp yes :main no
 
 * Test data for ~bazel-starlark-mode/which-function~
 
-#+begin_src bazel-workspace :tangle WORKSPACE
+#+BEGIN_SRC bazel-workspace :tangle WORKSPACE
 workspace(name = "test")
-#+end_src
+#+END_SRC
 
-#+begin_src bazel-build :tangle BUILD
+#+BEGIN_SRC bazel-build :tangle BUILD
 cc_library(
     name = "lib",
     srcs = [
@@ -48,9 +48,9 @@ cc_binary(
 #     name = "bin",
 #     srcs = "bin.cc",
 # )
-#+end_src
+#+END_SRC
 
-#+begin_src bazel-starlark :tangle defs.bzl
+#+BEGIN_SRC bazel-starlark :tangle defs.bzl
 # Comment
 
 looks_like_a_rule(
@@ -62,4 +62,4 @@ def foo(bar):
     def inner():
         in_inner = 1
     in_foo = 2
-#+end_src
+#+END_SRC

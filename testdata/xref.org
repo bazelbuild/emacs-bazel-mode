@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2021, 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#+property: header-args :mkdirp yes :main no
+#+PROPERTY: header-args :mkdirp yes :main no
 
-#+begin_src bazel-workspace :tangle root/WORKSPACE
+#+BEGIN_SRC bazel-workspace :tangle root/WORKSPACE
 workspace(name = "root")
-#+end_src
+#+END_SRC
 
-#+begin_src bazel-build :tangle root/BUILD
+#+BEGIN_SRC bazel-build :tangle root/BUILD
 cc_library(
     name = "lib",
     srcs = [
@@ -46,32 +46,32 @@ cc_binary(
 #     name = "bin",
 #     srcs = "bin.cc",
 # )
-#+end_src
+#+END_SRC
 
 Create empty files that the labels in the test BUILD file refer to.
 
-#+begin_src C++ :tangle root/aaa.cc
+#+BEGIN_SRC C++ :tangle root/aaa.cc
 // empty
-#+end_src
+#+END_SRC
 
-#+begin_src C++ :tangle root/dir/bbb.cc
+#+BEGIN_SRC C++ :tangle root/dir/bbb.cc
 // empty
-#+end_src
+#+END_SRC
 
-#+begin_src bazel-build :tangle root/pkg/BUILD
+#+BEGIN_SRC bazel-build :tangle root/pkg/BUILD
 # empty
-#+end_src
+#+END_SRC
 
-#+begin_src C++ :tangle root/pkg/ccc.cc
+#+BEGIN_SRC C++ :tangle root/pkg/ccc.cc
 // empty
-#+end_src
+#+END_SRC
 
 Files in an external workspace:
 
-#+begin_src bazel-workspace :tangle root/bazel-root/external/ws/WORKSPACE
+#+BEGIN_SRC bazel-workspace :tangle root/bazel-root/external/ws/WORKSPACE
 # empty
-#+end_src
+#+END_SRC
 
-#+begin_src C++ :tangle root/bazel-root/external/ws/pkg/ddd.cc
+#+BEGIN_SRC C++ :tangle root/bazel-root/external/ws/pkg/ddd.cc
 // empty
-#+end_src
+#+END_SRC
