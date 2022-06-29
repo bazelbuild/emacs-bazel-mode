@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2021, 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,14 +21,12 @@ BAZEL := bazel
 BAZELFLAGS :=
 
 # All potentially supported Emacs versions.
-versions := 26.1 26.2 26.3 27.1 27.2
+versions := 27.1 27.2
 
 kernel := $(shell uname -s)
 ifeq ($(kernel),Linux)
   # GNU/Linux supports all Emacs versions.
 else ifeq ($(kernel),Darwin)
-  # macOS only supports Emacs 27.
-  versions := $(filter-out 26.%,$(versions))
   ifneq ($(shell uname -m),x86_64)
     # Apple Silicon doesn’t support Emacs 27.1.
     versions := $(filter-out 27.1,$(versions))
