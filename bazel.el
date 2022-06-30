@@ -26,6 +26,12 @@
 
 ;;; Code:
 
+;; Work around Bug#44481.
+;; TODO(phst): Add this workaround to rules_elisp instead.
+(eval-and-compile
+  (when (version< emacs-version "27.2")
+    (define-advice system-name (:after-until ()) "")))
+
 (require 'cl-lib)
 (require 'compile)
 (require 'easymenu)
