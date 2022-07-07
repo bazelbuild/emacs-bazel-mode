@@ -21,7 +21,7 @@ BAZEL := bazel
 BAZELFLAGS :=
 
 # All potentially supported Emacs versions.
-versions := 27.1 27.2
+versions := 27.1 27.2 28.1
 
 kernel := $(shell uname -s)
 ifeq ($(kernel),Linux)
