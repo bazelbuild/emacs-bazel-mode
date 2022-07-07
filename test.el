@@ -430,12 +430,12 @@ gets killed early."
       (should (bazel-workspace-root project))
       (should (directory-name-p (bazel-workspace-root project)))
       (should (file-directory-p (bazel-workspace-root project)))
-      (should (bazel-test--file-equal-p (bazel-workspace-root project) dir))
-      (should (bazel-test--file-equal-p (project-root project) dir))
+      (should (file-equal-p (bazel-workspace-root project) dir))
+      (should (file-equal-p (project-root project) dir))
       (bazel-test--with-suppressed-warnings ((obsolete project-roots))
         (should (consp (project-roots project)))
         (should-not (cdr (project-roots project)))
-        (should (bazel-test--file-equal-p (car (project-roots project)) dir)))
+        (should (file-equal-p (car (project-roots project)) dir)))
       (should-not (project-external-roots project)))))
 
 (ert-deftest bazel/project-files ()
@@ -1079,7 +1079,7 @@ gets killed early."
       (should (eql (length temp-buffers) 1))
       (with-current-buffer (car temp-buffers)
         (ert-info ("Error buffer")
-          (should (bazel-test--file-equal-p default-directory dir))
+          (should (file-equal-p default-directory dir))
           (should (equal (buffer-string) "pkg/BUILD:3:1: syntax error
 pkg/BUILD # reformat
 
@@ -1236,8 +1236,8 @@ Process buildifier exited abnormally with code 1
         (search-forward "import %workspace%/")
         (let ((file-at-point (ffap-file-at-point)))
           (should (stringp file-at-point))
-          (should (bazel-test--file-equal-p
-                   file-at-point (expand-file-name "other.bazelrc" dir))))))))
+          (should (file-equal-p file-at-point
+                                (expand-file-name "other.bazelrc" dir))))))))
 
 (ert-deftest bazel-find-build-file ()
   (bazel-test--with-temp-directory dir nil
@@ -1274,8 +1274,8 @@ Process buildifier exited abnormally with code 1
                 (string
                  (bazel-find-build-file)
                  (should buffer-file-name)
-                 (should (bazel-test--file-equal-p
-                          buffer-file-name (expand-file-name expected dir))))
+                 (should (file-equal-p buffer-file-name
+                                       (expand-file-name expected dir))))
                 (symbol
                  (should-error (bazel-find-build-file)
                                :type expected))))))))))
@@ -1310,9 +1310,8 @@ Process buildifier exited abnormally with code 1
             (bazel-test--with-buffers
               (bazel-find-workspace-file)
               (should buffer-file-name)
-              (should (bazel-test--file-equal-p
-                       buffer-file-name
-                       (expand-file-name expected dir))))))))))
+              (should (file-equal-p buffer-file-name
+                                    (expand-file-name expected dir))))))))))
 
 (ert-deftest bazelignore-mode/font-lock ()
   "Test Font Locking in ‘bazelignore-mode’."
@@ -1437,15 +1436,8 @@ See Info node ‘(org) Extracting Source Code’."
 This relies on the variable ‘bazel-buildifier-command’"
   (cl-some (lambda (process)
              (and (eq (process-type process) 'real)
-                  (bazel-test--file-equal-p (car (process-command process))
-                                            bazel-buildifier-command)))
+                  (file-equal-p (car (process-command process))
+                                bazel-buildifier-command)))
            (process-list)))
-
-;; In Emacs 26, ‘file-equal-p’ is buggy and doesn’t work correctly on quoted
-;; filenames.  We can drop this hack once we stop supporting Emacs 26.
-(defalias 'bazel-test--file-equal-p
-  (if (>= emacs-major-version 27) #'file-equal-p
-    (lambda (a b)
-      (file-equal-p (file-name-unquote a) (file-name-unquote b)))))
 
 ;;; test.el ends here
