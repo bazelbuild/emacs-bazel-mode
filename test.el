@@ -446,11 +446,7 @@ gets killed early."
     (bazel-test--with-temp-directory dir "project.org"
       (let* ((dir (file-name-unquote dir))  ; unquote to work around Bug#47799
              (project (project-current nil dir))
-             (files (cond ((fboundp 'project-files)  ; Emacs 27
-                           (project-files project))
-                          ((fboundp 'project-file-completion-table)  ; Emacs 26
-                           (all-completions "" (project-file-completion-table
-                                                project (list dir)))))))
+             (files (project-files project)))
         (should project)
         (should (bazel-workspace-p project))
         (should files)
