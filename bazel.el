@@ -2119,10 +2119,6 @@ directory.  BUILD-FILE-DIRECTORY and WORKSPACE-ROOT can be
 directory or file names."
   (cl-check-type build-file-directory string)
   (cl-check-type workspace-root string)
-  (when (< emacs-major-version 27)
-    ;; Work around Bug#29579.
-    (cl-callf file-name-unquote build-file-directory)
-    (cl-callf file-name-unquote workspace-root))
   (cond ((file-equal-p workspace-root build-file-directory) "")
         ((file-in-directory-p build-file-directory workspace-root)
          (let ((package-name
