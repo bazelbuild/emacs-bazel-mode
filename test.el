@@ -415,7 +415,7 @@ gets killed early."
           (when (< 4 (point) (- (point-max) 5)) (should in-string-p))
           (should-not in-comment-p)
           ;; The syntactic start of a triple-quoted string could be on the first
-          ;; (Emacs 26 and 27) or the last (Emacs 28) quote, cf. Bug#49518.
+          ;; (Emacs 27) or the last (Emacs 28) quote, cf. Bug#49518.
           (should (eq (not in-string-p) (not string-start))))
         (should (eq (face-at-point)
                     (and (< (point) (1- (point-max))) 'font-lock-string-face)))
@@ -853,8 +853,7 @@ gets killed early."
       (insert (substring-no-properties text))
       (font-lock-flush)
       (font-lock-ensure)
-      ;; Emacs 26 adds a ‘syntax-table’ text property, which we don’t care
-      ;; about.
+      ;; Emacs adds a ‘syntax-table’ text property, which we don’t care about.
       (remove-list-of-text-properties (point-min) (point-max) '(syntax-table))
       (should (ert-equal-including-properties (buffer-string) text)))))
 
