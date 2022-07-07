@@ -1771,26 +1771,14 @@ Return nil if no name was found.  This function is useful as
 ;; potentially optimized implementations should get a chance to run first.
 (add-hook 'project-find-functions #'bazel-find-project 20)
 
-(cl-defstruct bazel-workspace
+;; Inlining accessors would break clients that are compiled against a version
+;; with an incompatible layout.
+(cl-defstruct (bazel-workspace (:noinline t))
   "Represents a Bazel workspace."
   (root nil
         :read-only t
         :type string
         :documentation "The workspace root directory."))
-
-;; Inlining accessors would break clients that are compiled against a version
-;; with an incompatible layout.  Normally we’d use the ‘:noinline’ structure
-;; keyword in ‘cl-defstruct’, but we still support Emacs 26, which doesn’t know
-;; about that keyword.  So we remove the compiler macros by hand for now.  Once
-;; we drop support for Emacs 26, we should remove this hack in favor of
-;; ‘:noinline’.
-(dolist (symbol '(make-bazel-workspace
-                  copy-bazel-workspace
-                  bazel-workspace-p
-                  bazel-workspace-root))
-  (when-let ((cmacro (get symbol 'compiler-macro)))
-    (put symbol 'compiler-macro nil)
-    (when (symbolp cmacro) (fmakunbound cmacro))))
 
 (defun bazel-find-project (directory)
   "Find a Bazel workspace for the given DIRECTORY.
