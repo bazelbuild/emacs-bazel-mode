@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2021, 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,8 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Install Bazelisk
-        uses: bazelbuild/setup-bazelisk@v1
+        uses: bazelbuild/setup-bazelisk@v2
       - name: Run Bazel tests
         run: make
