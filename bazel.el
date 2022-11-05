@@ -1954,7 +1954,7 @@ prompt.  If ONLY-TESTS is non-nil, look only for test rules."
          (package-name (or (bazel--package-name directory workspace-root)
                            (user-error "File is not in a Bazel package")))
          (prompt (combine-and-quote-strings
-                  `(,@bazel-command "--" ,command "")))
+                  `(,@bazel-command ,command "--" "")))
          (table (bazel--target-completion-table :pattern only-tests))
          (default (bazel--target-completion-default
                    buffer-file-name workspace-root package-name only-tests)))
