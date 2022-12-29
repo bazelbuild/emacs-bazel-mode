@@ -60,11 +60,11 @@
 (defcustom bazel-command '("bazel")
   "Command and arguments that should be used to invoke Bazel.
 The arguments are used as startup options; see URL
-‘https://docs.bazel.build/user-manual.html#startup_options’.  To
-add command options, use the option ‘bazel-command-options’
-instead.  Instead of specifying startup options here, it’s
-typically preferable to use a ‘.bazelrc’ file instead; see URL
-‘https://docs.bazel.build/guide.html#bazelrc-the-bazel-configuration-file’."
+‘https://bazel.build/docs/user-manual#startup-options’.  To add
+command options, use the option ‘bazel-command-options’ instead.
+Instead of specifying startup options here, it’s typically
+preferable to use a ‘.bazelrc’ file instead; see URL
+‘https://bazel.build/run/bazelrc’."
   :type '(repeat string)
   :risky t
   :group 'bazel
@@ -74,13 +74,13 @@ typically preferable to use a ‘.bazelrc’ file instead; see URL
   "Command-line options for all Bazel commands.
 The commands ‘bazel-build’, ‘bazel-test’ etc. insert these
 options after the command (‘build’, ‘test’, etc.); see URL
-‘https://docs.bazel.build/user-manual.html#options’.
-To add startup options, use the option ‘bazel-command’ instead.
-Instead of specifying startup options here, it’s typically
-preferable to use a ‘.bazelrc’ file instead; see URL
-‘https://docs.bazel.build/guide.html#bazelrc-the-bazel-configuration-file’.
-Use this option only for Bazel options that are really
-Emacs-specific, such as ‘--tool_tag=emacs’."
+‘https://bazel.build/docs/user-manual#build-options’.  To add
+startup options, use the option ‘bazel-command’ instead.  Instead
+of specifying startup options here, it’s typically preferable to
+use a ‘.bazelrc’ file instead; see URL
+‘https://bazel.build/run/bazelrc’.  Use this option only for
+Bazel options that are really Emacs-specific, such as
+‘--tool_tag=emacs’."
   :type '(repeat string)
   :risky t
   :group 'bazel
@@ -140,9 +140,8 @@ priority."
   :risky t
   :group 'bazel
   :link '(custom-manual "(bazel.el) Extending")
-  :link '(url-link
-          "https://docs.bazel.build/user-manual.html#flag--test_filter")
-  :link '(url-link "https://docs.bazel.build/test-encyclopedia.html"))
+  :link '(url-link "https://bazel.build/docs/user-manual#test-filter")
+  :link '(url-link "https://bazel.build/reference/test-encyclopedia"))
 
 (defcustom bazel-display-coverage nil
   "Specifies whether to parse compilation buffers for coverage information.
@@ -419,7 +418,7 @@ This is the parent mode for the more specific modes
 
 ;;;###autoload
 (add-to-list 'auto-mode-alist
-             ;; https://docs.bazel.build/versions/3.0.0/build-ref.html#packages
+             ;; https://bazel.build/concepts/build-ref#packages
              (cons (rx ?/ (or "BUILD" "BUILD.bazel") eos) #'bazel-build-mode))
 
 ;;;###autoload
@@ -436,7 +435,7 @@ This is the parent mode for the more specific modes
 
 ;;;###autoload
 (add-to-list 'auto-mode-alist
-             ;; https://docs.bazel.build/versions/3.0.0/build-ref.html#workspace
+             ;; https://bazel.build/concepts/build-ref#workspace
              ;; and
              ;; https://docs.google.com/document/d/1JtXIVnXyFZ4bmbiBCr5gsTH4-opZAFf5DMMb-54kES0/view#heading=h.y054fjub9max
              (cons (rx ?/ (or "WORKSPACE" "WORKSPACE.bazel" "WORKSPACE.bzlmod")
@@ -460,7 +459,7 @@ This is the parent mode for the more specific modes
 
 ;;;###autoload
 (add-to-list 'auto-mode-alist
-             ;; https://docs.bazel.build/versions/5.0.0/bzlmod.html#modulebazel
+             ;; https://bazel.build/build/bzlmod#module-bazel
              (cons (rx "/MODULE.bazel" eos) #'bazel-module-mode))
 
 ;;;###autoload
@@ -478,12 +477,12 @@ This is the parent mode for the more specific modes
 
 ;;;###autoload
 (add-to-list 'auto-mode-alist
-             ;; https://docs.bazel.build/versions/3.0.0/skylark/concepts.html#getting-started
+             ;; https://bazel.build/extending/concepts
              (cons (rx ?/ (+ nonl) ".bzl" eos) #'bazel-starlark-mode))
 
 (define-skeleton bazel-insert-http-archive
   "Insert an “http_archive” statement at point.
-See URL ‘https://docs.bazel.build/repo/http.html#http_archive’
+See URL ‘https://bazel.build/rules/lib/repo/http#http_archive’
 for a description of “http_archive”.  Interactively, prompt for
 an archive URL.  Attempt to detect workspace name and prefix.
 Also add the date when the archive was likely last modified as a
@@ -597,7 +596,7 @@ Return a list (NAME SHA-256 PREFIX TIME) for
 The current buffer should contain the contents of a Bazel
 WORKSPACE file.  Look around for a “workspace” statement and
 return its name.  See URL
-‘https://docs.bazel.build/versions/4.0.0/skylark/lib/globals.html#workspace’."
+‘https://bazel.build/rules/lib/globals#workspace’."
   (save-excursion
     (goto-char (point-min))
     (cl-block nil
@@ -630,19 +629,19 @@ return its name.  See URL
 
 ;;;###autoload
 (add-to-list 'auto-mode-alist
-             ;; https://docs.bazel.build/versions/3.0.0/guide.html#where-are-the-bazelrc-files
+             ;; https://bazel.build/run/bazelrc#bazelrc-file-locations
              (cons (rx ?/ (or "bazel.bazelrc" ".bazelrc") eos) #'bazelrc-mode))
 
 (font-lock-add-keywords
  #'bazelrc-mode
- ;; https://docs.bazel.build/versions/3.0.0/guide.html#imports
+ ;; https://bazel.build/run/bazelrc#imports
  (list (rx symbol-start (or "import" "try-import") symbol-end)))
 
 ;;;; ‘bazelignore-mode’
 
 ;;;###autoload
 (add-to-list 'auto-mode-alist
-             ;; https://docs.bazel.build/versions/4.0.0/guide.html#bazelignore
+             ;; https://bazel.build/run/bazelrc#bazelignore
              (cons (rx "/.bazelignore" eos) #'bazelignore-mode))
 
 ;;;###autoload
@@ -1228,7 +1227,7 @@ restrict the returned rules to test targets."
           (search-spaces-regexp nil))
       ;; A rule is a test rule if and only if its class name ends in “_test”.
       ;; See
-      ;; https://docs.bazel.build/versions/4.1.0/skylark/rules.html#executable-rules-and-test-rules.
+      ;; https://bazel.build/extending/rules#executable_rules_and_test_rules.
       (python-nav-beginning-of-statement)
       (looking-at-p (rx symbol-start (+ (or (syntax word) (syntax symbol)))
                         "_test" (* blank) ?\()))))
@@ -1292,7 +1291,7 @@ This gets added to ‘ffap-alist’."
   "Function for ‘ffap-alist’ in ‘bazelrc-mode’.
 Look for an imported file with the given NAME."
   (cl-check-type name string)
-  ;; https://docs.bazel.build/versions/3.0.0/guide.html#imports
+  ;; https://bazel.build/run/bazelrc#imports
   (let ((case-fold-search nil)
         (search-spaces-regexp nil))
     (pcase name
@@ -1319,7 +1318,7 @@ Look for an imported file with the given NAME."
                       (or "ERROR" (group "WARNING") (group (or "DEBUG" "INFO")))
                       ": "
                       ;; This needs to at least match package names
-                      ;; (https://docs.bazel.build/versions/4.0.0/build-ref.html#package-names-package-name).
+                      ;; (https://bazel.build/concepts/labels#package-names).
                       ;; Bazel currently doesn’t allow spaces in filenames
                       ;; (https://github.com/bazelbuild/bazel/issues/167 and
                       ;; https://github.com/bazelbuild/bazel/issues/374), so we
@@ -1365,9 +1364,8 @@ This function is suitable for ‘compilation-finish-functions’."
             (save-restriction
               (goto-char (point-min))
               ;; Parse Bazel output.  It’s supposed to be stable and easy to
-              ;; parse,
-              ;; cf. https://docs.bazel.build/versions/4.0.0/guide.html#parsing-output.
-              ;; We assume that coverage instrumentation files are always called
+              ;; parse, cf. https://bazel.build/run/scripts#parsing-output.  We
+              ;; assume that coverage instrumentation files are always called
               ;; “coverage.dat”.
               (while (re-search-forward
                       (rx bol "  " (group ?/ (+ nonl) "/coverage.dat") eol)
@@ -1740,9 +1738,9 @@ This function is useful as ‘imenu-create-index-function’ for
         ;; external processes and should work fine in common cases.
         (while (re-search-forward
                 ;; The target pattern isn’t the same as
-                ;; https://docs.bazel.build/versions/3.1.0/build-ref.html#name
-                ;; (we don’t allow quotation marks in target names), but should
-                ;; be good enough here.
+                ;; https://bazel.build/concepts/labels#target-names (we don’t
+                ;; allow quotation marks in target names), but should be good
+                ;; enough here.
                 (rx symbol-start "name" (* blank) ?= (* blank)
                     (group (any ?\" ?'))
                     (group (+ (any "a-z" "A-Z" "0-9"
@@ -1768,9 +1766,9 @@ Return nil if not inside a Bazel rule."
       (cl-block nil
         (while (re-search-forward
                ;; The target pattern isn’t the same as
-               ;; https://docs.bazel.build/versions/3.1.0/build-ref.html#name
-               ;; (we don’t allow quotation marks in target names), but should
-               ;; be good enough here.
+               ;; https://bazel.build/concepts/labels#target-names (we don’t
+               ;; allow quotation marks in target names), but should be good
+               ;; enough here.
                (rx symbol-start "name" (* blank) ?= (* blank)
                    (group (any ?\" ?'))
                    (group (+ (any "a-z" "A-Z" "0-9"
@@ -1850,7 +1848,7 @@ Otherwise, just evaluate BODY."
 Ignore the convenience symbolic links and directories listed in
 .bazelignore.  PROJECT refers to a Bazel workspace, and DIR is
 the Bazel workspace directory to consider.
-See URL ‘https://docs.bazel.build/versions/4.0.0/guide.html#bazelignore’."
+See URL ‘https://bazel.build/run/bazelrc#bazelignore’."
   `(,@(bazel--bazelignore-patterns (bazel-workspace-root project))
     "./bazel-*"
     ,@(cl-call-next-method project dir)))
@@ -2183,15 +2181,15 @@ current workspace root directory, as returned by
   (cl-check-type this-workspace-root string)
   (file-name-as-directory
    (if workspace-name
-       ;; See https://docs.bazel.build/versions/2.0.0/output_directories.html
-       ;; for some overview of the Bazel directory layout.  Empirically, the
-       ;; directory ROOT/bazel-ROOT/external/WORKSPACE is a symlink to the
-       ;; workspace root of the external workspace WORKSPACE.  Again, this is a
-       ;; heuristic, and should work for the common case.  In particular, we
-       ;; don’t want to shell out to “bazel info workspace” here, because that
-       ;; might block indefinitely if another Bazel instance holds the lock.
-       ;; We don’t check whether the directory exists, because it’s generated
-       ;; and cached when needed.
+       ;; See https://bazel.build/remote/output-directories for some overview of
+       ;; the Bazel directory layout.  Empirically, the directory
+       ;; ROOT/bazel-ROOT/external/WORKSPACE is a symlink to the workspace root
+       ;; of the external workspace WORKSPACE.  Again, this is a heuristic, and
+       ;; should work for the common case.  In particular, we don’t want to
+       ;; shell out to “bazel info workspace” here, because that might block
+       ;; indefinitely if another Bazel instance holds the lock.  We don’t check
+       ;; whether the directory exists, because it’s generated and cached when
+       ;; needed.
        (expand-file-name workspace-name
                          (bazel--external-workspace-dir this-workspace-root))
      this-workspace-root)))
@@ -2219,10 +2217,9 @@ root directory as returned by ‘bazel--workspace-root’."
         (directory-files
          (bazel--external-workspace-dir main-root)
          :full
-         ;; https://docs.bazel.build/versions/4.0.0/skylark/lib/globals.html#parameters-36
-         ;; claims that workspace names may only contain letters, numbers, and
-         ;; underscores, but that’s wrong, since hyphens and dots are also
-         ;; allowed.  See
+         ;; https://bazel.build/rules/lib/globals#parameters_51 claims that
+         ;; workspace names may only contain letters, numbers, and underscores,
+         ;; but that’s wrong, since hyphens and dots are also allowed.  See
          ;; https://github.com/bazelbuild/bazel/blob/bc9fc6144818528898336c0fbe4fe8b30ac25abb/src/main/java/com/google/devtools/build/lib/packages/WorkspaceGlobals.java#L52.
          (rx bos (any "A-Z" "a-z") (* (any ?- ?. ?_ "A-Z" "a-z")) eos))
       ;; If there’s no external workspace directory, don’t signal an error.
@@ -2230,8 +2227,7 @@ root directory as returned by ‘bazel--workspace-root’."
 
 (defun bazel--target-completion-table (pattern only-tests)
   "Return a completion table for Bazel targets and target patterns.
-See URL
-‘https://docs.bazel.build/versions/4.0.0/guide.html#specifying-targets-to-build’
+See URL ‘https://bazel.build/run/build#specifying-build-targets’
 for a description of target patterns.  Completion starts with the
 package in ‘default-directory’.  Return a completion table that
 can be passed to ‘completing-read’.  See Info node ‘(elisp) Basic
@@ -2276,9 +2272,9 @@ completion to test targets.  This is a helper function for
   ;; Bug#53071.
   (pcase string
     ;; The following patterns should cover all potential target patterns from
-    ;; https://docs.bazel.build/versions/4.0.0/guide.html#specifying-targets-to-build
-    ;; as well as their prefixes.  We are a bit more lenient than necessary to
-    ;; avoid convoluted regular expressions.
+    ;; https://bazel.build/run/build#specifying-build-targets as well as their
+    ;; prefixes.  We are a bit more lenient than necessary to avoid convoluted
+    ;; regular expressions.
     (""
      ;; By default, offer targets and subpackages of the current package, as
      ;; well as “//” to anchor the pattern at the root of the current workspace,
@@ -2622,8 +2618,8 @@ nil (for the current workspace) or a string referring to some
 external workspace.  PACKAGE is nil (for the current package) or
 a package name string.  TARGET is a string referring to the local
 name of LABEL.  See URL
-‘https://docs.bazel.build/versions/2.0.0/build-ref.html#lexi’ for
-the lexical syntax of labels."
+‘https://bazel.build/concepts/labels#labels-lexical-specification’
+for the lexical syntax of labels."
   (cl-check-type label string)
   (let ((case-fold-search nil)
         (search-spaces-regexp nil))
@@ -2639,8 +2635,7 @@ the lexical syntax of labels."
                  "//" (let package (+ (not (any ?:)))))
             ;; @workspace
             ;; This syntax isn’t documented in
-            ;; https://docs.bazel.build/versions/4.1.0/build-ref.html#labels,
-            ;; but follows from
+            ;; https://bazel.build/concepts/labels, but follows from
             ;; https://github.com/bazelbuild/buildtools/blob/4890966c38b910fd5bd1ad78a3dd88538d09854f/build/rewrite.go#L217-L218.
             (seq ?@ (let workspace (+ (not (any ?: ?/)))))
             ;; //package:target
@@ -2655,22 +2650,22 @@ the lexical syntax of labels."
            eos)
        (unless target (setq target (bazel--default-target workspace package)))
        (and (or (null workspace)
-                ;; https://docs.bazel.build/versions/4.0.0/skylark/lib/globals.html#parameters-36
-                ;; claims that workspace names may only contain letters,
-                ;; numbers, and underscores, but that’s wrong, since hyphens and
-                ;; dots are also allowed.  See
+                ;; https://bazel.build/rules/lib/globals#parameters_51 claims
+                ;; that workspace names may only contain letters, numbers, and
+                ;; underscores, but that’s wrong, since hyphens and dots are
+                ;; also allowed.  See
                 ;; https://github.com/bazelbuild/bazel/blob/bc9fc6144818528898336c0fbe4fe8b30ac25abb/src/main/java/com/google/devtools/build/lib/packages/WorkspaceGlobals.java#L52.
                 (string-match-p
                  (rx bos (any "A-Z" "a-z") (* (any ?- ?. ?_ "A-Z" "a-z")) eos)
                  workspace))
             (or (null package) (string-empty-p package)
-                ;; https://docs.bazel.build/versions/2.0.0/build-ref.html#package-names-package-name
+                ;; https://bazel.build/concepts/labels#package-names
                 (string-match-p (rx bos
                                     (any "A-Z" "a-z" "0-9" ?- ?. ?_)
                                     (* (any "A-Z" "a-z" "0-9" ?/ ?- ?. ?_))
                                     eos)
                                 package))
-            ;; https://docs.bazel.build/versions/2.0.0/build-ref.html#name
+            ;; https://bazel.build/concepts/labels#target-names
             (string-match-p (rx bos
                                 (+ (any "a-z" "A-Z" "0-9" ?-
                                         "!%@^_` \"#$&'()*+,;<=>?[]{|}~/."))
