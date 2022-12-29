@@ -437,7 +437,10 @@ This is the parent mode for the more specific modes
 ;;;###autoload
 (add-to-list 'auto-mode-alist
              ;; https://docs.bazel.build/versions/3.0.0/build-ref.html#workspace
-             (cons (rx ?/ (or "WORKSPACE" "WORKSPACE.bazel") eos)
+             ;; and
+             ;; https://docs.google.com/document/d/1JtXIVnXyFZ4bmbiBCr5gsTH4-opZAFf5DMMb-54kES0/view#heading=h.y054fjub9max
+             (cons (rx ?/ (or "WORKSPACE" "WORKSPACE.bazel" "WORKSPACE.bzlmod")
+                       eos)
                    #'bazel-workspace-mode))
 
 ;;;###autoload
