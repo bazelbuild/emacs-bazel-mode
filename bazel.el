@@ -5,7 +5,7 @@
 ;; Package-Requires: ((emacs "27.1"))
 ;; Version: 0
 
-;; Copyright (C) 2018-2022 Google LLC
+;; Copyright (C) 2018-2023 Google LLC
 ;; Licensed under the Apache License, Version 2.0 (the "License");
 ;; you may not use this file except in compliance with the License.
 ;; You may obtain a copy of the License at
@@ -491,7 +491,9 @@ comment."
   "http_archive(" \n
   "name = \"" (or (nth 0 v1) '_) "\"," \n
   "sha256 = \"" (nth 1 v1) "\"," \n
-  "strip_prefix = \"" (nth 2 v1) "\"," \n
+  (let ((prefix (nth 2 v1)))
+    (unless (string-empty-p prefix)
+      `(nil "strip_prefix = \"" ,prefix "\"," \n)))
   "urls = [" \n
   ?\" str "\",  # " (format-time-string "%F" (nth 3 v1) t) \n
   "]," > \n
@@ -525,17 +527,32 @@ Return a list (NAME SHA-256 PREFIX TIME) for
                 (bazel--extract-archive archive-file dir)
                 (progress-reporter-update reporter)
                 dir)))
-           (prefix-and-time
-            ;; A prefix must be unique.
-            (pcase (directory-files-and-attributes
-                    archive-dir nil directory-files-no-dot-files-regexp)
-              (`((,name t ,_ ,_ ,_ ,_ ,time . ,_))
-               (progress-reporter-update reporter)
-               (cons (file-name-as-directory name) time))
-              ('nil (user-error "Empty archive"))
-              (`(,_ . ,_) (user-error "No unique prefix in archive"))))
-           (prefix (car prefix-and-time))
-           (time (cdr prefix-and-time))
+           (archive-entries
+            (or (prog1 (directory-files-and-attributes
+                        archive-dir nil directory-files-no-dot-files-regexp)
+                  (progress-reporter-update reporter))
+                (user-error "Empty archive")))
+           (candidates
+            ;; Find directories in the archive.  If there’s more than one,
+            ;; prompt the user which prefix to strip.
+            (cl-loop for (name . attrs) in archive-entries
+                     when (eq (file-attribute-type attrs) t)
+                     ;; Put attribute list into text property so that
+                     ;; ‘completing-read’ won’t lose it.
+                     collect (propertize (file-name-as-directory name)
+                                         'attributes attrs)))
+           (prefix (cl-case (length candidates)
+                     (0 "")               ; no directories, prefix must be empty
+                     (1 (car candidates)) ; no need to prompt user
+                     (t (completing-read "Prefix to strip: " candidates
+                                         nil nil nil nil ""))))
+           (time (file-attribute-modification-time
+                  (if (string-empty-p prefix)
+                      ;; No prefix directory selected (or archive doesn’t
+                      ;; contain any directory), pick an arbitrary file for the
+                      ;; modification time.
+                      (cdar archive-entries)
+                    (get-text-property 0 'attributes prefix))))
            (root-dir (expand-file-name prefix archive-dir))
            (name (when-let ((workspace (bazel--locate-workspace-file root-dir)))
                    (with-temp-buffer
