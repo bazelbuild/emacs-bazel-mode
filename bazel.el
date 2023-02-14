@@ -662,6 +662,17 @@ and Info node ‘(elisp) Syntax Table Internals’."
           (put-text-property (point) (1+ (point))
                              'syntax-table '(12)))))))
 
+;;;; ‘bazeliskrc-mode’
+
+;;;###autoload
+(define-derived-mode bazeliskrc-mode conf-unix-mode
+  "Major mode for editing .bazeliskrc files.")
+
+;;;###autoload
+(add-to-list 'auto-mode-alist
+             ;; https://github.com/bazelbuild/bazelisk#bazeliskrc-configuration-file
+             (cons (rx "/.bazeliskrc" eos) #'bazeliskrc-mode))
+
 ;;;; Menu item
 
 (easy-menu-add-item
