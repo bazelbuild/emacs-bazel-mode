@@ -651,8 +651,7 @@ and Info node ‘(elisp) Syntax Table Internals’."
   (save-excursion
     (goto-char start)
     (let ((case-fold-search nil)
-          (search-spaces-regexp nil)
-          (inhibit-point-motion-hooks t))
+          (search-spaces-regexp nil))
       (while (re-search-forward (rx bol ?#) end t)
         ;; 11 = comment start, 12 = comment end
         (put-text-property (match-beginning 0) (match-end 0)
