@@ -1588,7 +1588,7 @@ See Info node ‘(elisp) Display Margins’."
            (let ((string (cl-loop for (_ . hits) in (sort branch-list
                                                           #'car-less-than-car)
                                   concat (cl-case hits
-                                           (nil "?")
+                                           ((nil) "?")
                                            (0 minus)
                                            (otherwise plus)))))
              (push (cons block-index string) block-list)))))
