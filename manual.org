@@ -1,4 +1,4 @@
-# Copyright 2021, 2022 Google LLC
+# Copyright 2021, 2022, 2023 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -36,17 +36,20 @@ This manual describes ~bazel.el~, a GNU Emacs package to work with the
 #+FINDEX: bazel-workspace-mode
 #+FINDEX: bazelrc-mode
 #+FINDEX: bazelignore-mode
+#+FINDEX: bazeliskrc-mode
 #+FINDEX: bazel-starlark-mode
 The package provides five major modes for editing Bazel-related files:
 ~bazel-build-mode~ for BUILD files, ~bazel-workspace-mode~ for WORKSPACE files,
 ~bazelrc-mode~ for =.bazelrc= configuration files, ~bazelignore-mode~ for
-=.bazelignore= files, and ~bazel-starlark-mode~ for extension files written in
-the Starlark language.  These modes also extend Imenu and the
-~find-file-at-point~ to support Bazel-specific syntax.  See the
-[[https://docs.bazel.build/guide.html][Bazel user guide]], the
-[[https://docs.bazel.build/build-ref.html][Bazel reference]], and the
-[[https://docs.bazel.build/skylark/concepts.html][Starlark reference]] for
-background on these file types.
+=.bazelignore= files, ~bazeliskrc-mode~ for =.bazeliskrc= files, and
+~bazel-starlark-mode~ for extension files written in the Starlark language.
+These modes also extend Imenu and the ~find-file-at-point~ to support
+Bazel-specific syntax.  See the [[https://docs.bazel.build/guide.html][Bazel
+user guide]], the [[https://docs.bazel.build/build-ref.html][Bazel reference]],
+the
+[[https://github.com/bazelbuild/bazelisk/blob/master/README.md#bazeliskrc-configuration-file][Bazelisk
+README]], and the [[https://docs.bazel.build/skylark/concepts.html][Starlark
+reference]] for background on these file types.
 
 #+FINDEX: bazel-mode
 Since the syntax for BUILD files, WORKSPACE files, and Starlark files is
