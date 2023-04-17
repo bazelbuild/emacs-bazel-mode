@@ -1,4 +1,4 @@
-# Copyright 2020, 2021 Google LLC
+# Copyright 2020, 2021, 2023 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,6 +16,13 @@
 # https://github.com/bazelbuild/bazel/issues/10560.
 
 load("@phst_rules_elisp//elisp:defs.bzl", "elisp_library", "elisp_test")
+
+package(
+    default_applicable_licenses = ["//:license"],
+    default_visibility = ["//visibility:private"],
+)
+
+licenses(["notice"])
 
 elisp_library(
     name = "bazel_build",
