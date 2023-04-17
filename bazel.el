@@ -555,8 +555,10 @@ Return a list (NAME SHA-256 PREFIX TIME) for
 
 (defun bazel--extract-archive (file directory)
   "Extract the archive FILE into DIRECTORY."
-  (cl-check-type file (and string (not file-remote)))
-  (cl-check-type directory (and string (not file-remote)))
+  (cl-check-type file string)
+  (cl-check-type directory string)
+  (when (or (file-remote-p file) (file-remote-p directory))
+    (user-error "Can't extract remote file %s" file))
   ;; Prefer BSD tar if installed, as it supports more archive types.
   (let ((program (cl-some #'executable-find '("bsdtar" "tar"))))
     (unless program
@@ -780,7 +782,7 @@ All filenames in OUTPUT-BUFFER are ignored; all messages are
 attached to the current buffer.  Return a list of Flymake
 diagnostics; see Info node ‘(Flymake) Backend functions’ for
 details."
-  (cl-check-type output-buffer buffer-live)
+  (cl-check-type output-buffer buffer)
   (cl-loop with report = (with-current-buffer output-buffer
                            (save-excursion
                              (save-restriction
@@ -1484,7 +1486,7 @@ Return 0 if the subgroup match isn’t an integer."
   "Add overlays for coverage information in BUFFER.
 COVERAGE is a hashtable mapping line numbers to ‘bazel--coverage’
 structures.  Remove existing coverage overlays first."
-  (cl-check-type buffer buffer-live)
+  (cl-check-type buffer buffer)
   (cl-check-type coverage hash-table)
   (let ((pairs ())
         (runs ())
@@ -2373,8 +2375,8 @@ conjunction of PREDICATE and BODY.  Within BODY, ARG is bound to
 the candidate to be tested.  The value of PREDICATE can also be
 nil, which is interpreted as an always-true predicate."
     (declare (indent 2) (debug (symbolp symbolp def-body)))
-    (cl-check-type predicate (and symbol (not special-variable)))
-    (cl-check-type arg (and symbol (not special-variable)))
+    (cl-check-type predicate symbol)
+    (cl-check-type arg symbol)
     (let ((original (make-symbol "original")))
       `(let ((,original ,predicate))
          (cl-check-type ,predicate (or function null))
