@@ -49,8 +49,7 @@ testlogs="$(cd "${dir:?}" && bazel --bazelrc=/dev/null info bazel-testlogs)"
 out="$(cd "${dir:?}/src" && bazel --bazelrc=/dev/null coverage //... 2>&1)"
 
 # Parse output to find location of coverage.dat.  The output should be
-# relatively stable,
-# cf. https://docs.bazel.build/versions/4.0.0/guide.html#parsing-output.
+# relatively stable, cf. https://bazel.build/run/scripts#parsing-output.
 pattern=$'\n''  (/.+/coverage\.dat)'$'\n'
 [[ "${out:?}" =~ ${pattern:?} ]] || exit
 dat="${BASH_REMATCH[1]}"

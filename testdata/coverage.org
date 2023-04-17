@@ -29,8 +29,8 @@ workspace(name = "test")
 #+END_src
 
 We follow the
-[[https://docs.bazel.build/versions/4.1.0/bazel-and-java.html#best-practices][Java-specific
-best practices]].
+[[https://bazel.build/docs/bazel-and-java#best-practices][Java-specific best
+practices]].
 
 #+BEGIN_SRC bazel-build :tangle src/main/java/example/BUILD
 java_library(

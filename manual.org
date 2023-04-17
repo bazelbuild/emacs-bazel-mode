@@ -44,12 +44,10 @@ The package provides five major modes for editing Bazel-related files:
 =.bazelignore= files, ~bazeliskrc-mode~ for =.bazeliskrc= files, and
 ~bazel-starlark-mode~ for extension files written in the Starlark language.
 These modes also extend Imenu and the ~find-file-at-point~ to support
-Bazel-specific syntax.  See the [[https://docs.bazel.build/guide.html][Bazel
-user guide]], the [[https://docs.bazel.build/build-ref.html][Bazel reference]],
-the
-[[https://github.com/bazelbuild/bazelisk/blob/master/README.md#bazeliskrc-configuration-file][Bazelisk
-README]], and the [[https://docs.bazel.build/skylark/concepts.html][Starlark
-reference]] for background on these file types.
+Bazel-specific syntax.  See the [[https://bazel.build/run/build][Bazel user
+guide]], the [[https://bazel.build/concepts/build-ref][Bazel reference]], and
+the [[https://bazel.build/extending/concepts][Starlark reference]] for
+background on these file types.
 
 #+FINDEX: bazel-mode
 Since the syntax for BUILD files, WORKSPACE files, and Starlark files is
@@ -60,7 +58,7 @@ of this manual.
 #+FINDEX: bazel-insert-http-archive
 When editing a WORKSPACE file, you can use the command
 ~bazel-insert-http-archive~ to quickly insert an
-[[https://docs.bazel.build/repo/http.html#http_archive][~http_archive~ rule]].
+[[https://bazel.build/rules/lib/repo/http#http_archive][~http_archive~ rule]].
 
 #+CINDEX: Xref
 #+KINDEX: M-.
@@ -187,8 +185,8 @@ BUILD file that has the source file in its list of source files and jump there.
 will include all files in the Bazel workspace except the convenience symbolic
 links starting with =bazel-=.  You can exclude directories from the workspace
 project by adding them to the
-[[https://docs.bazel.build/guide.html#bazelignore][=.bazelignore= file]].  For
-more information about projects, see [[info:emacs#Projects][Projects]].
+[[https://bazel.build/run/bazelrc#bazelignore][=.bazelignore= file]].  For more
+information about projects, see [[info:emacs#Projects][Projects]].
 
 * Customization
 

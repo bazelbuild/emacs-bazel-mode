@@ -47,7 +47,7 @@
 (require 'xref)
 
 (defconst bazel-test--directory
-  ;; https://docs.bazel.build/versions/2.2.0/test-encyclopedia.html#initial-conditions.
+  ;; https://bazel.build/reference/test-encyclopedia#initial-conditions
   (substitute-in-file-name "$TEST_SRCDIR/$TEST_WORKSPACE/")
   "Directory with data dependencies for this package.")
 
@@ -398,7 +398,7 @@ gets killed early."
 
 (ert-deftest bazel-mode/triple-quoted-strings ()
   "Check that triple-quoted strings work as expected."
-  ;; See https://docs.bazel.build/versions/3.1.0/skylark/lib/string.html.
+  ;; See https://bazel.build/rules/lib/string.
   (with-temp-buffer
     (bazel-build-mode)
     (insert "\"\"\"\n\"foo\"\n\"\"\"\n")

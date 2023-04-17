@@ -13,11 +13,11 @@ details.
 
 [Bazel]: https://bazel.build/
 [GNU Emacs]: https://www.gnu.org/software/emacs/
-[BUILD files]: https://docs.bazel.build/build-ref.html#BUILD_files
-[WORKSPACE files]: https://docs.bazel.build/build-ref.html#packages_targets
-[.bazelrc files]: https://docs.bazel.build/guide.html#bazelrc
-[Starlark files]: https://docs.bazel.build/skylark/language.html
-[run Bazel commands]: https://docs.bazel.build/guide.html
+[BUILD files]: https://bazel.build/concepts/build-files
+[WORKSPACE files]: https://bazel.build/concepts/build-ref#workspace
+[.bazelrc files]: https://bazel.build/run/bazelrc
+[Starlark files]: https://bazel.build/rules/language
+[run Bazel commands]: https://bazel.build/run/build
 [compilation]: https://www.gnu.org/software/emacs/manual/html_node/emacs/Compilation.html
 [xref]: https://www.gnu.org/software/emacs/manual/html_node/emacs/Xref.html
 [manual]: manual.org
