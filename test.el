@@ -1,6 +1,6 @@
 ;;; test.el --- unit tests for bazel.el  -*- lexical-binding: t; -*-
 
-;; Copyright 2020, 2021, 2022 Google LLC
+;; Copyright 2020, 2021, 2022, 2023 Google LLC
 ;;
 ;; Licensed under the Apache License, Version 2.0 (the "License");
 ;; you may not use this file except in compliance with the License.
@@ -37,6 +37,7 @@
 (require 'ob-shell)
 (require 'project)
 (require 'rx)
+(require 'seq)
 (require 'speedbar)
 (require 'subr-x)
 (require 'syntax)
@@ -1183,15 +1184,43 @@ Process buildifier exited abnormally with code 1
            (url-unreserved-chars (cons ?/ url-unreserved-chars))
            (url (concat "file://" (url-hexify-string archive)))
            (tar (executable-find "tar"))
+           (completing-read-collections ())
+           (completing-read-function
+            (lambda (_prompt collection &rest _args)
+              (push collection completing-read-collections)
+              (car collection)))
            (default-directory dir))
       (skip-unless tar)
       (process-lines tar "-c" "-z" "-f" archive "--" "prefix-1" "prefix-2")
       (with-temp-buffer
-        (let ((tick-before (buffer-modified-tick)))
-          (bazel-workspace-mode)
-          (should-error (bazel-insert-http-archive url) :type 'user-error)
-          (should (eql (buffer-modified-tick) tick-before))  ; no change
-          (should (eq (buffer-size) 0)))))))
+        (bazel-workspace-mode)
+        (bazel-insert-http-archive url)
+        (should (eobp))
+        (goto-char (point-min))
+        (pcase-exhaustive completing-read-collections
+          (`(,collection)
+           (should (equal (seq-sort #'string-lessp collection)
+                          '("prefix-1/" "prefix-2/")))))
+        (should (looking-at-p (rx bot "http_archive(" eol)))
+        (search-forward "    strip_prefix = \"prefix-1/\",")))))
+
+(ert-deftest bazel-insert-http-archive/no-directory ()
+  (bazel-test--with-temp-directory dir "http-archive-no-directory.org"
+    (let* ((archive (file-name-unquote
+                     (expand-file-name "archive.tar.gz" dir)))
+           (url-unreserved-chars (cons ?/ url-unreserved-chars))
+           (url (concat "file://" (url-hexify-string archive)))
+           (tar (executable-find "tar"))
+           (default-directory dir))
+      (skip-unless tar)
+      (process-lines tar "-c" "-z" "-f" archive "--" ".")
+      (with-temp-buffer
+        (bazel-workspace-mode)
+        (bazel-insert-http-archive url)
+        (should (eobp))
+        (goto-char (point-min))
+        (should (looking-at-p (rx bot "http_archive(" eol)))
+        (should-not (search-forward "strip_prefix" nil t))))))
 
 (ert-deftest bazel-insert-http-archive/invalid-archive ()
   ;; Don’t let ‘jka-compr’ interfere with writing the invalid archive file.
