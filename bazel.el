@@ -1806,7 +1806,7 @@ Return nil if no name was found.  This function is useful as
 
 ;; Inlining accessors would break clients that are compiled against a version
 ;; with an incompatible layout.
-(cl-defstruct (bazel-workspace (:noinline t))
+(cl-defstruct (bazel-workspace :noinline)
   "Represents a Bazel workspace."
   (root nil
         :read-only t
