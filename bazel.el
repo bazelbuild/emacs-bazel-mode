@@ -186,8 +186,8 @@ fix them by calling Buildozer via ‘bazel-buildozer-command’.  If
 (defvar-local bazel--buildifier-type nil
   "Type of the file that the current buffer visits.
 This must be a symbol and a valid value for the Buildifier -type
-flag.  See
-https://github.com/bazelbuild/buildtools/blob/2.2.0/buildifier/utils/flags.go#L11.
+flag.  See URL
+‘https://github.com/bazelbuild/buildtools/blob/2.2.0/buildifier/utils/flags.go#L11’.
 If nil, don’t pass a -type flag to Buildifier.")
 
 (eval-when-compile
@@ -726,7 +726,8 @@ Buildifier process for the current buffer.")
 (defun bazel-mode-flymake (report-fn &rest _keys)
   "Flymake backend function for ‘bazel-mode’.
 Use REPORT-FN to report linter warnings found by Buildifier.  See
-https://github.com/bazelbuild/buildtools/blob/master/buildifier/README.md
+URL
+‘https://github.com/bazelbuild/buildtools/blob/master/buildifier/README.md’
 for how to install Buildifier.  The function ‘bazel-mode’ adds
 this function to ‘flymake-diagnostic-functions’.  See Info node
 ‘(Flymake) Backend functions’ for details about Flymake
@@ -806,8 +807,8 @@ list."
 (defun bazel--make-diagnostics (output-buffer)
   "Return Flymake diagnostics for the Buildifier report in OUTPUT-BUFFER.
 OUTPUT-BUFFER should contain a JSON report for the file visited
-by the current buffer as described in
-https://github.com/bazelbuild/buildtools/blob/master/buildifier/README.md#file-diagnostics-in-json.
+by the current buffer as described in URL
+‘https://github.com/bazelbuild/buildtools/blob/master/buildifier/README.md#file-diagnostics-in-json’.
 All filenames in OUTPUT-BUFFER are ignored; all messages are
 attached to the current buffer.  Return a list of Flymake
 diagnostics; see Info node ‘(Flymake) Backend functions’ for
@@ -831,8 +832,8 @@ details."
 (defun bazel--diagnostic-for-warning (warning)
   "Return a Flymake diagnostic for the Buildifier WARNING.
 WARNING should be a hashtable containing a single warning, as
-described in
-https://github.com/bazelbuild/buildtools/blob/master/buildifier/README.md#file-diagnostics-in-json."
+described in URL
+‘https://github.com/bazelbuild/buildtools/blob/master/buildifier/README.md#file-diagnostics-in-json’."
   (cl-check-type warning hash-table)
   (let* ((case-fold-search nil)
          (search-spaces-regexp nil)
@@ -2620,8 +2621,8 @@ return a triple (WORKSPACE PACKAGE TARGET).  WORKSPACE is
 nil (for the current workspace) or a string referring to some
 external workspace.  PACKAGE is nil (for the current package) or
 a package name string.  TARGET is a string referring to the local
-name of LABEL.  See
-https://docs.bazel.build/versions/2.0.0/build-ref.html#lexi for
+name of LABEL.  See URL
+‘https://docs.bazel.build/versions/2.0.0/build-ref.html#lexi’ for
 the lexical syntax of labels."
   (cl-check-type label string)
   (let ((case-fold-search nil)
