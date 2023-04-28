@@ -27,7 +27,7 @@ licenses(["notice"])
 
 license(
     name = "license",
-    license_kind = "@rules_license//licenses/generic:notice",
+    license_kind = "@rules_license//licenses/spdx:Apache-2.0",
 )
 
 elisp_library(
