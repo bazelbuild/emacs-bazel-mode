@@ -1422,7 +1422,7 @@ This function is suitable for ‘compilation-finish-functions’."
                   infos)))
         (when infos
           ;; Only continue if we’re in a Bazel workspace.
-          (when-let (root (bazel--workspace-root default-directory))
+          (when-let ((root (bazel--workspace-root default-directory)))
             (pcase-dolist (`(,source ,dest ,begin ,end) (nreverse infos))
               (bazel--add-visibility root source dest begin end ask)))))))
   nil)
