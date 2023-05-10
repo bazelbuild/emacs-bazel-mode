@@ -2059,7 +2059,7 @@ See URL ‘https://pkg.go.dev/testing’."
       (and (beginning-of-defun)
            (looking-at (rx bol "func" (+ blank)
                            (group (or "Test" "Benchmark" "Example")
-                                  ;; https://golang.org/ref/spec#Identifiers
+                                  ;; https://go.dev/ref/spec#Identifiers
                                   (* (any alnum ?_)))
                            (* blank) ?\())
            ;; Go interprets the filter as unanchored regular expression,
