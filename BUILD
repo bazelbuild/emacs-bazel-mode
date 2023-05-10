@@ -30,6 +30,8 @@ license(
     license_kind = "@rules_license//licenses/spdx:Apache-2.0",
 )
 
+exports_files(["LICENSE"])
+
 elisp_library(
     name = "bazel",
     srcs = ["bazel.el"],
