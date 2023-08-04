@@ -167,12 +167,8 @@ MESSAGE is a message for ‘ert-info’."
                          (flymake-diagnostic-end diag))
                         (flymake-diagnostic-text diag))
                   diagnostics)))
-        (should (equal diagnostics
-                       `(("def foo(bar):"
-                          ,(concat "The file has no module docstring. "
-                                   "[module-docstring] "
-                                   "(https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md#module-docstring)"))
-                         ("\"\"\" \"\"\""
+        (should (equal (seq-sort-by #'car #'string-lessp diagnostics)
+                       `(("\"\"\" \"\"\""
                           ,(concat "The docstring for the function \"foo\" "
                                    "should start with a one-line summary. "
                                    "[function-docstring-header] "
@@ -181,7 +177,11 @@ MESSAGE is a message for ‘ert-info’."
                           ,(concat "The \"/\" operator for integer division "
                                    "is deprecated in favor of \"//\". "
                                    "[integer-division] "
-                                   "(https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md#integer-division)")))))))))
+                                   "(https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md#integer-division)"))
+                         ("def foo(bar):"
+                          ,(concat "The file has no module docstring. "
+                                   "[module-docstring] "
+                                   "(https://github.com/bazelbuild/buildtools/blob/master/WARNINGS.md#module-docstring)")))))))))
 
 (ert-deftest bazel-mode-flymake/source-buffer-killed ()
   "Unit test for the ‘bazel-mode-flymake’ Flymake backend.
