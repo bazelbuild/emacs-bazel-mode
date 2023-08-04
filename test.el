@@ -486,11 +486,15 @@ gets killed early."
               (should (stringp before-string))
               (pcase (get-text-property 0 'display before-string)
                 (`((margin left-margin) ,(and (pred stringp) margin-string))
-                 (should (ert-equal-including-properties
-                          margin-string
-                          (ert-propertized-string
-                           '(face bazel-covered-line) "+"
-                           '(face bazel-uncovered-line) "−"))))
+                 ;; FIXME: Once we drop support for Emacs 28, switch to
+                 ;; ‘equal-including-properties’.
+                 (with-suppressed-warnings
+                     ((obsolete ert-equal-including-properties))
+                   (should (ert-equal-including-properties
+                            margin-string
+                            (ert-propertized-string
+                             '(face bazel-covered-line) "+"
+                             '(face bazel-uncovered-line) "−")))))
                 (otherwise
                  (ert-fail (list "Unexpected ‘display’ property" otherwise))))))
           (ert-info ("Covered line")
@@ -852,7 +856,10 @@ gets killed early."
       (font-lock-ensure)
       ;; Emacs adds a ‘syntax-table’ text property, which we don’t care about.
       (remove-list-of-text-properties (point-min) (point-max) '(syntax-table))
-      (should (ert-equal-including-properties (buffer-string) text)))))
+      ;; FIXME: Once we drop support for Emacs 28, switch to
+      ;; ‘equal-including-properties’.
+      (with-suppressed-warnings ((obsolete ert-equal-including-properties))
+        (should (ert-equal-including-properties (buffer-string) text))))))
 
 (ert-deftest bazel-compile-current-file ()
   "Test for ‘bazel-compile-current-file’."
@@ -1250,7 +1257,10 @@ Process buildifier exited abnormally with code 1
       (insert (substring-no-properties text))
       (font-lock-flush)
       (font-lock-ensure)
-      (should (ert-equal-including-properties (buffer-string) text)))))
+      ;; FIXME: Once we drop support for Emacs 28, switch to
+      ;; ‘equal-including-properties’.
+      (with-suppressed-warnings ((obsolete ert-equal-including-properties))
+        (should (ert-equal-including-properties (buffer-string) text))))))
 
 (ert-deftest bazelrc-ffap ()
   (bazel-test--with-temp-directory dir "bazelrc.org"
@@ -1359,7 +1369,10 @@ Process buildifier exited abnormally with code 1
       ;; ‘bazelignore--syntax-propertize’ added; they are implementation
       ;; details.
       (remove-list-of-text-properties (point-min) (point-max) '(syntax-table))
-      (should (ert-equal-including-properties (buffer-string) text)))))
+      ;; FIXME: Once we drop support for Emacs 28, switch to
+      ;; ‘equal-including-properties’.
+      (with-suppressed-warnings ((obsolete ert-equal-including-properties))
+        (should (ert-equal-including-properties (buffer-string) text))))))
 
 (ert-deftest bazel-test/completion ()
   "Test completion for ‘bazel-test’."
