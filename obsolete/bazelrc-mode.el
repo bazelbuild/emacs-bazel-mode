@@ -2,10 +2,10 @@
 
 ;; URL: https://github.com/bazelbuild/emacs-bazel-mode
 ;; Keywords: build tools, languages
-;; Package-Requires: ((emacs "27.1"))
+;; Package-Requires: ((emacs "28.1"))
 ;; Version: 0
 
-;; Copyright 2020, 2021, 2022 Google LLC
+;; Copyright 2020, 2021, 2022, 2023 Google LLC
 ;;
 ;; Licensed under the Apache License, Version 2.0 (the "License");
 ;; you may not use this file except in compliance with the License.
