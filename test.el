@@ -1213,7 +1213,7 @@ Process buildifier exited abnormally with code 1
            (tar (executable-find "tar"))
            (default-directory dir))
       (skip-unless tar)
-      (process-lines tar "-c" "-z" "-f" archive "--" ".")
+      (process-lines tar "-c" "-z" "-f" archive "--" "WORKSPACE")
       (with-temp-buffer
         (bazel-workspace-mode)
         (bazel-insert-http-archive url)
