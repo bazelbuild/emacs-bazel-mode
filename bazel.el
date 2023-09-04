@@ -186,7 +186,7 @@ fix them by calling Buildozer via ‘bazel-buildozer-command’.  If
   "Type of the file that the current buffer visits.
 This must be a symbol and a valid value for the Buildifier -type
 flag.  See URL
-‘https://github.com/bazelbuild/buildtools/blob/2.2.0/buildifier/utils/flags.go#L11’.
+‘https://github.com/bazelbuild/buildtools/blob/v6.3.3/buildifier/config/validation.go#L27’.
 If nil, don’t pass a -type flag to Buildifier.")
 
 (eval-when-compile
@@ -2636,7 +2636,7 @@ for the lexical syntax of labels."
             ;; @workspace
             ;; This syntax isn’t documented in
             ;; https://bazel.build/concepts/labels, but follows from
-            ;; https://github.com/bazelbuild/buildtools/blob/4890966c38b910fd5bd1ad78a3dd88538d09854f/build/rewrite.go#L217-L218.
+            ;; https://github.com/bazelbuild/buildtools/blob/v6.3.3/build/rewrite.go#L260-L261.
             (seq ?@ (let workspace (+ (not (any ?: ?/)))))
             ;; //package:target
             (seq "//" (let package (* (not (any ?:))))
