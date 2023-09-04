@@ -2650,11 +2650,7 @@ for the lexical syntax of labels."
            eos)
        (unless target (setq target (bazel--default-target workspace package)))
        (and (or (null workspace)
-                ;; https://bazel.build/rules/lib/globals#parameters_51 claims
-                ;; that workspace names may only contain letters, numbers, and
-                ;; underscores, but that’s wrong, since hyphens and dots are
-                ;; also allowed.  See
-                ;; https://github.com/bazelbuild/bazel/blob/bc9fc6144818528898336c0fbe4fe8b30ac25abb/src/main/java/com/google/devtools/build/lib/packages/WorkspaceGlobals.java#L52.
+                ;; https://bazel.build/rules/lib/globals/workspace#parameters_3
                 (string-match-p
                  (rx bos (any "A-Z" "a-z") (* (any ?- ?. ?_ "A-Z" "a-z")) eos)
                  workspace))
