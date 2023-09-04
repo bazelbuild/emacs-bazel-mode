@@ -26,7 +26,7 @@
 
 ;;; Code:
 
-;; Work around Bug#44481.
+;; Work around https://bugs.gnu.org/44481.
 ;; TODO(phst): Add this workaround to rules_elisp instead.
 (eval-and-compile
   (when (version< emacs-version "27.2")
@@ -222,7 +222,8 @@ corresponding to the file types documented at URL
       (let* ((default-directory directory)
              (temporary-file-directory
               (if (< emacs-major-version 28)
-                  (file-name-unquote temporary-file-directory)  ; Bug#48177
+                  ;; https://bugs.gnu.org/48177
+                  (file-name-unquote temporary-file-directory)
                 temporary-file-directory))
              (inhibit-read-only t)
              (process-file-side-effects t)
@@ -2269,7 +2270,7 @@ completion to test targets.  This is a helper function for
   (cl-check-type package string)
   (cl-check-type string string)
   ;; The cases below shouldn’t rebind the PACKAGE or ROOT parameters due to
-  ;; Bug#53071.
+  ;; https://bugs.gnu.org/53071.
   (pcase string
     ;; The following patterns should cover all potential target patterns from
     ;; https://bazel.build/run/build#specifying-build-targets as well as their
@@ -2305,7 +2306,7 @@ completion to test targets.  This is a helper function for
      ;; be completed to “//”.
      (bazel--completion-table-with-prefix prefix '("//")))
     ((rx bos
-         ;; Can’t use ‘(? … (let …))’ due to Bug#44532.
+         ;; Can’t use ‘(? … (let …))’ due to https://bugs.gnu.org/44532.
          (opt ?@ (let workspace (* (not (any ?: ?/))))) "//"
          eos)
      ;; In the workspace root, offer “:” to start completing rules, as well as
@@ -2324,7 +2325,7 @@ completion to test targets.  This is a helper function for
      (when pattern
        (bazel--completion-table-with-prefix prefix '("..."))))
     ((rx bos
-         ;; Can’t use ‘(? … (let …))’ due to Bug#44532.
+         ;; Can’t use ‘(? … (let …))’ due to https://bugs.gnu.org/44532.
          (opt ?@ (let workspace (+ (not (any ?: ?/))))) "//"
          (let pkg (+ (not (any ?:)))) ?/
          eos)
@@ -2335,7 +2336,7 @@ completion to test targets.  This is a helper function for
                                                pattern)))
     ((rx bos
          (let prefix
-           ;; Can’t use ‘(? … (let …))’ due to Bug#44532.
+           ;; Can’t use ‘(? … (let …))’ due to https://bugs.gnu.org/44532.
            (opt ?@ (let workspace (* (not (any ?: ?/))))) "//"
            (let pkg (* (not (any ?:))))
            ?:)
@@ -2347,7 +2348,7 @@ completion to test targets.  This is a helper function for
        (bazel--target-completion-table-2 root (or workspace "") pkg pattern
                                          only-tests nil)))
     ((rx bos
-         ;; Can’t use ‘(? … (let …))’ due to Bug#44532.
+         ;; Can’t use ‘(? … (let …))’ due to https://bugs.gnu.org/44532.
          (let prefix (opt ?@ (let workspace (* (not (any ?: ?/))))) "//")
          (+ (not (any ?:)))
          eos)
@@ -2790,7 +2791,7 @@ The returned completion table completes strings of the form
 
 (defalias 'bazel--json-parse-buffer
   (if (and (fboundp 'json-parse-buffer)
-           ;; Work around Bug#48228.
+           ;; Work around https://bugs.gnu.org/48228.
            (or (not (eq system-type 'windows-nt))
                (and (fboundp 'json-serialize)
                     (stringp (ignore-errors (json-serialize nil))))))
