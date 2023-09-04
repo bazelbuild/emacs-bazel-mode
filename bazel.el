@@ -206,8 +206,8 @@ finishes, delete the temporary file."
   "Format current buffer using Buildifier.
 If TYPE is nil, detect the file type from the current major mode
 and visited filename, if available.  Otherwise, TYPE must be one
-of the symbols ‘build’, ‘bzl’, ‘workspace’, or ‘default’,
-corresponding to the file types documented at URL
+of the symbols ‘build’, ‘bzl’, ‘workspace’, ‘module’, or
+‘default’, corresponding to the file types documented at URL
 ‘https://github.com/bazelbuild/buildtools/tree/master/buildifier#usage’."
   (interactive "*")
   (cl-check-type type (member nil build bzl workspace default))
@@ -445,10 +445,7 @@ This is the parent mode for the more specific modes
 ;;;###autoload
 (define-derived-mode bazel-module-mode bazel-mode "MODULE.bazel"
   "Major mode for editing Bazel module files."
-  ;; Buildifier doesn’t support MODULE.bazel files
-  ;; (https://github.com/bazelbuild/buildtools/issues/1031), so use the
-  ;; ‘default’ type for now.
-  (setq bazel--buildifier-type 'default)
+  (setq bazel--buildifier-type 'module)
   ;; In MODULE.bazel files, we don’t have function definitions.  Instead, treat
   ;; rules (= Python statements) as functions.
   (setq-local beginning-of-defun-function #'python-nav-beginning-of-statement)
