@@ -251,7 +251,7 @@ gets killed early."
                                      (marker-buffer
                                       (xref-location-marker
                                        (xref-item-location def))))))
-                      ;; Work around Bug#46219.
+                      ;; Work around https://bugs.gnu.org/46219.
                       (cl-callf file-name-unquote root)
                       (cl-callf file-name-unquote ref-file)
                       (push (list (substring-no-properties identifier)
@@ -416,7 +416,8 @@ gets killed early."
           (when (< 4 (point) (- (point-max) 5)) (should in-string-p))
           (should-not in-comment-p)
           ;; The syntactic start of a triple-quoted string could be on the first
-          ;; (Emacs 27) or the last (Emacs 28) quote, cf. Bug#49518.
+          ;; (Emacs 27) or the last (Emacs 28) quote,
+          ;; cf. https://bugs.gnu.org/49518.
           (should (eq (not in-string-p) (not string-start))))
         (should (eq (face-at-point)
                     (and (< (point) (1- (point-max))) 'font-lock-string-face)))
@@ -441,11 +442,12 @@ gets killed early."
 
 (ert-deftest bazel/project-files ()
   "Test ‘project-files’ support for Bazel workspaces."
-  ;; Try to work around Bug#48471 by picking GNU find on macOS.
+  ;; Try to work around https://bugs.gnu.org/48471 by picking GNU find on macOS.
   (let ((find-program (if (eq system-type 'darwin) "gfind" find-program)))
     (skip-unless (executable-find find-program))
     (bazel-test--with-temp-directory dir "project.org"
-      (let* ((dir (file-name-unquote dir))  ; unquote to work around Bug#47799
+      ;; Unquote to work around https://bugs.gnu.org/47799.
+      (let* ((dir (file-name-unquote dir))
              (project (project-current nil dir))
              (files (project-files project)))
         (should project)
