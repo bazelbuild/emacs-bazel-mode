@@ -1888,7 +1888,7 @@ Return nil if no .bazelignore file exists."
   "Build a Bazel TARGET."
   (interactive (list (bazel--read-target-pattern "build" nil)))
   (cl-check-type target string)
-  (bazel--run-bazel-command "build" target)
+  (bazel "build" target)
   nil)
 
 (defun bazel-compile-current-file ()
@@ -1906,14 +1906,14 @@ Return nil if no .bazelignore file exists."
   "Build and run a Bazel TARGET."
   (interactive (list (bazel--read-target-pattern "run" nil)))
   (cl-check-type target string)
-  (bazel--run-bazel-command "run" target)
+  (bazel "run" target)
   nil)
 
 (defun bazel-test (target)
   "Build and run a Bazel test TARGET."
   (interactive (list (bazel--read-target-pattern "test" :only-tests)))
   (cl-check-type target string)
-  (bazel--run-bazel-command "test" target)
+  (bazel "test" target)
   nil)
 
 (defun bazel-test-at-point ()
@@ -1945,12 +1945,18 @@ Return nil if no .bazelignore file exists."
   "Run Bazel test TARGET with coverage instrumentation enabled."
   (interactive (list (bazel--read-target-pattern "coverage" :only-tests)))
   (cl-check-type target string)
-  (bazel--run-bazel-command "coverage" target)
+  (bazel "coverage" target)
   nil)
 
-(defun bazel--run-bazel-command (command target-pattern)
+(defun bazel (command target-pattern)
   "Run Bazel tool with given COMMAND on the given TARGET-PATTERN.
-COMMAND is a Bazel command such as \"build\" or \"run\"."
+COMMAND is a Bazel command such as \"build\" or \"run\".
+Interactively, prompt for COMMAND and TARGET-PATTERN, with
+completion."
+  (interactive (let* ((command (bazel--read-command))
+                      (only-tests (member command '("test coverage")))
+                      (targets (bazel--read-target-pattern command only-tests)))
+                 (list command targets)))
   (cl-check-type command string)
   (cl-check-type target-pattern string)
   (bazel--compile command "--" target-pattern))
@@ -1963,6 +1969,14 @@ COMMAND and ARGS."
                       (append bazel-command (list command)
                               bazel-command-options args)
                       " ")))
+
+(defun bazel--read-command ()
+  "Read a Bazel command name from the minibuffer, with completion."
+  ;; See https://docs.bazel.build/versions/5.0.0/command-line-reference.html#commands
+  ;; for the list of commands.  We only offer a reasonable subset here.
+  (completing-read "Command (default ‘build’): "
+                   '("build" "test" "coverage" "run" "fetch")
+                   nil nil nil nil "build"))
 
 (defvar bazel-target-history nil
   "History for Bazel target pattern completion.
