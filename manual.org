@@ -156,7 +156,7 @@ You can also set the option to ~ask~ if you prefer Emacs to first prompt you to
 confirm each such change.  To edit =BUILD= files, Emacs will use the Buildozer
 program (see
 [[https://github.com/bazelbuild/buildtools/blob/master/buildozer/README.md][Buildozer]]).
-If you don’t have BUILDOZER in your ~PATH~, you can customize the location of
+If you don’t have Buildozer in your ~PATH~, you can customize the location of
 the Buildozer program though the user option ~bazel-buildozer-command~.
 
 * Files in Bazel workspaces
