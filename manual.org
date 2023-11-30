@@ -34,26 +34,28 @@ This manual describes ~bazel.el~, a GNU Emacs package to work with the
 
 #+FINDEX: bazel-build-mode
 #+FINDEX: bazel-workspace-mode
+#+FINDEX: bazel-module-mode
 #+FINDEX: bazelrc-mode
 #+FINDEX: bazelignore-mode
 #+FINDEX: bazeliskrc-mode
 #+FINDEX: bazel-starlark-mode
 The package provides five major modes for editing Bazel-related files:
 ~bazel-build-mode~ for BUILD files, ~bazel-workspace-mode~ for WORKSPACE files,
-~bazelrc-mode~ for =.bazelrc= configuration files, ~bazelignore-mode~ for
-=.bazelignore= files, ~bazeliskrc-mode~ for =.bazeliskrc= files, and
-~bazel-starlark-mode~ for extension files written in the Starlark language.
-These modes also extend Imenu and the ~find-file-at-point~ to support
-Bazel-specific syntax.  See the [[https://bazel.build/run/build][Bazel user
-guide]], the [[https://bazel.build/concepts/build-ref][Bazel reference]], and
-the [[https://bazel.build/extending/concepts][Starlark reference]] for
-background on these file types.
+~bazel-module-mode~ for MODULE.bazel files, ~bazelrc-mode~ for =.bazelrc=
+configuration files, ~bazelignore-mode~ for =.bazelignore= files,
+~bazeliskrc-mode~ for =.bazeliskrc= files, and ~bazel-starlark-mode~ for
+extension files written in the Starlark language.  These modes also extend Imenu
+and the ~find-file-at-point~ to support Bazel-specific syntax.  See the
+[[https://bazel.build/run/build][Bazel user guide]], the
+[[https://bazel.build/concepts/build-ref][Bazel reference]], and the
+[[https://bazel.build/extending/concepts][Starlark reference]] for background on
+these file types.
 
 #+FINDEX: bazel-mode
-Since the syntax for BUILD files, WORKSPACE files, and Starlark files is
-closely related, the corresponding modes derive from a parent mode,
-~bazel-mode~.  Collectively, these modes are called “Bazel modes” in the rest
-of this manual.
+Since the syntax for BUILD files, WORKSPACE files, MODULE.bazel files, and
+Starlark files is closely related, the corresponding modes derive from a parent
+mode, ~bazel-mode~.  Collectively, these modes are called “Bazel modes” in the
+rest of this manual.
 
 #+FINDEX: bazel-insert-http-archive
 When editing a WORKSPACE file, you can use the command
