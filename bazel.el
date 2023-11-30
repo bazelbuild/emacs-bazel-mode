@@ -363,8 +363,8 @@ mentioned in the Buildifier source code at URL
 (define-derived-mode bazel-mode prog-mode "Bazel"
   "Major mode for editing Bazel BUILD and WORKSPACE files.
 This is the parent mode for the more specific modes
-‘bazel-build-mode’, ‘bazel-workspace-mode’, and
-‘bazel-starlark-mode’."
+‘bazel-build-mode’, ‘bazel-workspace-mode’, ‘bazel-module-mode’,
+and ‘bazel-starlark-mode’."
   ;; Almost all Starlark code in existence uses 4 spaces for indentation.
   ;; Buildifier also enforces this style.
   (setq-local tab-width 4)
@@ -1722,8 +1722,8 @@ and WORKSPACE is the workspace containing PACKAGE."
 (defun bazel-mode-create-index ()
   "Return an Imenu index for the rules in the current buffer.
 This function is useful as ‘imenu-create-index-function’ for
-‘bazel-build-mode’ and ‘bazel-workspace-mode’.  See Info node
-‘(elisp) Imenu’ for details."
+‘bazel-build-mode’, ‘bazel-workspace-mode’, and
+‘bazel-module-mode’.  See Info node ‘(elisp) Imenu’ for details."
   (save-excursion
     (save-restriction
       (widen)
