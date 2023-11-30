@@ -434,10 +434,6 @@ gets killed early."
       (should (file-directory-p (bazel-workspace-root project)))
       (should (file-equal-p (bazel-workspace-root project) dir))
       (should (file-equal-p (project-root project) dir))
-      (bazel-test--with-suppressed-warnings ((obsolete project-roots))
-        (should (consp (project-roots project)))
-        (should-not (cdr (project-roots project)))
-        (should (file-equal-p (car (project-roots project)) dir)))
       (should-not (project-external-roots project)))))
 
 (ert-deftest bazel/project-files ()
