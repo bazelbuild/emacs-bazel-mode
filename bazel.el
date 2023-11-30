@@ -54,9 +54,6 @@
   :link '(url-link "https://bazel.build")
   :link '(url-link "https://github.com/bazelbuild/emacs-bazel-mode"))
 
-(define-obsolete-variable-alias 'bazel-build-bazel-command
-  'bazel-command "2021-04-13")
-
 (defcustom bazel-command '("bazel")
   "Command and arguments that should be used to invoke Bazel.
 The arguments are used as startup options; see URL
@@ -86,9 +83,6 @@ Bazel options that are really Emacs-specific, such as
   :group 'bazel
   :link '(custom-manual "(bazel.el) Customization"))
 
-(define-obsolete-variable-alias 'bazel-mode-buildifier-command
-  'bazel-buildifier-command "2021-04-13")
-
 (defcustom bazel-buildifier-command "buildifier"
   "Command to run Buildifier."
   :type 'string
@@ -106,9 +100,6 @@ Bazel options that are really Emacs-specific, such as
   :link '(custom-manual "(bazel.el) Running Bazel")
   :link '(url-link
           "https://github.com/bazelbuild/buildtools/blob/master/buildozer/README.md"))
-
-(define-obsolete-variable-alias 'bazel-mode-buildifier-before-save
-  'bazel-buildifier-before-save "2021-04-13")
 
 (defcustom bazel-buildifier-before-save nil
   "Specifies whether to run Buildifier in `before-save-hook'."
@@ -250,9 +241,6 @@ of the symbols ‘build’, ‘bzl’, ‘workspace’, ‘module’, or
             (compilation-minor-mode))
           (temp-buffer-window-show temp-buffer)))))
   nil)
-
-(define-obsolete-function-alias 'bazel-mode-buildifier
-  #'bazel-buildifier "2021-04-13")
 
 (defun bazel--buildifier-before-save-hook ()
   "Run buildifer in `before-save-hook'."
@@ -2069,15 +2057,6 @@ See URL ‘https://pkg.go.dev/testing’."
 
 ;;;; Utility functions to work with Bazel workspaces
 
-(defun bazel-util-workspace-root (file-name)
-  "Find the root of the Bazel workspace containing FILE-NAME.
-If FILE-NAME is not in a Bazel workspace, return nil.  Otherwise,
-the return value is a directory name."
-  (declare (obsolete "don’t use it, as it’s an internal function."
-                     "2021-04-13"))
-  (cl-check-type file-name string)
-  (bazel--workspace-root file-name))
-
 (defun bazel--workspace-root (file-name)
   "Find the root of the Bazel workspace containing FILE-NAME.
 If FILE-NAME is not in a Bazel workspace, return nil.  Otherwise,
@@ -2113,16 +2092,6 @@ instead, look up FILE in a cache, so the results might be stale."
                (when-let ((root (bazel--workspace-root file)))
                  (file-relative-name file root))
                cache))))
-
-(defun bazel-util-package-name (file-name workspace-root)
-  "Return the nearest Bazel package for FILE-NAME under WORKSPACE-ROOT.
-If FILE-NAME is not in a Bazel package, return nil."
-  (declare (obsolete "don’t use it, as it’s an internal function."
-                     "2021-04-13"))
-  (cl-check-type file-name string)
-  (cl-check-type workspace-root string)
-  (when-let ((directory (bazel--package-directory file-name workspace-root)))
-    (bazel--package-name directory workspace-root)))
 
 (defun bazel--package-directory (file-name workspace-root)
   "Return the Bazel package directory for FILE-NAME under WORKSPACE-ROOT.
