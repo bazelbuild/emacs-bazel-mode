@@ -707,6 +707,7 @@ and Info node ‘(elisp) Syntax Table Internals’."
    ["Show consuming rule" bazel-show-consuming-rule]
    ["Find BUILD file" bazel-find-build-file]
    ["Find WORKSPACE file" bazel-find-workspace-file]
+   ["Find MODULE.bazel file" bazel-find-module-file]
    ["Format buffer with Buildifier" bazel-buildifier
     (derived-mode-p 'bazel-mode)]
    ["Insert http_archive statement..." bazel-insert-http-archive
@@ -1259,6 +1260,19 @@ restrict the returned rules to test targets."
           (or (bazel--locate-workspace-file root)
               (user-error "No WORKSPACE file found"))))
     (find-file workspace-file))
+  nil)
+
+(defun bazel-find-module-file ()
+  "Find the MODULE.bazel file for the current Bazel workspace."
+  (interactive)
+  (let* ((source-file
+          (or buffer-file-name default-directory
+              (user-error "Buffer doesn’t visit a file or directory")))
+         (root (or (bazel--workspace-root source-file)
+                   (user-error "File is not in a Bazel workspace")))
+         (module-file (or (locate-file "MODULE.bazel" (list root))
+                          (user-error "No MODULE.bazel file found"))))
+    (find-file module-file))
   nil)
 
 ;;;; ‘find-file-at-point’ support for ‘bazel-mode’

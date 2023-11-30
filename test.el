@@ -1350,6 +1350,21 @@ Process buildifier exited abnormally with code 1
               (should (file-equal-p buffer-file-name
                                     (expand-file-name expected dir))))))))))
 
+(ert-deftest bazel-find-module-file ()
+  (bazel-test--with-temp-directory dir nil
+    (dolist (file '("WORKSPACE" "MODULE.bazel"))
+      (write-region "" nil (expand-file-name file dir) nil nil nil 'excl))
+    (let ((expected (expand-file-name "MODULE.bazel" dir)))
+      (dolist (parent '("" "dir"))
+        (ert-info (parent :prefix "Parent directory: ")
+          (with-temp-buffer
+            (let ((buffer-file-name
+                   (expand-file-name "test.cc" (expand-file-name parent dir))))
+              (bazel-test--with-buffers
+                (bazel-find-module-file)
+                (should buffer-file-name)
+                (should (file-equal-p buffer-file-name expected))))))))))
+
 (ert-deftest bazelignore-mode/font-lock ()
   "Test Font Locking in ‘bazelignore-mode’."
   (let ((text (ert-propertized-string
