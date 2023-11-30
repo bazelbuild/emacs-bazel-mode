@@ -1822,17 +1822,7 @@ the containing workspace.  This function is suitable for
   "Return the primary root directory of the Bazel workspace PROJECT."
   (bazel-workspace-root project))
 
-(eval-when-compile
-  (defmacro bazel--with-suppressed-warnings (warnings &rest body)
-    "Suppress WARNINGS in BODY.
-This is the same as ‘with-suppressed-warnings’ if available.
-Otherwise, just evaluate BODY."
-    (declare (indent 1) (debug (sexp body)))
-    (if (macrop 'with-suppressed-warnings)
-        `(with-suppressed-warnings ,warnings ,@body)
-      (macroexp-progn body))))
-
-(bazel--with-suppressed-warnings ((obsolete project-roots))
+(with-suppressed-warnings ((obsolete project-roots))
   (cl-defmethod project-roots ((project bazel-workspace))
     "Return the primary root directory of the Bazel workspace PROJECT."
     (list (bazel-workspace-root project))))
