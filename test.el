@@ -105,15 +105,6 @@ that buffer once BODY finishes."
            (dolist (buffer (buffer-list))
              (unless (memq buffer ,buffers) (kill-buffer buffer)))))))
 
-  (defmacro bazel-test--with-suppressed-warnings (warnings &rest body)
-    "Suppress WARNINGS in BODY.
-This is the same as ‘with-suppressed-warnigns’ if available.
-Otherwise, just evaluate BODY."
-    (declare (indent 1) (debug (sexp body)))
-    (if (macrop 'with-suppressed-warnings)
-        `(with-suppressed-warnings ,warnings ,@body)
-      (macroexp-progn body)))
-
   (defmacro bazel-test--wait-for (message condition)
     "Busy wait for CONDITION to become non-nil.
 MESSAGE is a message for ‘ert-info’."
@@ -434,7 +425,7 @@ gets killed early."
       (should (file-directory-p (bazel-workspace-root project)))
       (should (file-equal-p (bazel-workspace-root project) dir))
       (should (file-equal-p (project-root project) dir))
-      (bazel-test--with-suppressed-warnings ((obsolete project-roots))
+      (with-suppressed-warnings ((obsolete project-roots))
         (should (consp (project-roots project)))
         (should-not (cdr (project-roots project)))
         (should (file-equal-p (car (project-roots project)) dir)))
