@@ -361,7 +361,7 @@ mentioned in the Buildifier source code at URL
   "Keymap for ‘bazel-mode’.")
 
 (define-derived-mode bazel-mode prog-mode "Bazel"
-  "Major mode for editing Bazel BUILD and WORKSPACE files.
+  "Major mode for editing Bazel files with Starlark-like syntax.
 This is the parent mode for the more specific modes
 ‘bazel-build-mode’, ‘bazel-workspace-mode’, and
 ‘bazel-starlark-mode’."
