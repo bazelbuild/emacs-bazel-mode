@@ -490,7 +490,7 @@ comment."
   '(setq v1 (bazel--download-http-archive str))  ; (name hash prefix time)
   "http_archive(" \n
   "name = \"" (or (nth 0 v1) '_) "\"," \n
-  "sha256 = \"" (nth 1 v1) "\"," \n
+  "integrity = \"" (nth 1 v1) "\"," \n
   (let ((prefix (nth 2 v1)))
     (unless (string-empty-p prefix)
       `(nil "strip_prefix = \"" ,prefix "\"," \n)))
@@ -501,7 +501,7 @@ comment."
 
 (defun bazel--download-http-archive (url)
   "Download and interpret HTTP archive at URL.
-Return a list (NAME SHA-256 PREFIX TIME) for
+Return a list (NAME INTEGRITY PREFIX TIME) for
 ‘bazel-insert-http-archive’."
   (cl-check-type url string)
   (let* ((temp-dir (make-temp-file "bazel-http-archive-" :directory))
@@ -563,12 +563,14 @@ Return a list (NAME SHA-256 PREFIX TIME) for
            (sha256 (with-temp-buffer
                      (insert-file-contents-literally archive-file)
                      (progress-reporter-update reporter)
-                     (secure-hash 'sha256 (current-buffer)))))
+                     (secure-hash 'sha256 (current-buffer) nil nil :binary)))
+           (integrity
+            (concat "sha256-" (base64-encode-string sha256 :no-line-break))))
       ;; We delete the temporary directory only when successful to make
       ;; debugging easier.
       (delete-directory temp-dir :recursive)
       (progress-reporter-done reporter)
-      (list name sha256 prefix time))))
+      (list name integrity prefix time))))
 
 (defun bazel--extract-archive (file directory)
   "Extract the archive FILE into DIRECTORY."
