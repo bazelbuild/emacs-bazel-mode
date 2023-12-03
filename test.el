@@ -1155,6 +1155,13 @@ Process buildifier exited abnormally with code 1
                    ;; and Info node ‘(coreutils) md5sum invocation’.
                    (`(,(rx bos (let hash (+ xdigit)) ?\s))
                     ;; Replace variables in expected snippet with their values.
+                    (setq hash (base64-encode-string
+                                (replace-regexp-in-string
+                                 (rx xdigit xdigit)
+                                 (lambda (match)
+                                   (unibyte-string (string-to-number match 16)))
+                                 hash :fixedcase :literal)
+                                :no-line-break))
                     (dolist (pair `(("%sha256%" . ,hash)
                                     ("%url%" . ,url)))
                       (cl-destructuring-bind (variable . value) pair
