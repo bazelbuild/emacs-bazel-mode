@@ -1385,9 +1385,7 @@ This function is suitable for ‘compilation-finish-functions’."
                 (with-temp-buffer
                   ;; Don’t bail out if the coverage file can’t be read.  Maybe
                   ;; it has already been garbage-collected.
-                  (when (condition-case nil
-                            (insert-file-contents file)
-                          (file-missing nil))
+                  (when (ignore-error file-missing (insert-file-contents file))
                     (bazel--parse-coverage root coverage))))
               (maphash #'bazel--display-coverage coverage)))))))
   (when (and bazel-fix-visibility (string-prefix-p "exited abnormally" message))
@@ -1800,8 +1798,9 @@ Return nil if no name was found.  This function is useful as
 ;; potentially optimized implementations should get a chance to run first.
 (add-hook 'project-find-functions #'bazel-find-project 20)
 
-;; Inlining accessors would break clients that are compiled against a version
-;; with an incompatible layout.
+;; This structure is marked ‘:noinline’ because it’s public, and inlining
+;; accessors would break clients that are compiled against a version with an
+;; incompatible layout.
 (cl-defstruct (bazel-workspace :noinline)
   "Represents a Bazel workspace."
   (root nil
