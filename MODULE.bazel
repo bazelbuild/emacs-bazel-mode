@@ -1,10 +1,10 @@
-# Copyright 2023 Google LLC
+# Copyright 2023 Philipp Stephani
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     https://www.apache.org/licenses/LICENSE-2.0
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,9 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-common --experimental_enable_bzlmod
+module(name = "bazelbuild_emacs_bazel_mode")
 
-# See
-# https://github.com/abseil/abseil-cpp/blob/master/FAQ.md#how-to-i-set-the-c-dialect-used-to-build-abseil
-# why we need to specify the -std option in .bazelrc.
-build --cxxopt='-std=c++14' --host_cxxopt='-std=c++14'
+bazel_dep(name = "phst_rules_elisp")
+git_override(
+    module_name = "phst_rules_elisp",
+    commit = "6a17652b1205c36a27e07be86b6a15e61e67913a",
+    remote = "https://github.com/phst/rules_elisp.git",
+)
+
+bazel_dep(name = "rules_license", version = "0.0.7")
