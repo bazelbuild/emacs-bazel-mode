@@ -461,6 +461,24 @@ This is the parent mode for the more specific modes
              (cons (rx "/MODULE.bazel" eos) #'bazel-module-mode))
 
 ;;;###autoload
+(define-derived-mode bazel-repo-mode bazel-mode "REPO.bazel"
+  "Major mode for editing REPO.bazel files."
+  ;; Buildifier doesn’t have special support for REPO.bazel files yet.
+  (setq bazel--buildifier-type 'default)
+  ;; In REPO.bazel files, we don’t have function definitions.  Instead, treat
+  ;; rules (= Python statements) as functions.
+  (setq-local beginning-of-defun-function #'python-nav-beginning-of-statement)
+  (setq-local end-of-defun-function #'python-nav-end-of-statement)
+  (add-hook 'which-func-functions #'bazel-mode-current-rule-name nil :local)
+  (setq-local add-log-current-defun-function #'bazel-mode-current-rule-name)
+  (setq-local imenu-create-index-function #'bazel-mode-create-index))
+
+;;;###autoload
+(add-to-list 'auto-mode-alist
+             ;; https://docs.google.com/document/d/1rS-B3d_sfZFY2AcSwIq2ibQc7X1lgeycddLJqjYKgOA/comment
+             (cons (rx "/REPO.bazel" eos) #'bazel-repo-mode))
+
+;;;###autoload
 (define-derived-mode bazel-starlark-mode bazel-mode "Starlark"
   "Major mode for editing Bazel Starlark files."
   (setq bazel--buildifier-type 'bzl)
