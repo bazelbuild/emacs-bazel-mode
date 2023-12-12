@@ -440,6 +440,29 @@ gets killed early."
         (should (file-equal-p (car (project-roots project)) dir)))
       (should-not (project-external-roots project)))))
 
+(ert-deftest bazel/project/sentinels ()
+  "Test that we find all known workspace sentinels."
+  (bazel-test--with-temp-directory dir nil
+    (let ((subdir (expand-file-name "subdir" dir))
+          (coding-system-for-write 'us-ascii-unix)
+          (write-region-annotate-functions nil)
+          (write-region-post-annotation-function nil))
+      (make-directory subdir)
+      (dolist (sentinel '("WORKSPACE" "WORKSPACE.bazel"
+                          "MODULE.bazel" "REPO.bazel"))
+        (ert-info (sentinel :prefix "Sentinel file: ")
+          (let ((file (expand-file-name sentinel dir)))
+            (write-region "" nil file nil nil nil 'excl)
+            (let ((project (project-current nil subdir)))
+              (should project)
+              (should (bazel-workspace-p project))
+              (should (bazel-workspace-root project))
+              (should (directory-name-p (bazel-workspace-root project)))
+              (should (file-directory-p (bazel-workspace-root project)))
+              (should (file-equal-p (bazel-workspace-root project) dir))
+              (should (file-equal-p (project-root project) dir)))
+            (delete-file file)))))))
+
 (ert-deftest bazel/project-files ()
   "Test ‘project-files’ support for Bazel workspaces."
   ;; Try to work around https://bugs.gnu.org/48471 by picking GNU find on macOS.
