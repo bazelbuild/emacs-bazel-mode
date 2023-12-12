@@ -2093,7 +2093,9 @@ directory name."
 DIRECTORY can be a directory or file name."
   (cl-check-type directory string)
   (and (file-directory-p directory)
-       (bazel--locate-workspace-file directory)))
+       (or (bazel--locate-workspace-file directory)
+           (locate-file "MODULE.bazel" (list directory))
+           (locate-file "REPO.bazel" (list directory)))))
 
 (defvar bazel--workspace-relative-name (make-hash-table :test #'equal)
   "Cache for the function ‘bazel--workspace-relative-name’.
@@ -2593,9 +2595,8 @@ Assume that STRING comes from ‘file-name-completion’ or
 
 (defun bazel--locate-workspace-file (directory)
   "Return the file name of the Bazel WORKSPACE file in DIRECTORY.
-Return nil if DIRECTORY is not a Bazel workspace root (i.e.,
-doesn’t contain a WORKSPACE file).  DIRECTORY can be a directory
-name or directory file name."
+Return nil if DIRECTORY doesn’t contain a WORKSPACE file.
+DIRECTORY can be a directory name or directory file name."
   (cl-check-type directory string)
   (locate-file "WORKSPACE" (list directory) '(".bazel" "")))
 
