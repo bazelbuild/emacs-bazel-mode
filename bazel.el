@@ -478,6 +478,15 @@ This is the parent mode for the more specific modes
              ;; https://bazel.build/extending/concepts
              (cons (rx ?/ (+ nonl) ".bzl" eos) #'bazel-starlark-mode))
 
+;;;###autoload
+(add-to-list 'auto-mode-alist
+             ;; https://bazel.build/external/lockfile#lockfile-generation
+             (cons (rx "/MODULE.bazel.lock" eos)
+                   ;; Prefer JSON mode introduced in Emacs 29.  Once we drop
+                   ;; support for Emacs 28 and below, we can use it
+                   ;; unconditionally.
+                   (if (fboundp 'js-json-mode) #'js-json-mode #'js-mode)))
+
 (define-skeleton bazel-insert-http-archive
   "Insert an “http_archive” statement at point.
 See URL ‘https://bazel.build/rules/lib/repo/http#http_archive’
