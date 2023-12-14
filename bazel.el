@@ -391,11 +391,9 @@ This is the parent mode for the more specific modes
   (setq-local python-indent-def-block-scale 1)
   ;; Treat magic comments as being separate paragraphs for filling.
   (setq-local paragraph-start
-              (rx-to-string
-               `(or (seq (* (syntax whitespace)) (regexp ,comment-start-skip)
-                         (regexp ,bazel--magic-comment-regexp))
-                    (regexp ,paragraph-start))
-               :no-group))
+              (rx (or (seq (* (syntax whitespace)) (regexp comment-start-skip)
+                           (regexp bazel--magic-comment-regexp))
+                      (regexp paragraph-start))))
   (add-hook 'before-save-hook #'bazel--buildifier-before-save-hook nil :local)
   (add-hook 'flymake-diagnostic-functions #'bazel-mode-flymake nil :local)
   (add-hook 'xref-backend-functions #'bazel-mode-xref-backend nil :local)
@@ -1015,9 +1013,9 @@ Return nil if no consuming rule was found."
         ;; enough for this approach to give acceptable results.
         (cl-block nil
           (while (let ((case-fold-search case-fold-file))
-                   (re-search-forward (rx-to-string `(seq (group (any ?\" ?\'))
-                                                          (? ?:) ,source-file
-                                                          (backref 1)))
+                   (re-search-forward (rx (group (any ?\" ?\'))
+                                          (? ?:) (literal source-file)
+                                          (backref 1))
                                       nil t))
             (let ((begin (match-beginning 0))
                   (end (match-end 0)))
@@ -1160,10 +1158,8 @@ return nil."
         ;; rely on external processes and should work fine in common cases.
         (cl-block nil
           (while (re-search-forward
-                  (rx-to-string
-                   `(seq symbol-start "name" (* blank) ?= (* blank)
-                         (group (any ?\" ?')) (group ,name) (backref 1))
-                   :no-group)
+                  (rx symbol-start "name" (* blank) ?= (* blank)
+                      (group (any ?\" ?')) (group (literal name)) (backref 1))
                   nil t)
             (let ((position (match-beginning 2)))
               (unless (python-syntax-comment-or-string-p)
@@ -1205,12 +1201,10 @@ restrict the returned rules to test targets."
         ;; to assume they only want completions within the narrowed portion.
         (goto-char (point-min))
         (while (re-search-forward
-                (rx-to-string
-                 `(seq symbol-start "name" (* blank) ?= (* blank)
-                       (group (any ?\" ?'))
-                       (group ,prefix (* (not (any ?\" ?' ?\n))))
-                       (backref 1))
-                 :no-group)
+                (rx symbol-start "name" (* blank) ?= (* blank)
+                    (group (any ?\" ?'))
+                    (group (literal prefix) (* (not (any ?\" ?' ?\n))))
+                    (backref 1))
                 nil t)
           (let ((name (match-string-no-properties 2)))
             (and (not (python-syntax-comment-or-string-p))
@@ -2134,9 +2128,8 @@ and WORKSPACE-ROOT can be file or directory names."
          ;; Don’t search beyond workspace root.
          (locate-dominating-stop-dir-regexp
           (if parent
-              (rx-to-string `(or (seq bos ,parent eos)
-                                 (regexp ,locate-dominating-stop-dir-regexp))
-                            :no-group)
+              (rx (or (seq bos (literal parent) eos)
+                      (regexp locate-dominating-stop-dir-regexp)))
             locate-dominating-stop-dir-regexp)))
     (locate-dominating-file file-name #'bazel--package-directory-p)))
 
