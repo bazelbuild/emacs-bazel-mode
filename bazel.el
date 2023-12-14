@@ -396,6 +396,8 @@ This is the parent mode for the more specific modes
                          (regexp ,bazel--magic-comment-regexp))
                     (regexp ,paragraph-start))
                :no-group))
+  (setq-local fill-paragraph-function #'python-fill-paragraph)
+  (setq-local normal-auto-fill-function #'python-do-auto-fill)
   (add-hook 'before-save-hook #'bazel--buildifier-before-save-hook nil :local)
   (add-hook 'flymake-diagnostic-functions #'bazel-mode-flymake nil :local)
   (add-hook 'xref-backend-functions #'bazel-mode-xref-backend nil :local)
