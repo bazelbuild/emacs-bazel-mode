@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2020, 2021, 2022 Google LLC
+# Copyright 2020, 2021, 2022, 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -32,14 +32,14 @@ trap 'rm -r -f -- "${dir}"' EXIT
 # choke on symbolic links.
 dir="$(realpath -e -- "${dir:?}")" || exit
 
-# Set up a basic workspace layout in the temporary directory.
+# Set up a basic repository layout in the temporary directory.
 emacs --quick --batch --visit="${org:?}" \
   --eval="(let ((default-directory \"${dir:?}/\")) (org-babel-tangle))" || exit
 
 execroot="$(cd "${dir:?}" && bazel --bazelrc=/dev/null info execution_root)"
 
 # We explicitly compile with the current directory set to a subdirectory to
-# ensure that workspace-relative filenames still work as expected.  Invert the
+# ensure that repository-relative filenames still work as expected.  Invert the
 # exit status of “bazel build” because we expect it to fail.
 out="$(cd "${dir:?}/lib" && ! bazel --bazelrc=/dev/null build //... 2>&1)"
 
@@ -47,7 +47,7 @@ out="$(cd "${dir:?}/lib" && ! bazel --bazelrc=/dev/null build //... 2>&1)"
 out="${out//${dir}/%ROOTDIR%}"
 
 # The execution root is somewhere else, but since we only access source files,
-# we can virtually merge it with the workspace root.
+# we can virtually merge it with the repository root.
 out="${out//${execroot}/%ROOTDIR%}"
 
 # We can’t use ‘org-babel-detangle’ because there are no links in the tangled

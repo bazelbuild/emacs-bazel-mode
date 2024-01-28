@@ -1,4 +1,4 @@
-# Copyright 2021, 2022, 2023 Google LLC
+# Copyright 2021, 2022, 2023, 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -159,14 +159,14 @@ program (see
 If you don’t have BUILDOZER in your ~PATH~, you can customize the location of
 the Buildozer program though the user option ~bazel-buildozer-command~.
 
-* Files in Bazel workspaces
+* Files in Bazel repositories
 
-#+CINDEX: FFAP, for files in workspaces
-If you visit a file in a Bazel workspace, loading =bazel.el= will extend
-~find-file-at-point~ to search for files relative to the workspace root.  This
+#+CINDEX: FFAP, for files in repositories
+If you visit a file in a Bazel repository, loading =bazel.el= will extend
+~find-file-at-point~ to search for files relative to the repository root.  This
 allows you to use ~find-file-at-point~ to e.g. find included header files in C
 or C++ files that are built with Bazel.  This functionality also attempts to
-cover files in external repositories loaded by the current workspace.  For more
+cover files in external repositories loaded by the current repository.  For more
 information about ~find-file-at-point~, see [[info:Emacs#FFAP][FFAP]].
 
 #+FINDEX: bazel-find-build-file
@@ -182,8 +182,8 @@ BUILD file that has the source file in its list of source files and jump there.
 
 #+CINDEX: Projects
 =bazel.el= provides a project backend, ~bazel-find-project~.  By default, it
-will include all files in the Bazel workspace except the convenience symbolic
-links starting with =bazel-=.  You can exclude directories from the workspace
+will include all files in the Bazel repository except the convenience symbolic
+links starting with =bazel-=.  You can exclude directories from the repository
 project by adding them to the
 [[https://bazel.build/run/bazelrc#bazelignore][=.bazelignore= file]].  For more
 information about projects, see [[info:emacs#Projects][Projects]].

@@ -236,8 +236,8 @@ of the symbols ‘build’, ‘bzl’, ‘workspace’, ‘module’, or
               (insert-file-contents temp-file nil nil nil :replace)
               (kill-buffer temp-buffer))
           (with-current-buffer temp-buffer
-            (when-let ((root (bazel--workspace-root (or input-file directory))))
-              ;; Files in Buildifier error messages are local to the workspace
+            (when-let ((root (bazel--repository-root (or input-file directory))))
+              ;; Files in Buildifier error messages are local to the repository
               ;; root.  Make sure that ‘next-error’ finds them.
               (setq-local default-directory root))
             (goto-char (point-max))
@@ -403,7 +403,7 @@ This is the parent mode for the more specific modes
             nil :local)
   (when-let ((filename buffer-file-name))
     ;; Initialize filename cache.
-    (bazel--workspace-relative-name filename)))
+    (bazel--repository-relative-name filename)))
 
 ;;;###autoload
 (define-derived-mode bazel-build-mode bazel-mode "BUILD.bazel"
@@ -482,7 +482,7 @@ This is the parent mode for the more specific modes
   "Insert an “http_archive” statement at point.
 See URL ‘https://bazel.build/rules/lib/repo/http#http_archive’
 for a description of “http_archive”.  Interactively, prompt for
-an archive URL.  Attempt to detect workspace name and prefix.
+an archive URL.  Attempt to detect repository name and prefix.
 Also add the date when the archive was likely last modified as a
 comment."
   "Archive download URL: "
@@ -696,8 +696,8 @@ and Info node ‘(elisp) Syntax Table Internals’."
 (easy-menu-add-item
  menu-bar-tools-menu nil
  '("Bazel"
-   ;; We enable the workspace commands unconditionally because checking whether
-   ;; we’re in a Bazel workspace hits the filesystem and might be too slow.
+   ;; We enable the repository commands unconditionally because checking whether
+   ;; we’re in a Bazel repository hits the filesystem and might be too slow.
    ["Build..." bazel-build]
    ["Compile current file" bazel-compile-current-file buffer-file-name]
    ["Test..." bazel-test]
@@ -797,7 +797,7 @@ list."
   (cl-check-type filename (or string null))
   (append
    (and filename
-        (when-let ((name (bazel--workspace-relative-name filename)))
+        (when-let ((name (bazel--repository-relative-name filename)))
           (list (concat "-path=" name))))
    (and type (list (concat "-type=" (symbol-name type))))))
 
@@ -872,9 +872,9 @@ described in URL
 This gets added to ‘xref-backend-functions’."
   (and (derived-mode-p 'bazel-mode)
        buffer-file-name
-       ;; It only makes sense to find targets if we are in a workspace,
+       ;; It only makes sense to find targets if we are in a repository,
        ;; otherwise we don’t know how to resolve absolute labels.
-       (bazel--workspace-root buffer-file-name)
+       (bazel--repository-root buffer-file-name)
        'bazel-mode))
 
 (cl-defmethod xref-backend-identifier-at-point ((_backend (eql bazel-mode)))
@@ -882,26 +882,29 @@ This gets added to ‘xref-backend-functions’."
   ;; This only detects string literals representing labels.
   (when-let* ((identifier (bazel--string-at-point))
               (parsed-label (bazel--parse-label identifier)))
-    (cl-destructuring-bind (workspace package target) parsed-label
-      ;; Save the current workspace directory as text property in case the user
+    (cl-destructuring-bind (repository package target) parsed-label
+      ;; Save the current repository directory as text property in case the user
       ;; switches directories between this call and selecting a reference.
-      ;; ‘xref-backend-definitions’ falls back to the current workspace if the
+      ;; ‘xref-backend-definitions’ falls back to the current repository if the
       ;; property isn’t present so that users can still invoke
       ;; ‘xref-find-definitions’ and enter a label manually.  Likewise, save
       ;; the current package if possible by canonicalizing the label.  We don’t
       ;; care about valid but exotic labels here, e.g., labels containing
       ;; newlines or backslashes.
-      (let* ((this-workspace (and buffer-file-name
-                                  (bazel--workspace-root buffer-file-name)))
+      (let* ((this-repository (and buffer-file-name
+                                   (bazel--repository-root buffer-file-name)))
              (package
               (or package
-                  (and buffer-file-name this-workspace
+                  (and buffer-file-name this-repository
                        (when-let ((directory
                                    (bazel--package-directory
-                                    buffer-file-name this-workspace)))
-                         (bazel--package-name directory this-workspace))))))
-        (propertize (bazel--canonical workspace package target)
-                    'bazel-mode-workspace this-workspace)))))
+                                    buffer-file-name this-repository)))
+                         (bazel--package-name directory this-repository))))))
+        (propertize (bazel--canonical repository package target)
+                    ;; The text property should really be called
+                    ;; ‘bazel-repository’, but we stick to the old name since
+                    ;; it’s technically public.
+                    'bazel-mode-workspace this-repository)))))
 
 (cl-defmethod xref-backend-definitions ((_backend (eql bazel-mode)) identifier)
   "Return locations where the Bazel target IDENTIFIER might be defined.
@@ -911,24 +914,24 @@ IDENTIFIER should be an XRef identifier returned by
   ;; Reparse the identifier so that users can invoke ‘xref-find-definitions’
   ;; and enter a label directly.
   (pcase (bazel--parse-label identifier)
-    (`(,workspace ,package ,target)
-     (when-let* ((this-workspace
+    (`(,repository ,package ,target)
+     (when-let* ((this-repository
                   (or (get-text-property 0 'bazel-mode-workspace identifier)
                       (and buffer-file-name
-                           (bazel--workspace-root buffer-file-name))))
+                           (bazel--repository-root buffer-file-name))))
                  (package
                   (or package
                       (and buffer-file-name
                            (when-let ((directory
                                        (bazel--package-directory
-                                        buffer-file-name this-workspace)))
+                                        buffer-file-name this-repository)))
                              (bazel--package-name directory
-                                                  this-workspace)))))
+                                                  this-repository)))))
                  (location
                   (bazel--target-location
-                   (bazel--external-workspace workspace this-workspace)
+                   (bazel--external-repository repository this-repository)
                    package target)))
-       (list (xref-make (bazel--canonical workspace package target)
+       (list (xref-make (bazel--canonical repository package target)
                         location))))))
 
 (cl-defmethod xref-backend-identifier-completion-table
@@ -939,15 +942,15 @@ IDENTIFIER should be an XRef identifier returned by
 (defun bazel-show-consuming-rule ()
   "Find the definition of the rule consuming the current file.
 The current buffer must visit a file, and the file must be in a
-Bazel workspace.  Use ‘xref-show-definitions-function’ to display
+Bazel repository.  Use ‘xref-show-definitions-function’ to display
 the rule definition.  Right now, perform a best-effort attempt
 for finding the consuming rule by a textual search in the BUILD
 file."
   (interactive)
   (let* ((source-file (or buffer-file-name
                           (user-error "Buffer doesn’t visit a file")))
-         (root (or (bazel--workspace-root source-file)
-                   (user-error "File is not in a Bazel workspace")))
+         (root (or (bazel--repository-root source-file)
+                   (user-error "File is not in a Bazel repository")))
          (directory (or (bazel--package-directory source-file root)
                         (user-error "File is not in a Bazel package")))
          (package (or (bazel--package-name directory root)
@@ -1032,17 +1035,17 @@ Return nil if no consuming rule was found."
               ;; Ensure we don’t loop forever if we ended up in a weird place.
               (goto-char end))))))))
 
-(defun bazel--target-location (workspace package target)
+(defun bazel--target-location (repository package target)
   "Return an ‘xref-location’ for a Bazel target.
-The target is in the workspace with root directory WORKSPACE and
-the package PACKAGE.  Its local name is TARGET.  If no target was
-found, return nil.  This function uses heuristics to find the
+The target is in the repository with root directory REPOSITORY
+and the package PACKAGE.  Its local name is TARGET.  If no target
+was found, return nil.  This function uses heuristics to find the
 target; in particular, it assumes that a target that looks like a
 valid file target is indeed a file target."
-  (cl-check-type workspace string)
+  (cl-check-type repository string)
   (cl-check-type package string)
   (cl-check-type target string)
-  (let* ((directory (expand-file-name package workspace))
+  (let* ((directory (expand-file-name package repository))
          (filename (expand-file-name target directory)))
     (if (file-exists-p filename)
         ;; A label that likely refers to a source file.
@@ -1061,7 +1064,7 @@ valid file target is indeed a file target."
 See Info node ‘(elisp) Completion in Buffers’ for context."
   ;; This function should be fast, so we perform the quick checks (reading
   ;; variables, syntax tables) first before hitting the filesystem to find the
-  ;; workspace root.
+  ;; repository root.
   (when-let ((file-name buffer-file-name))
     (when (derived-mode-p 'bazel-mode)
       ;; We assume for now that labels always appear as strings.  That should
@@ -1238,8 +1241,8 @@ restrict the returned rules to test targets."
   (let* ((source-file
           (or buffer-file-name default-directory
               (user-error "Buffer doesn’t visit a file or directory")))
-         (root (or (bazel--workspace-root source-file)
-                   (user-error "File is not in a Bazel workspace")))
+         (root (or (bazel--repository-root source-file)
+                   (user-error "File is not in a Bazel repository")))
          (directory (or (bazel--package-directory source-file root)
                         (user-error "File is not in a Bazel package")))
          (build-file (or (bazel--locate-build-file directory)
@@ -1248,13 +1251,13 @@ restrict the returned rules to test targets."
   nil)
 
 (defun bazel-find-workspace-file ()
-  "Find the WORKSPACE file for the current Bazel workspace."
+  "Find the WORKSPACE file for the current Bazel repository."
   (interactive)
   (let* ((source-file
           (or buffer-file-name default-directory
               (user-error "Buffer doesn’t visit a file or directory")))
-         (root (or (bazel--workspace-root source-file)
-                   (user-error "File is not in a Bazel workspace")))
+         (root (or (bazel--repository-root source-file)
+                   (user-error "File is not in a Bazel repository")))
          (workspace-file
           (or (bazel--locate-workspace-file root)
               (user-error "No WORKSPACE file found"))))
@@ -1267,12 +1270,12 @@ restrict the returned rules to test targets."
 (add-to-list 'ffap-alist (cons (rx anything) #'bazel-mode-ffap) :append)
 
 (defun bazel-mode-ffap (filename)
-  "Attempt to find FILENAME in all workspaces.
+  "Attempt to find FILENAME in all repositories.
 This gets added to ‘ffap-alist’."
   (cl-check-type filename string)
   (when-let* ((this-file (or buffer-file-name default-directory))
-              (main-root (bazel--workspace-root this-file)))
-    (let ((external-roots (bazel--external-workspace-roots main-root)))
+              (main-root (bazel--repository-root this-file)))
+    (let ((external-roots (bazel--external-repository-roots main-root)))
       (locate-file filename (cons main-root external-roots)))))
 
 ;;;; ‘find-file-at-point’ support for ‘bazelrc-mode’
@@ -1295,8 +1298,8 @@ Look for an imported file with the given NAME."
     (pcase name
       ((rx bos "%workspace%" (+ ?/) (let rest (+ nonl)))
        (when-let* ((source-file buffer-file-name)
-                   (workspace (bazel--workspace-root source-file)))
-         (let ((file-name (expand-file-name rest workspace)))
+                   (repository (bazel--repository-root source-file)))
+         (let ((file-name (expand-file-name rest repository)))
            (and (file-exists-p file-name) file-name)))))))
 
 ;;;; Compilation support
@@ -1322,7 +1325,7 @@ Look for an imported file with the given NAME."
                       ;; https://github.com/bazelbuild/bazel/issues/374), so we
                       ;; don’t include spaces here either.  We do allow
                       ;; non-ASCII alphanumeric characters, because they could
-                      ;; be part of the workspace directory name.
+                      ;; be part of the repository directory name.
                       ;;
                       ;; This also needs to account for Windows-style file names,
                       ;; which might need to account for the current drive, and
@@ -1374,8 +1377,8 @@ This function is suitable for ‘compilation-finish-functions’."
                   ;; remote if necessary.
                   (push (concat remote (file-name-quote file)) files))))))
         (when files
-          ;; Only continue if we’re in a Bazel workspace.
-          (when-let ((root (bazel--workspace-root default-directory)))
+          ;; Only continue if we’re in a Bazel repository.
+          (when-let ((root (bazel--repository-root default-directory)))
             ;; COVERAGE maps buffers to hashtables that in turn map line numbers
             ;; to ‘bazel--coverage’ structures.  We first collect coverage
             ;; information into this hashtable to correctly deal with duplicate
@@ -1419,8 +1422,8 @@ This function is suitable for ‘compilation-finish-functions’."
                         (match-end 1))
                   infos)))
         (when infos
-          ;; Only continue if we’re in a Bazel workspace.
-          (when-let ((root (bazel--workspace-root default-directory)))
+          ;; Only continue if we’re in a Bazel repository.
+          (when-let ((root (bazel--repository-root default-directory)))
             (pcase-dolist (`(,source ,dest ,begin ,end) (nreverse infos))
               (bazel--add-visibility root source dest begin end ask)))))))
   nil)
@@ -1439,7 +1442,7 @@ for unevaluated blocks)."))
 
 (defun bazel--parse-coverage (root coverage)
   "Parse coverage information in the current buffer.
-ROOT is the Bazel workspace root directory.  COVERAGE is a
+ROOT is the Bazel repository root directory.  COVERAGE is a
 hashtable that maps buffers to hashtables that in turn map line
 numbers ‘bazel--coverage’ structures.  The function walks over
 the coverage information in the current buffer and fills in
@@ -1667,7 +1670,7 @@ See Info node ‘(elisp) Display Margins’."
 (defun bazel--add-visibility (root source destination begin end ask)
   "Make SOURCE visible to DESTINATION.
 SOURCE and DESTINATION should be absolute Bazel labels.  ROOT
-identifies the root directory of the current workspace.  The
+identifies the root directory of the current repository.  The
 current buffer should contain Bazel compilation outputs.  If ASK
 is non-nil, prompt the user first using ‘y-or-n-p’, and
 temporarily highlight the region between BEGIN and END in the
@@ -1679,11 +1682,11 @@ change the visibility of the affected BUILD file."
   (cl-check-type begin natnum)
   (cl-check-type end natnum)
   (pcase (bazel--parse-label source)
-    (`(,src-workspace ,(and (pred stringp) src-package) ,_)
+    (`(,src-repository ,(and (pred stringp) src-package) ,_)
      (pcase (bazel--parse-label destination)
-       (`(,(and (or 'nil "") dest-workspace)
+       (`(,(and (or 'nil "") dest-repository)
           ,(and (pred stringp) dest-package) ,_)
-        (let ((value (bazel--canonical src-workspace src-package "__pkg__")))
+        (let ((value (bazel--canonical src-repository src-package "__pkg__")))
           (when (or (not ask)
                     (progn
                       (pulse-momentary-highlight-region begin end)
@@ -1691,7 +1694,7 @@ change the visibility of the affected BUILD file."
                                                 value destination))))
             ;; We need to save the BUILD file first so that Buildozer doesn’t
             ;; stomp over unsaved changes.
-            (bazel--save-build-file root dest-workspace dest-package)
+            (bazel--save-build-file root dest-repository dest-package)
             (let ((output (get-buffer-create "*Buildozer*"))
                   (command `(,@bazel-buildozer-command
                              "--" ,(concat "add visibility " value)
@@ -1702,14 +1705,14 @@ change the visibility of the affected BUILD file."
                 (temp-buffer-window-show output)))))))))
   nil)
 
-(defun bazel--save-build-file (root workspace package)
+(defun bazel--save-build-file (root repository package)
   "Save the buffer visiting the BUILD file for PACKAGE.
-ROOT is the workspace root directory of the current workspace,
-and WORKSPACE is the workspace containing PACKAGE."
+ROOT is the repository root directory of the current repository,
+and REPOSITORY is the repository containing PACKAGE."
   (cl-check-type root string)
-  (cl-check-type workspace (or null string))
+  (cl-check-type repository (or null string))
   (cl-check-type package string)
-  (let ((external-root (bazel--external-workspace workspace root)))
+  (let ((external-root (bazel--external-repository repository root)))
     (when-let* ((build-file (bazel--locate-build-file
                              (expand-file-name package external-root))))
       (save-some-buffers nil (lambda ()
@@ -1803,23 +1806,25 @@ Return nil if no name was found.  This function is useful as
 ;; Inlining accessors would break clients that are compiled against a version
 ;; with an incompatible layout.
 (cl-defstruct (bazel-workspace :noinline)
-  "Represents a Bazel workspace."
+  "Represents a Bazel repository."
+  ;; This structure ought to be called ‘bazel-repository’, but we stick to the
+  ;; old name since it’s public.
   (root nil
         :read-only t
         :type string
-        :documentation "The workspace root directory."))
+        :documentation "The repository root directory."))
 
 (defun bazel-find-project (directory)
-  "Find a Bazel workspace for the given DIRECTORY.
-Return nil if outside a Bazel workspace or a project instance for
-the containing workspace.  This function is suitable for
+  "Find a Bazel repository for the given DIRECTORY.
+Return nil if outside a Bazel repository or a project instance for
+the containing repository.  This function is suitable for
 ‘project-find-functions’."
   (cl-check-type directory string)
-  (when-let ((root (bazel--workspace-root directory)))
+  (when-let ((root (bazel--repository-root directory)))
     (make-bazel-workspace :root root)))
 
 (cl-defmethod project-root ((project bazel-workspace))
-  "Return the primary root directory of the Bazel workspace PROJECT."
+  "Return the primary root directory of the Bazel repository PROJECT."
   (bazel-workspace-root project))
 
 (eval-when-compile
@@ -1834,35 +1839,35 @@ Otherwise, just evaluate BODY."
 
 (bazel--with-suppressed-warnings ((obsolete project-roots))
   (cl-defmethod project-roots ((project bazel-workspace))
-    "Return the primary root directory of the Bazel workspace PROJECT."
+    "Return the primary root directory of the Bazel repository PROJECT."
     (list (bazel-workspace-root project))))
 
 (cl-defmethod project-external-roots ((project bazel-workspace))
-  "Return the external workspace roots of the Bazel workspace PROJECT."
-  (bazel--external-workspace-roots (bazel-workspace-root project)))
+  "Return the external repository roots of the Bazel repository PROJECT."
+  (bazel--external-repository-roots (bazel-workspace-root project)))
 
 (cl-defmethod project-ignores ((project bazel-workspace) dir)
-  "Return glob patterns for files to be ignored in a Bazel workspace PROJECT.
+  "Return glob patterns for files to be ignored in a Bazel repository PROJECT.
 Ignore the convenience symbolic links and directories listed in
-.bazelignore.  PROJECT refers to a Bazel workspace, and DIR is
-the Bazel workspace directory to consider.
+.bazelignore.  PROJECT refers to a Bazel repository, and DIR is
+the Bazel repository directory to consider.
 See URL ‘https://bazel.build/run/bazelrc#bazelignore’."
   `(,@(bazel--bazelignore-patterns (bazel-workspace-root project))
     "./bazel-*"
     ,@(cl-call-next-method project dir)))
 
-(defun bazel--bazelignore-patterns (workspace-root)
-  "Parse a .bazelignore file in WORKSPACE-ROOT.
+(defun bazel--bazelignore-patterns (repository-root)
+  "Parse a .bazelignore file in REPOSITORY-ROOT.
 Return a list of glob patterns for ‘project-ignores’.
 Return nil if no .bazelignore file exists."
-  (cl-check-type workspace-root string)
+  (cl-check-type repository-root string)
   (with-temp-buffer
     ;; Bazel always treats .bazelignore files as UTF-8,
     ;; cf. https://github.com/bazelbuild/bazel/blob/09c621e4cf5b968f4c6cdf905ab142d5961f9ddc/src/main/java/com/google/devtools/build/lib/skyframe/IgnoredPackagePrefixesFunction.java#L52.
     (let ((coding-system-for-read 'utf-8)
           (format-alist nil)
           (after-insert-file-functions nil)
-          (bazelignore-file (expand-file-name ".bazelignore" workspace-root))
+          (bazelignore-file (expand-file-name ".bazelignore" repository-root))
           (patterns ()))
       ;; It’s not a critical error if the .bazelignore file doesn’t exist or we
       ;; can’t read it.
@@ -1921,8 +1926,8 @@ Return nil if no .bazelignore file exists."
   (interactive)
   (let* ((source-file (or buffer-file-name
                           (user-error "Buffer doesn’t visit a file")))
-         (root (or (bazel--workspace-root source-file)
-                   (user-error "File is not in a Bazel workspace")))
+         (root (or (bazel--repository-root source-file)
+                   (user-error "File is not in a Bazel repository")))
          (directory (or (bazel--package-directory source-file root)
                         (user-error "File is not in a Bazel package")))
          (package (or (bazel--package-name directory root)
@@ -1976,22 +1981,22 @@ prompt.  If ONLY-TESTS is non-nil, look only for test rules."
   (let* ((file-name
           (or buffer-file-name default-directory
               (user-error "Buffer doesn’t visit a file or directory")))
-         (workspace-root (or (bazel--workspace-root file-name)
-                             (user-error "File is not in a Bazel workspace")))
-         (directory (or (bazel--package-directory file-name workspace-root)
+         (repository-root (or (bazel--repository-root file-name)
+                              (user-error "File is not in a Bazel repository")))
+         (directory (or (bazel--package-directory file-name repository-root)
                         (user-error "File is not in a Bazel package")))
-         (package-name (or (bazel--package-name directory workspace-root)
+         (package-name (or (bazel--package-name directory repository-root)
                            (user-error "File is not in a Bazel package")))
          (prompt (combine-and-quote-strings
                   `(,@bazel-command ,command "--" "")))
          (table (bazel--target-completion-table :pattern only-tests))
          (default (bazel--target-completion-default
-                   buffer-file-name workspace-root package-name only-tests)))
+                   buffer-file-name repository-root package-name only-tests)))
     (completing-read prompt table nil nil nil 'bazel-target-history default)))
 
 (defun bazel--target-completion-default (source-file root package only-tests)
   "Return default completion target for SOURCE-FILE.
-ROOT is the workspace root directory, and PACKAGE is the package
+ROOT is the repository root directory, and PACKAGE is the package
 name.  If ONLY-TESTS is non-nil, look only for test rules.
 Return nil if SOURCE-FILE is nil or no suitable default target
 was found."
@@ -2067,71 +2072,71 @@ See URL ‘https://pkg.go.dev/testing’."
            ;; aren’t compatible.
            (concat "^\\Q" (match-string-no-properties 1) "\\E$")))))
 
-;;;; Utility functions to work with Bazel workspaces
+;;;; Utility functions to work with Bazel repositories
 
 (defun bazel-util-workspace-root (file-name)
-  "Find the root of the Bazel workspace containing FILE-NAME.
-If FILE-NAME is not in a Bazel workspace, return nil.  Otherwise,
+  "Find the root of the Bazel repository containing FILE-NAME.
+If FILE-NAME is not in a Bazel repository, return nil.  Otherwise,
 the return value is a directory name."
   (declare (obsolete "don’t use it, as it’s an internal function."
                      "2021-04-13"))
   (cl-check-type file-name string)
-  (bazel--workspace-root file-name))
+  (bazel--repository-root file-name))
 
-(defun bazel--workspace-root (file-name)
-  "Find the root of the Bazel workspace containing FILE-NAME.
-If FILE-NAME is not in a Bazel workspace, return nil.  Otherwise,
+(defun bazel--repository-root (file-name)
+  "Find the root of the Bazel repository containing FILE-NAME.
+If FILE-NAME is not in a Bazel repository, return nil.  Otherwise,
 the return value is a directory name.  FILE-NAME can be a file or
 directory name."
   (cl-check-type file-name string)
   (when-let ((result (locate-dominating-file file-name
-                                             #'bazel--workspace-root-p)))
+                                             #'bazel--repository-root-p)))
     (file-name-as-directory result)))
 
-(defun bazel--workspace-root-p (directory)
-  "Return non-nil if DIRECTORY is a Bazel workspace root directory.
+(defun bazel--repository-root-p (directory)
+  "Return non-nil if DIRECTORY is a Bazel repository root directory.
 DIRECTORY can be a directory or file name."
   (cl-check-type directory string)
   (and (file-directory-p directory)
        (bazel--locate-workspace-file directory)))
 
-(defvar bazel--workspace-relative-name (make-hash-table :test #'equal)
-  "Cache for the function ‘bazel--workspace-relative-name’.
+(defvar bazel--repository-relative-name (make-hash-table :test #'equal)
+  "Cache for the function ‘bazel--repository-relative-name’.
 Maps filenames to their equivalents relative to the Bazel
-workspace root.")
+repository root.")
 
-(defun bazel--workspace-relative-name (file)
-  "Return FILE as relative to its Bazel workspace root.
-Return nil if FILE is not in a Bazel workspace.  If
+(defun bazel--repository-relative-name (file)
+  "Return FILE as relative to its Bazel repository root.
+Return nil if FILE is not in a Bazel repository.  If
 ‘non-essential’ is non-nil, avoid hitting the filesystem;
 instead, look up FILE in a cache, so the results might be stale."
   (cl-check-type file string)
-  (let ((cache bazel--workspace-relative-name))
+  (let ((cache bazel--repository-relative-name))
     (if non-essential
         (gethash file cache)
       (puthash file
-               (when-let ((root (bazel--workspace-root file)))
+               (when-let ((root (bazel--repository-root file)))
                  (file-relative-name file root))
                cache))))
 
-(defun bazel-util-package-name (file-name workspace-root)
-  "Return the nearest Bazel package for FILE-NAME under WORKSPACE-ROOT.
+(defun bazel-util-package-name (file-name repository-root)
+  "Return the nearest Bazel package for FILE-NAME under REPOSITORY-ROOT.
 If FILE-NAME is not in a Bazel package, return nil."
   (declare (obsolete "don’t use it, as it’s an internal function."
                      "2021-04-13"))
   (cl-check-type file-name string)
-  (cl-check-type workspace-root string)
-  (when-let ((directory (bazel--package-directory file-name workspace-root)))
-    (bazel--package-name directory workspace-root)))
+  (cl-check-type repository-root string)
+  (when-let ((directory (bazel--package-directory file-name repository-root)))
+    (bazel--package-name directory repository-root)))
 
-(defun bazel--package-directory (file-name workspace-root)
-  "Return the Bazel package directory for FILE-NAME under WORKSPACE-ROOT.
+(defun bazel--package-directory (file-name repository-root)
+  "Return the Bazel package directory for FILE-NAME under REPOSITORY-ROOT.
 If FILE-NAME is not in a Bazel package, return nil.  FILE-NAME
-and WORKSPACE-ROOT can be file or directory names."
+and REPOSITORY-ROOT can be file or directory names."
   (cl-check-type file-name string)
-  (cl-check-type workspace-root string)
-  (let* ((parent (file-name-directory (directory-file-name workspace-root)))
-         ;; Don’t search beyond workspace root.
+  (cl-check-type repository-root string)
+  (let* ((parent (file-name-directory (directory-file-name repository-root)))
+         ;; Don’t search beyond repository root.
          (locate-dominating-stop-dir-regexp
           (if parent
               (rx-to-string `(or (seq bos ,parent eos)
@@ -2140,18 +2145,18 @@ and WORKSPACE-ROOT can be file or directory names."
             locate-dominating-stop-dir-regexp)))
     (locate-dominating-file file-name #'bazel--package-directory-p)))
 
-(defun bazel--package-name (build-file-directory workspace-root)
+(defun bazel--package-name (build-file-directory repository-root)
   "Return the Bazel package name for BUILD-FILE-DIRECTORY.
 BUILD-FILE-DIRECTORY must be a Bazel package, i.e., it must
-contain a BUILD file.  WORKSPACE-ROOT is the Bazel workspace root
-directory.  BUILD-FILE-DIRECTORY and WORKSPACE-ROOT can be
+contain a BUILD file.  REPOSITORY-ROOT is the Bazel repository
+root directory.  BUILD-FILE-DIRECTORY and REPOSITORY-ROOT can be
 directory or file names."
   (cl-check-type build-file-directory string)
-  (cl-check-type workspace-root string)
-  (cond ((file-equal-p workspace-root build-file-directory) "")
-        ((file-in-directory-p build-file-directory workspace-root)
+  (cl-check-type repository-root string)
+  (cond ((file-equal-p repository-root build-file-directory) "")
+        ((file-in-directory-p build-file-directory repository-root)
          (let ((package-name
-                (file-relative-name build-file-directory workspace-root)))
+                (file-relative-name build-file-directory repository-root)))
            ;; Only return package-name if we can confirm it is the local
            ;; relative file name of a BUILD file.
            (and package-name
@@ -2162,65 +2167,65 @@ directory or file names."
 
 (defun bazel--package-directory-p (directory)
   "Return non-nil if DIRECTORY is a Bazel package directory.
-This doesn’t check whether DIRECTORY is within a Bazel workspace.
+This doesn’t check whether DIRECTORY is within a Bazel repository.
 DIRECTORY can be a directory or file name."
   (cl-check-type directory string)
   (and (file-directory-p directory)
        (bazel--locate-build-file directory)))
 
-(defun bazel--external-workspace (workspace-name this-workspace-root)
-  "Return the workspace root of an external workspace.
-WORKSPACE-NAME should be either a string naming an external
-workspace, or nil to refer to the current workspace.
-THIS-WORKSPACE-ROOT should be the name or file name of the
-current workspace root directory, as returned by
-‘bazel--workspace-root’.  The return value is a directory name."
-  (cl-check-type workspace-name (or null string))
-  (cl-check-type this-workspace-root string)
+(defun bazel--external-repository (repository-name this-repository-root)
+  "Return the repository root of an external repository.
+REPOSITORY-NAME should be either a string naming an external
+repository, or nil to refer to the current repository.
+THIS-REPOSITORY-ROOT should be the name or file name of the
+current repository root directory, as returned by
+‘bazel--repository-root’.  The return value is a directory name."
+  (cl-check-type repository-name (or null string))
+  (cl-check-type this-repository-root string)
   (file-name-as-directory
-   (if workspace-name
+   (if repository-name
        ;; See https://bazel.build/remote/output-directories for some overview of
        ;; the Bazel directory layout.  Empirically, the directory
-       ;; ROOT/bazel-ROOT/external/WORKSPACE is a symlink to the workspace root
-       ;; of the external workspace WORKSPACE.  Again, this is a heuristic, and
-       ;; should work for the common case.  In particular, we don’t want to
-       ;; shell out to “bazel info workspace” here, because that might block
-       ;; indefinitely if another Bazel instance holds the lock.  We don’t check
-       ;; whether the directory exists, because it’s generated and cached when
-       ;; needed.
-       (expand-file-name workspace-name
-                         (bazel--external-workspace-dir this-workspace-root))
-     this-workspace-root)))
+       ;; ROOT/bazel-ROOT/external/REPOSITORY is a symlink to the repository
+       ;; root of the external repository REPOSITORY.  Again, this is a
+       ;; heuristic, and should work for the common case.  In particular, we
+       ;; don’t want to shell out to “bazel info workspace” here, because that
+       ;; might block indefinitely if another Bazel instance holds the lock.  We
+       ;; don’t check whether the directory exists, because it’s generated and
+       ;; cached when needed.
+       (expand-file-name repository-name
+                         (bazel--external-repository-dir this-repository-root))
+     this-repository-root)))
 
-(defun bazel--external-workspace-dir (root)
-  "Return a directory name for the parent directory of the external workspaces.
-ROOT should be the name or file name of the main workspace root
-directory as returned by ‘bazel--workspace-root’."
+(defun bazel--external-repository-dir (root)
+  "Return a directory name for the parent directory of the external repositories.
+ROOT should be the name or file name of the main repository root
+directory as returned by ‘bazel--repository-root’."
   (cl-check-type root string)
-  ;; See the commentary in ‘bazel--external-workspace’ for how to find external
-  ;; workspaces.
+  ;; See the commentary in ‘bazel--external-repository’ for how to find external
+  ;; repositories.
   (expand-file-name
    (concat "bazel-" (file-name-nondirectory (directory-file-name root))
            "/external/" )
    root))
 
-(defun bazel--external-workspace-roots (main-root)
-  "Return the directory names of the external workspace roots.
-MAIN-ROOT should be the name or file name of the main workspace
-root directory as returned by ‘bazel--workspace-root’."
+(defun bazel--external-repository-roots (main-root)
+  "Return the directory names of the external repository roots.
+MAIN-ROOT should be the name or file name of the main repository
+root directory as returned by ‘bazel--repository-root’."
   (cl-check-type main-root string)
   (let ((case-fold-search nil)
         (search-spaces-regexp nil))
     (condition-case nil
         (directory-files
-         (bazel--external-workspace-dir main-root)
+         (bazel--external-repository-dir main-root)
          :full
          ;; https://bazel.build/rules/lib/globals#parameters_51 claims that
-         ;; workspace names may only contain letters, numbers, and underscores,
+         ;; repository names may only contain letters, numbers, and underscores,
          ;; but that’s wrong, since hyphens and dots are also allowed.  See
          ;; https://github.com/bazelbuild/bazel/blob/bc9fc6144818528898336c0fbe4fe8b30ac25abb/src/main/java/com/google/devtools/build/lib/packages/WorkspaceGlobals.java#L52.
          (rx bos (any "A-Z" "a-z") (* (any ?- ?. ?_ "A-Z" "a-z")) eos))
-      ;; If there’s no external workspace directory, don’t signal an error.
+      ;; If there’s no external repository directory, don’t signal an error.
       (file-missing nil))))
 
 (defun bazel--target-completion-table (pattern only-tests)
@@ -2234,7 +2239,7 @@ completion is not exact and only includes potential packages and
 rules.  If PATTERN is non-nil, complete target patterns and skip
 files.  If ONLY-TESTS is non-nil, restrict rule target completion
 to test targets.  If ‘default-directory’ is not in a Bazel
-package or workspace, return an empty completion table.  This
+package or repository, return an empty completion table.  This
 function should always be fast and not access the filesystem, but
 the returned completion table can access the filesystem."
   ;; We return a completion function so that we don’t have to find all targets
@@ -2243,7 +2248,7 @@ the returned completion table can access the filesystem."
     (lambda (string predicate action)
       (cl-check-type string string)
       (cl-check-type predicate (or function null))
-      (when-let* ((root (bazel--workspace-root directory))
+      (when-let* ((root (bazel--repository-root directory))
                   (package (bazel--package-name directory root)))
         (let ((case-fold-search completion-ignore-case)
               (search-spaces-regexp nil))
@@ -2258,7 +2263,7 @@ the returned completion table can access the filesystem."
 (defun bazel--target-completion-table-1
     (root package pattern only-tests string)
   "Return a completion table completing STRING to a Bazel target or pattern.
-ROOT is the workspace root directory, and PACKAGE is the current
+ROOT is the repository root directory, and PACKAGE is the current
 package name.  If PATTERN is non-nil, complete target patterns
 and skip files.  If ONLY-TESTS is non-nil, restrict rule target
 completion to test targets.  This is a helper function for
@@ -2275,9 +2280,9 @@ completion to test targets.  This is a helper function for
     ;; regular expressions.
     (""
      ;; By default, offer targets and subpackages of the current package, as
-     ;; well as “//” to anchor the pattern at the root of the current workspace,
-     ;; since these are the most common patterns.  Also offer “@” to select
-     ;; external workspaces.
+     ;; well as “//” to anchor the pattern at the root of the current
+     ;; repository, since these are the most common patterns.  Also offer “@” to
+     ;; select external repositories.
      (completion-table-merge
       (bazel--target-completion-table-2 root "" package pattern only-tests
                                         :colon)
@@ -2286,12 +2291,12 @@ completion to test targets.  This is a helper function for
         (bazel--target-package-completion-table root "" package pattern))
       '("//" "@")))
     ((rx bos (let prefix ?@) (* (not (any ?: ?/))) eos)
-     ;; Completion for external workspace names.  Also include the main (empty)
-     ;; workspace here.
+     ;; Completion for external repository names.  Also include the main (empty)
+     ;; repository here.
      (bazel--completion-table-with-prefix prefix
        (completion-table-merge
-        (bazel--target-workspace-completion-table
-         (bazel--external-workspace-dir root))
+        (bazel--target-repository-completion-table
+         (bazel--external-repository-dir root))
         '("//"))))
     ((rx bos (let prefix (* (not (any ?:))) "/...:"))
      ;; Combination of package wildcard and target wildcard.
@@ -2299,19 +2304,19 @@ completion to test targets.  This is a helper function for
        (bazel--completion-table-with-prefix prefix
          '("all" "all-targets" "*"))))
     ((rx bos (let prefix (? ?@ (* (not (any ?: ?/))))) ?/ eos)
-     ;; A single slash, optionally preceded by a workspace reference, can only
+     ;; A single slash, optionally preceded by a repository reference, can only
      ;; be completed to “//”.
      (bazel--completion-table-with-prefix prefix '("//")))
     ((rx bos
          ;; Can’t use ‘(? … (let …))’ due to https://bugs.gnu.org/44532.
-         (opt ?@ (let workspace (* (not (any ?: ?/))))) "//"
+         (opt ?@ (let repository (* (not (any ?: ?/))))) "//"
          eos)
-     ;; In the workspace root, offer “:” to start completing rules, as well as
+     ;; In the repository root, offer “:” to start completing rules, as well as
      ;; subpackages.
      (bazel--completion-table-with-prefix string
        (completion-table-merge
         '(":")
-        (bazel--target-package-completion-table root (or workspace "") ""
+        (bazel--target-package-completion-table root (or repository "") ""
                                                 pattern))))
     ((rx bos (let prefix (* (not (any ?:))) ?/) "..." eos)
      ;; A package wildcard may optionally be followed by a target wildcard.
@@ -2323,18 +2328,18 @@ completion to test targets.  This is a helper function for
        (bazel--completion-table-with-prefix prefix '("..."))))
     ((rx bos
          ;; Can’t use ‘(? … (let …))’ due to https://bugs.gnu.org/44532.
-         (opt ?@ (let workspace (+ (not (any ?: ?/))))) "//"
+         (opt ?@ (let repository (+ (not (any ?: ?/))))) "//"
          (let pkg (+ (not (any ?:)))) ?/
          eos)
      ;; A full package name followed by a slash must be followed by a package
      ;; name or wildcard.
      (bazel--completion-table-with-prefix string
-       (bazel--target-package-completion-table root (or workspace "") pkg
+       (bazel--target-package-completion-table root (or repository "") pkg
                                                pattern)))
     ((rx bos
          (let prefix
            ;; Can’t use ‘(? … (let …))’ due to https://bugs.gnu.org/44532.
-           (opt ?@ (let workspace (* (not (any ?: ?/))))) "//"
+           (opt ?@ (let repository (* (not (any ?: ?/))))) "//"
            (let pkg (* (not (any ?:))))
            ?:)
          (* (not (any ?:)))
@@ -2342,17 +2347,17 @@ completion to test targets.  This is a helper function for
      ;; Absolute target label prefix, including the colon.  Must complete to a
      ;; target label.
      (bazel--completion-table-with-prefix prefix
-       (bazel--target-completion-table-2 root (or workspace "") pkg pattern
+       (bazel--target-completion-table-2 root (or repository "") pkg pattern
                                          only-tests nil)))
     ((rx bos
          ;; Can’t use ‘(? … (let …))’ due to https://bugs.gnu.org/44532.
-         (let prefix (opt ?@ (let workspace (* (not (any ?: ?/))))) "//")
+         (let prefix (opt ?@ (let repository (* (not (any ?: ?/))))) "//")
          (+ (not (any ?:)))
          eos)
      ;; Absolute package prefix, without colon.  Must complete to a package
      ;; name.
      (bazel--completion-table-with-prefix prefix
-       (bazel--target-package-completion-table root (or workspace "") ""
+       (bazel--target-package-completion-table root (or repository "") ""
                                                pattern)))
     ((rx bos (let prefix ?:) (* (not (any ?:))) eos)
      ;; Target pattern relative to the current package.
@@ -2412,16 +2417,16 @@ nil, which is interpreted as an always-true predicate."
                             (lambda (,arg) nil nil ,@body)))
          nil))))
 
-(defun bazel--target-workspace-completion-table (root)
-  "Return a target completion table for external workspace names.
-ROOT is the parent directory of the external workspaces as
-returned by ‘bazel--external-workspace-dir’.  This is a helper
+(defun bazel--target-repository-completion-table (root)
+  "Return a target completion table for external repository names.
+ROOT is the parent directory of the external repositories as
+returned by ‘bazel--external-repository-dir’.  This is a helper
 function for ‘bazel--target-completion-table’."
   (cl-check-type root string)
   (lambda (string predicate action)
     (cl-check-type string string)
     (cl-check-type predicate (or null function))
-    ;; Restrict completions to valid workspace names.
+    ;; Restrict completions to valid repository names.
     (let ((completion-regexp-list
            (cons (rx bos (+ (any "A-Z" "a-z" "0-9" ?_ ?- ?.)) eos)
                  completion-regexp-list)))
@@ -2457,18 +2462,18 @@ function for ‘bazel--target-completion-table’."
              `(boundaries 0 . ,(string-match-p (rx (any ?/ ?:)) suffix))))
         (file-error nil)))))
 
-(defun bazel--target-package-completion-table (root workspace package pattern)
+(defun bazel--target-package-completion-table (root repository package pattern)
   "Return a completion table for package patterns.
-ROOT is the main workspace root, WORKSPACE is the external
-workspace name or the empty string for the main workspace, and
+ROOT is the main repository root, REPOSITORY is the external
+repository name or the empty string for the main repository, and
 PACKAGE is the current package.  If PATTERN is non-nil, complete
 target patterns and include wildcards.  This is a helper function
 for ‘bazel--target-completion-table’."
   (cl-check-type root string)
-  (cl-check-type workspace string)
+  (cl-check-type repository string)
   (cl-check-type package string)
-  (let* ((root (if (string-empty-p workspace) root
-                 (bazel--external-workspace workspace root)))
+  (let* ((root (if (string-empty-p repository) root
+                 (bazel--external-repository repository root)))
          (directory (file-name-as-directory (expand-file-name package root))))
     (lambda (string predicate action)
       (let* ((slash (string-match-p (rx ?/ (* (not (any ?/))) eos) string))
@@ -2485,7 +2490,7 @@ for ‘bazel--target-completion-table’."
                          (and pattern '("..."))))))
              (predicate
               (if (string-empty-p package)
-                  ;; Skip convenience symlinks in the workspace root.
+                  ;; Skip convenience symlinks in the repository root.
                   (lambda (candidate)
                     (and (not (string-prefix-p "bazel-" candidate))
                          (if predicate (funcall predicate candidate) t)))
@@ -2532,25 +2537,25 @@ This is a helper function for
         (file-error nil)))))
 
 (defun bazel--target-completion-table-2
-    (root workspace package pattern only-tests colon)
+    (root repository package pattern only-tests colon)
   "Return a completion table for Bazel targets or target patterns.
-ROOT is the main workspace root, WORKSPACE is the external
-workspace name or the empty string for the main workspace, and
-PACKAGE is the package name within the workspace.  If PATTERN is
+ROOT is the main repository root, REPOSITORY is the external
+repository name or the empty string for the main repository, and
+PACKAGE is the package name within the repository.  If PATTERN is
 non-nil, complete target patterns, include target wildcards like
 “:all”, and skip files.  If ONLY-TESTS is non-nil, restrict rule
 target completion to test targets.  If COLON is non-nil, prefix
 the wildcards with a colon.  This is a helper function for
 ‘bazel--target-completion-table’."
   (cl-check-type root string)
-  (cl-check-type workspace string)
+  (cl-check-type repository string)
   (cl-check-type package string)
   (when-let ((build-file
               (bazel--locate-build-file
                (expand-file-name package
-                                 (if (string-empty-p workspace) root
-                                   (bazel--external-workspace workspace
-                                                              root))))))
+                                 (if (string-empty-p repository) root
+                                   (bazel--external-repository repository
+                                                               root))))))
     (let ((completion-regexp-list
            (cons (rx bos (+ (any "a-z" "A-Z" "0-9" ?-
                                  "!%@^_` \"#$&'()*+,;<=>?[]{|}~/.")
@@ -2579,7 +2584,7 @@ the wildcards with a colon.  This is a helper function for
            '("all" "all-targets" "*")))))))
 
 (defun bazel--target-completion-directory-p (string)
-  "Return whether STRING is a valid workspace or package name.
+  "Return whether STRING is a valid repository or package name.
 Assume that STRING comes from ‘file-name-completion’ or
 ‘file-name-all-completions’.  This is a helper function for
 ‘bazel--target-completion-table’."
@@ -2593,7 +2598,7 @@ Assume that STRING comes from ‘file-name-completion’ or
 
 (defun bazel--locate-workspace-file (directory)
   "Return the file name of the Bazel WORKSPACE file in DIRECTORY.
-Return nil if DIRECTORY is not a Bazel workspace root (i.e.,
+Return nil if DIRECTORY is not a Bazel repository root (i.e.,
 doesn’t contain a WORKSPACE file).  DIRECTORY can be a directory
 name or directory file name."
   (cl-check-type directory string)
@@ -2603,7 +2608,7 @@ name or directory file name."
   "Return the file name of the Bazel BUILD file in DIRECTORY.
 Return nil if DIRECTORY is not a Bazel package (i.e., doesn’t
 contain a BUILD file).  Assume that DIRECTORY is within a Bazel
-workspace.  DIRECTORY can be a directory name or directory file
+repository.  DIRECTORY can be a directory name or directory file
 name."
   (cl-check-type directory string)
   (locate-file "BUILD" (list directory) '(".bazel" "")))
@@ -2611,9 +2616,9 @@ name."
 (defun bazel--parse-label (label)
   "Parse Bazel label LABEL.
 If LABEL isn’t syntactically valid, return nil.  Otherwise,
-return a triple (WORKSPACE PACKAGE TARGET).  WORKSPACE is
-nil (for the current workspace) or a string referring to some
-external workspace.  PACKAGE is nil (for the current package) or
+return a triple (REPOSITORY PACKAGE TARGET).  REPOSITORY is
+nil (for the current repository) or a string referring to some
+external repository.  PACKAGE is nil (for the current package) or
 a package name string.  TARGET is a string referring to the local
 name of LABEL.  See URL
 ‘https://bazel.build/concepts/labels#labels-lexical-specification’
@@ -2624,18 +2629,18 @@ for the lexical syntax of labels."
     (pcase (substring-no-properties label)
       ((rx bos
            (or
-            ;; @workspace//package:target
-            (seq "@" (let workspace (+ (not (any ?: ?/))))
+            ;; @repository//package:target
+            (seq "@" (let repository (+ (not (any ?: ?/))))
                  "//" (let package (* (not (any ?:))))
                  ?: (let target (+ (not (any ?:)))))
-            ;; @workspace//package
-            (seq "@" (let workspace (+ (not (any ?: ?/))))
+            ;; @repository//package
+            (seq "@" (let repository (+ (not (any ?: ?/))))
                  "//" (let package (+ (not (any ?:)))))
-            ;; @workspace
+            ;; @repository
             ;; This syntax isn’t documented in
             ;; https://bazel.build/concepts/labels, but follows from
             ;; https://github.com/bazelbuild/buildtools/blob/v6.3.3/build/rewrite.go#L260-L261.
-            (seq ?@ (let workspace (+ (not (any ?: ?/)))))
+            (seq ?@ (let repository (+ (not (any ?: ?/)))))
             ;; //package:target
             (seq "//" (let package (* (not (any ?:))))
                  ?: (let target (+ (not (any ?:)))))
@@ -2646,12 +2651,12 @@ for the lexical syntax of labels."
             ;; target
             (seq (let target (not (any ?: ?/ ?@)) (* (not (any ?:))))))
            eos)
-       (unless target (setq target (bazel--default-target workspace package)))
-       (and (or (null workspace)
+       (unless target (setq target (bazel--default-target repository package)))
+       (and (or (null repository)
                 ;; https://bazel.build/rules/lib/globals/workspace#parameters_3
                 (string-match-p
                  (rx bos (any "A-Z" "a-z") (* (any ?- ?. ?_ "A-Z" "a-z")) eos)
-                 workspace))
+                 repository))
             (or (null package) (string-empty-p package)
                 ;; https://bazel.build/concepts/labels#package-names
                 (string-match-p (rx bos
@@ -2665,34 +2670,34 @@ for the lexical syntax of labels."
                                         "!%@^_` \"#$&'()*+,;<=>?[]{|}~/."))
                                 eos)
                             target)
-            (list workspace package target))))))
+            (list repository package target))))))
 
-(defun bazel--default-target (workspace package)
-  "Return the default target name for WORKSPACE and PACKAGE.
+(defun bazel--default-target (repository package)
+  "Return the default target name for REPOSITORY and PACKAGE.
 For a package “foo/bar”, “bar” is the default target.  For a
-workspace “foo”, “foo” in the root package is the default
+repository “foo”, “foo” in the root package is the default
 target."
-  (cl-check-type workspace (or null string))
+  (cl-check-type repository (or null string))
   (cl-check-type package string)
-  (if (and (stringp workspace) (string-empty-p package))
-      workspace
+  (if (and (stringp repository) (string-empty-p package))
+      repository
     (let ((case-fold-search nil)
           (search-spaces-regexp nil))
       (pcase-exhaustive package
         ((rx (or bos ?/) (let target (* (not (any ?/)))) eos)
          target)))))
 
-(defun bazel--canonical (workspace package target)
+(defun bazel--canonical (repository package target)
   "Return a canonical label.
-WORKSPACE is either nil (referring to the current workspace) or
-an external workspace name.  PACKAGE and TARGET should both be
-strings.  Return either @WORKSPACE//PACKAGE:TARGET or
+REPOSITORY is either nil (referring to the current repository) or
+an external repository name.  PACKAGE and TARGET should both be
+strings.  Return either @REPOSITORY//PACKAGE:TARGET or
 //PACKAGE:TARGET."
   (declare (side-effect-free t))
-  (cl-check-type workspace (or null string))
+  (cl-check-type repository (or null string))
   (cl-check-type package string)
   (cl-check-type target string)
-  (concat (and workspace (concat "@" workspace)) "//" package ":" target))
+  (concat (and repository (concat "@" repository)) "//" package ":" target))
 
 (defun bazel--remove-slash (string)
   "Remove a final slash from STRING."
