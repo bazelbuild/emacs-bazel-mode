@@ -1,4 +1,4 @@
-# Copyright 2021, 2022 Google LLC
+# Copyright 2021, 2022, 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ workspace(foo = 'name = "no",', name = "test_repository")
 # Empty BUILD file
 #+END_SRC
 
-** Expected ~http_workspace~ snippet
+** Expected ~http_archive~ snippet
 
 The ~bazel-insert-http-archive~ test fakes a date of 2019-05-02.
 
