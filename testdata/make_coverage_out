@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2021, 2022 Google LLC
+# Copyright 2021, 2022, 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ trap 'rm -r -f -- "${dir}"' EXIT
 # choke on symbolic links.
 dir="$(realpath -e -- "${dir:?}")" || exit
 
-# Set up a basic workspace layout in the temporary directory.
+# Set up a basic repository layout in the temporary directory.
 emacs --quick --batch --visit="${org:?}" \
   --eval="(let ((default-directory \"${dir:?}/\")) (org-babel-tangle))" || exit
 
@@ -45,7 +45,7 @@ execroot="$(cd "${dir:?}" && bazel --bazelrc=/dev/null info execution_root)"
 testlogs="$(cd "${dir:?}" && bazel --bazelrc=/dev/null info bazel-testlogs)"
 
 # We explicitly compile with the current directory set to a subdirectory to
-# ensure that workspace-relative filenames still work as expected.
+# ensure that repository-relative filenames still work as expected.
 out="$(cd "${dir:?}/src" && bazel --bazelrc=/dev/null coverage //... 2>&1)"
 
 # Parse output to find location of coverage.dat.  The output should be

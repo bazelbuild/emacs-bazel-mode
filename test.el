@@ -1,6 +1,6 @@
 ;;; test.el --- unit tests for bazel.el  -*- lexical-binding: t; -*-
 
-;; Copyright 2020, 2021, 2022, 2023 Google LLC
+;; Copyright 2020, 2021, 2022, 2023, 2024 Google LLC
 ;;
 ;; Licensed under the Apache License, Version 2.0 (the "License");
 ;; you may not use this file except in compliance with the License.
@@ -460,7 +460,7 @@ gets killed early."
 
 (ert-deftest bazel-test/coverage ()
   "Test coverage parsing and display."
-  ;; Set up a fake workspace and execution root.  We use DIR for both.
+  ;; Set up a fake repository and execution root.  We use DIR for both.
   (bazel-test--with-temp-directory dir "coverage.org"
     (let* ((package-dir (expand-file-name "src/main/java/example" dir))
            (library (expand-file-name "Example.java" package-dir)))
@@ -716,9 +716,9 @@ gets killed early."
                 (should (equal (completion-boundaries string table nil "suffix")
                                (cons bound 6)))))))))))
 
-(ert-deftest bazel--target-completion-table/workspace ()
-  "Test workspace name completion."
-  (bazel-test--with-temp-directory dir "target-completion-workspace.org"
+(ert-deftest bazel--target-completion-table/repository ()
+  "Test repository name completion."
+  (bazel-test--with-temp-directory dir "target-completion-repository.org"
     (make-symbolic-link dir (expand-file-name "bazel-out" dir))
     ;; The test cases are of the form (STRING TRY ALL TEST BOUND).  STRING is
     ;; the input string.  TRY, ALL, and TEST are the expected results of
